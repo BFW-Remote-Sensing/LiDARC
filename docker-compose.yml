@@ -1,3 +1,4 @@
+name: lidarc
 
 services:
   rabbitmq:
@@ -47,8 +48,19 @@ services:
       "
     networks:
       - default
-
-
+  preprocess-worker:
+    image: preprocess-lidarc-worker
+    build: LiDARC-worker/
+    container_name: preprocess-worker
+    depends_on:
+      minio:
+        condition: service_started
+        restart: true
+      rabbitmq:
+        condition: service_started
+        restart: true
+    networks:
+      - ase-network
 
 networks:
   ase-network:
