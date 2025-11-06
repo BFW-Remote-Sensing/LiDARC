@@ -64,6 +64,16 @@ services:
     networks:
       - ase-network
 
+  frontend:
+    build:
+      context: ./LiDARC-frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "8081:8081"
+    networks:
+      - ase-network
+
   backend:
     build:
       context: ./LiDARC-backend
