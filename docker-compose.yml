@@ -36,6 +36,8 @@ services:
     volumes:
       - ./data:/data
     restart: unless-stopped
+    networks:
+      - ase-network
   minio-mc:
     image: quay.io/minio/mc:latest
     container_name: minio_initializer
