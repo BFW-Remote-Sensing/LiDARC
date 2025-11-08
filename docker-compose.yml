@@ -46,6 +46,7 @@ services:
       /usr/bin/mc alias set myminio http://minio:9000 admin aseWS25LiDARC &&
       /usr/bin/mc mb myminio/basebucket || true
       "
+    restart: "no" 
     networks:
       - default
 
@@ -79,6 +80,9 @@ services:
       context: ./LiDARC-backend
       dockerfile: Dockerfile
     container_name: backend
+    depends_on:
+      minio-mc:
+        condition: service_completed_successfully
     ports:
       - "8080:8080"
     networks:
