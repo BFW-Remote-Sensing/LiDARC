@@ -1,0 +1,29 @@
+// java
+package com.example.lidarcbackend.configuration;
+
+import io.minio.MinioAsyncClient;
+import io.minio.MinioClient;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class MinioConfig {
+
+  @Bean
+  public MinioClient minioClient(MinioProperties props) {
+    //TODO make a mock client or something if localhost is endpoint name
+    return MinioClient.builder()
+        .endpoint(props.getEndpoint(), props.getPort(), false)
+        .credentials(props.getUsername(), props.getPassword())
+        //.region("us-east-1")
+        .build();
+  }
+
+  @Bean
+  public MinioAsyncClient minioAsyncClient(MinioProperties props) {
+    return MinioAsyncClient.builder()
+        .endpoint("localhost", 9000, false)
+        .credentials(props.getUsername(), props.getPassword())
+        .build();
+  }
+}
