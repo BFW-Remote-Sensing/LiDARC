@@ -1,6 +1,6 @@
 package com.example.lidarcbackend.api;
 
-import com.example.lidarcbackend.model.FileInfo;
+import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import com.example.lidarcbackend.service.files.MockPresignedUrlService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -36,26 +36,36 @@ public class BucketApiController implements BucketApi {
     this.mockPresignedUrlService = mockPresignedUrlService;
   }
 
-  public ResponseEntity<FileInfo> fetchFile(
+  public ResponseEntity<FileInfoDto> fetchFile(
       @Parameter(in = ParameterIn.DEFAULT, description = "Fetch a presigned url for a specific file name from the bucket.", required = true, schema = @Schema())
       @Valid
-      @RequestBody FileInfo body
+      @RequestBody FileInfoDto body
   ) {
     String accept = request.getHeader("Accept");
     if (accept != null && accept.contains("application/json")) {
       try {
-        FileInfo example =
+        FileInfoDto example =
             objectMapper.readValue(
-                "{\n  \"fileName\" : \"graz2021_block6_060_065_elv.laz\",\n  \"presignedURL\" : \"presignedURL\",\n  \"uploaded\" : false\n}", FileInfo.class);
-        Optional<FileInfo> file = mockPresignedUrlService.fetchFileInfo(example.getFileName());
+                "{\n  \"fileName\" : \"graz2021_block6_060_065_elv.laz\",\n  \"presignedURL\" : \"presignedURL\",\n  \"uploaded\" : false\n}", FileInfoDto.class);
+        Optional<FileInfoDto> file = mockPresignedUrlService.fetchFileInfo(example.getFileName());
         return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
       } catch (IOException e) {
         log.error("Couldn't serialize response for content type application/json", e);
-        return new ResponseEntity<FileInfo>(HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<FileInfoDto>(HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
 
-    return new ResponseEntity<FileInfo>(HttpStatus.NOT_IMPLEMENTED);
+    return new ResponseEntity<FileInfoDto>(HttpStatus.NOT_IMPLEMENTED);
+  }
+
+  @Override
+  public ResponseEntity<FileInfoDto> fetchURLForUpload(FileInfoDto body) {
+    return null;
+  }
+
+  @Override
+  public ResponseEntity<FileInfoDto> uploadFinished(FileInfoDto body) {
+    return null;
   }
 
 }

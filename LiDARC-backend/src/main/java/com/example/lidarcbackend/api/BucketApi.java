@@ -5,7 +5,7 @@
  */
 package com.example.lidarcbackend.api;
 
-import com.example.lidarcbackend.model.FileInfo;
+import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import com.example.lidarcbackend.model.Error;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -32,18 +32,60 @@ public interface BucketApi {
         
         @ApiResponse(responseCode = "400", description = "Invalid input"),
         
-        @ApiResponse(responseCode = "409", description = "File with that name already exists"),
+        @ApiResponse(responseCode = "422", description = "Validation exception")
         
-        @ApiResponse(responseCode = "422", description = "Validation exception"),
-        
-        @ApiResponse(responseCode = "200", description = "Unexpected error", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))) })
+    })
     @RequestMapping(value = "/bucket",
         produces = { "application/json" }, 
         consumes = { "application/json" }, 
         method = RequestMethod.POST)
-    ResponseEntity<FileInfo> fetchFile(@Parameter(in = ParameterIn.DEFAULT, description = "Fetch a presigned url for a specific file name from the bucket.", required=true, schema=@Schema()) @Valid
-                                             @RequestBody FileInfo body
+    ResponseEntity<FileInfoDto> fetchFile(@Parameter(in = ParameterIn.DEFAULT, description = "Fetch a presigned url for a specific file name from the bucket.", required=true, schema=@Schema()) @Valid
+                                             @RequestBody FileInfoDto body
 );
+
+  @Operation(summary = "Fetch presigned URL from bucket to upload a file", description = "Fetch presigned URL from bucket to upload a file to the bucket.", tags={ "bucket" })
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "200", description = "Successful operation", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.io.File.class))),
+
+      @ApiResponse(responseCode = "400", description = "Invalid input"),
+
+      @ApiResponse(responseCode = "409", description = "File with that name already exists"),
+
+      @ApiResponse(responseCode = "422", description = "Validation exception")
+
+  })
+  @RequestMapping(value = "/bucket/upload",
+      produces = { "application/json" },
+      consumes = { "application/json" },
+      method = RequestMethod.POST)
+  ResponseEntity<FileInfoDto> fetchURLForUpload(@Parameter(in = ParameterIn.DEFAULT, description = "Fetch a presigned upload url for a specific file name from the bucket.", required=true, schema=@Schema()) @Valid
+                                     @RequestBody FileInfoDto body
+  );
+
+
+
+  @Operation(summary = "Signalizes that the upload of a file has finished", description = "Signalizes that the upload of a file has finished, changes relevant metadata for that file.", tags={ "bucket" })
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "200", description = "Successful operation", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.io.File.class))),
+
+      @ApiResponse(responseCode = "400", description = "Invalid input"),
+
+      @ApiResponse(responseCode = "404", description = "File not Found"),
+
+      @ApiResponse(responseCode = "422", description = "Validation exception"),
+
+      @ApiResponse(responseCode = "200", description = "Unexpected error", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))) })
+  @RequestMapping(value = "/bucket/upload",
+      produces = { "application/json" },
+      consumes = { "application/json" },
+      method = RequestMethod.PUT)
+  ResponseEntity<FileInfoDto> uploadFinished(@Parameter(in = ParameterIn.DEFAULT, description = "Signalizes that the upload of a file has finished, changes relevant metadata for that file.", required=true, schema=@Schema()) @Valid
+                                                @RequestBody FileInfoDto body
+  ); // returns
+
+
+
+
 
 }
 

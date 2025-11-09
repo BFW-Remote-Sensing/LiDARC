@@ -1,7 +1,7 @@
 package com.example.lidarcbackend.service.files;
 
 import com.example.lidarcbackend.configuration.MinioProperties;
-import com.example.lidarcbackend.model.FileInfo;
+import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import io.minio.BucketExistsArgs;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
@@ -29,7 +29,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 @Slf4j
 public class MockPresignedUrlService implements IPresignedUrlService {
 
-  private static FileInfo baseFile;
+  private static FileInfoDto baseFile;
   private final MinioClient minioClient;
   private final MinioProperties minioProperties;
   // Use a read/write lock to allow concurrent reads of the cached baseFile and safe refresh updates
@@ -67,7 +67,7 @@ public class MockPresignedUrlService implements IPresignedUrlService {
         log.warn("Bucket '{}' does not exist during scheduled refresh", minioProperties.getBucket());
         return;
       }
-      FileInfo refreshed = getBaseFile();
+      FileInfoDto refreshed = getBaseFile();
       if (refreshed != null) {
         baseFileLock.writeLock().lock();
         try {
@@ -108,7 +108,7 @@ public class MockPresignedUrlService implements IPresignedUrlService {
   }
 
 
-  private FileInfo getBaseFile() throws MinioException, GeneralSecurityException, IOException {
+  private FileInfoDto getBaseFile() throws MinioException, GeneralSecurityException, IOException {
     GetPresignedObjectUrlArgs presignedObjectUrlArgs = GetPresignedObjectUrlArgs.builder()
         .method(Method.GET)
         .bucket(minioProperties.getBucket())
@@ -117,7 +117,7 @@ public class MockPresignedUrlService implements IPresignedUrlService {
         .build();
 
     String url = minioClient.getPresignedObjectUrl(presignedObjectUrlArgs);
-    return FileInfo.builder().fileName(minioProperties.getBaseObject()).presignedURL(url).build();
+    return FileInfoDto.builder().fileName(minioProperties.getBaseObject()).presignedURL(url).build();
   }
 
 
@@ -142,7 +142,7 @@ public class MockPresignedUrlService implements IPresignedUrlService {
 
 
   @Override
-  public Optional<FileInfo> fetchFileInfo(String fileName) {
+  public Optional<FileInfoDto> fetchFileInfo(String fileName) {
     baseFileLock.readLock().lock();
     try {
       if (baseFile != null) {
@@ -155,13 +155,15 @@ public class MockPresignedUrlService implements IPresignedUrlService {
   }
 
   @Override
-  public FileInfo createOrRefreshPresignedUrl(FileInfo request) {
-    baseFileLock.readLock().lock();
-    try {
-      return baseFile;
-    } finally {
-      baseFileLock.readLock().unlock();
-    }
+  public Optional<FileInfoDto> fetchUploadUrl(String fileName) {
+    // Mock implementation: return a dummy presigned URL for upload
+    String dummyUploadUrl = "https://mock-storage-service.com/upload/" + fileName + "?signature=mockSignature";
+    return Optional.of(FileInfoDto.builder()
+        .fileName(fileName)
+        .presignedURL(dummyUploadUrl)
+        .uploaded(false)
+        .build());
   }
+
 
 }

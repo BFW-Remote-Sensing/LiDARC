@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS urls (
     s3_bucket TEXT NOT NULL DEFAULT 'basebucket',
     s3_url TEXT NOT NULL,
     presigned BOOLEAN DEFAULT TRUE,
+    method VARCHAR(10) NOT NULL CHECK (method in ('GET', 'PUT')),
     expires_at TIMESTAMP,
     created_at TIMESTAMP
 );
