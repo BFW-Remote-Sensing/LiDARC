@@ -3,6 +3,8 @@ package com.example.lidarcbackend.unit.repository;
 import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.model.entity.Url;
 import com.example.lidarcbackend.repository.FileRepository;
+import com.example.lidarcbackend.repository.UrlRepository;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -16,14 +18,9 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class FileRepositoryTest {
+class FileRepositoryTest extends AbstractRepositoryTest{
 
 
-
-
-
-  @Autowired
-  FileRepository fileRepository;
 
   private Url testUrl;
 
@@ -31,10 +28,10 @@ class FileRepositoryTest {
 
   private File testFileNotUploaded;
 
+
+
   @BeforeEach
-  void setup() {
-
-
+  void before() {
 
     testFileUploaded = new File();
     testFileUploaded.setFilename("testfile.txt");
