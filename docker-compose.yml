@@ -21,7 +21,7 @@ services:
         - "9001:9001"   # Console port
       environment:
         MINIO_ROOT_USER: admin
-        MINIO_ROOT_PASSWORD: aseWS25LiDARC  
+        MINIO_ROOT_PASSWORD: aseWS25LiDARC
       volumes:
         - ./data:/data
         #minio_data:/data

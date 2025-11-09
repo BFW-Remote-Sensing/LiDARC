@@ -1,7 +1,7 @@
 package com.example.lidarcbackend.api;
 
 import com.example.lidarcbackend.model.DTO.FileInfoDto;
-import com.example.lidarcbackend.service.files.MockPresignedUrlService;
+import com.example.lidarcbackend.service.files.IPresignedUrlService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -27,13 +27,14 @@ public class BucketApiController implements BucketApi {
 
   private final HttpServletRequest request;
 
-  private final MockPresignedUrlService mockPresignedUrlService;
+  @Autowired
+  private final IPresignedUrlService presignedUrlService;
 
   @Autowired
-  public BucketApiController(ObjectMapper objectMapper, HttpServletRequest request, MockPresignedUrlService mockPresignedUrlService) {
+  public BucketApiController(ObjectMapper objectMapper, HttpServletRequest request, IPresignedUrlService presignedUrlService) {
     this.objectMapper = objectMapper;
     this.request = request;
-    this.mockPresignedUrlService = mockPresignedUrlService;
+    this.presignedUrlService = presignedUrlService;
   }
 
   public ResponseEntity<FileInfoDto> fetchFile(
@@ -47,7 +48,7 @@ public class BucketApiController implements BucketApi {
         FileInfoDto example =
             objectMapper.readValue(
                 "{\n  \"fileName\" : \"graz2021_block6_060_065_elv.laz\",\n  \"presignedURL\" : \"presignedURL\",\n  \"uploaded\" : false\n}", FileInfoDto.class);
-        Optional<FileInfoDto> file = mockPresignedUrlService.fetchFileInfo(example.getFileName());
+        Optional<FileInfoDto> file = presignedUrlService.fetchFileInfo(example.getFileName());
         return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
       } catch (IOException e) {
         log.error("Couldn't serialize response for content type application/json", e);

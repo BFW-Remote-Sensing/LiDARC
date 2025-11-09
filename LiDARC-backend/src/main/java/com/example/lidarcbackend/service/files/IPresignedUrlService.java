@@ -34,7 +34,7 @@ public interface IPresignedUrlService {
    */
   Optional<FileInfoDto> fetchUploadUrl(String fileName);
 
-  public static CompletableFuture<Boolean> bucketExists(MinioAsyncClient client, String bucketName) throws MinioException, GeneralSecurityException, IOException {
+   static CompletableFuture<Boolean> bucketExists(MinioAsyncClient client, String bucketName) throws MinioException, GeneralSecurityException, IOException {
     BucketExistsArgs args = BucketExistsArgs.builder().bucket(bucketName).build();
     return client.bucketExists(args);
   }

@@ -14,6 +14,8 @@ import io.minio.http.Method;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -21,6 +23,8 @@ import java.util.Optional;
 
 
 @Slf4j
+@Profile("!development")
+@Service
 @RequiredArgsConstructor
 public class PresignedUrlService implements IPresignedUrlService {
 
@@ -30,9 +34,9 @@ public class PresignedUrlService implements IPresignedUrlService {
 
   private final MinioProperties minioProperties;
 
+  private final UrlRepository urlRepository;
   private final FileRepository fileRepository;
 
-  private final UrlRepository urlRepository;
 
   private final UrlMapper urlMapper;
 

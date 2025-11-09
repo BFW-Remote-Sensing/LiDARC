@@ -11,7 +11,6 @@ public class MinioConfig {
 
   @Bean
   public MinioClient minioClient(MinioProperties props) {
-    //TODO make a mock client or something if localhost is endpoint name
     return MinioClient.builder()
         .endpoint(props.getEndpoint(), props.getPort(), false)
         .credentials(props.getUsername(), props.getPassword())

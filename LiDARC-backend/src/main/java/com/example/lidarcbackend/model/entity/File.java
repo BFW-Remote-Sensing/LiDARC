@@ -17,6 +17,8 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "files")
@@ -66,4 +68,8 @@ public class File {
   @Column(name="uploaded_at", updatable = false)
   @CreationTimestamp
   private Instant uploaded_at;
+
+  @OneToMany(mappedBy = "file")
+  private Set<Url> urls = new LinkedHashSet<>();
+
 }

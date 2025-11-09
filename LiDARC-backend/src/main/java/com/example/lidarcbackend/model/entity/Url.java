@@ -14,6 +14,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
 
@@ -43,5 +44,9 @@ public class Url {
   @Column(name= "method", nullable = false)
   @Enumerated(EnumType.STRING)
   private Method method;
+
+  @ColumnDefault("true")
+  @Column(name = "presigned")
+  private Boolean presigned;
 
 }
