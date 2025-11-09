@@ -10,18 +10,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-@EnableJpaRepositories(basePackages = "com.example.lidarcbackend.repository")
 public class LiDarcBackendApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(LiDarcBackendApplication.class, args);
     }
-
-    @Bean
-    public CommandLineRunner demo(FileRepository repository) {
-      return (args) -> {
-        repository.deleteAll();
-      };
-    }
-
 }
