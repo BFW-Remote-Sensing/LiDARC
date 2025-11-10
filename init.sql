@@ -37,6 +37,10 @@ CREATE TABLE IF NOT EXISTS coordinate_system (
     coordinate_system_prefix VARCHAR(50) NOT NULL CHECK (coordinate_system_prefix IN ('EPSG', 'LOCAL'))
 );
 
+INSERT INTO coordinate_system (id, coordinate_system, coordinate_system_prefix)
+VALUES (31256, '31256', 'EPSG')
+ON CONFLICT (id) DO NOTHING;
+
 
 ALTER TABLE files 
 ADD CONSTRAINT fk_files_coordinate_system FOREIGN KEY (coordinate_system) REFERENCES coordinate_system(id);
