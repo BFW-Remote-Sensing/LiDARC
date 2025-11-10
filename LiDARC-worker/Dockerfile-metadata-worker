@@ -1,0 +1,8 @@
+FROM pdal/pdal:latest
+
+RUN /opt/conda/envs/pdal/bin/pip install pdal pika requests minio
+
+COPY src/ /app
+WORKDIR /app
+
+CMD ["/opt/conda/envs/pdal/bin/python", "metadata_worker.py"]
