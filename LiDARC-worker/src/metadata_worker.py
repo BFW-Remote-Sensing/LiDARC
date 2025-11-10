@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import subprocess
 import time
 from urllib.parse import urlparse
 
@@ -37,18 +38,69 @@ def download_file(url: str, dest_dir: str = ".", chunk_size: int = 10* 1024 ) ->
             os.remove(local_filename)
         raise RuntimeError(f"Download failed for {url}: {e}") from e
 
+def extract_metadata(file_path: str) -> dict:
+    try:
+        result = subprocess.run(
+            ["pdal", "info", "--metadata", file_path],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"pdal error: {result.stderr.strip()}")
+
+        pdal_out = json.loads(result.stdout)
+        meta = pdal_out.get("metadata", {})
+
+        reader_key = next((k for k in meta.keys() if k.startswith("readers.")), None)
+        header = meta[reader_key] if reader_key else meta
+
+        minimal_meta = {
+            "filename": os.path.basename(file_path),
+            "size_bytes": os.path.getsize(file_path),
+
+            "creation_year": header.get("creation_year"),
+
+            "min_x": header.get("minx"),
+            "min_y": header.get("miny"),
+            "min_z": header.get("minz"),
+            "min_gpstime": header.get("min_gpstime"),
+
+            "max_x": header.get("maxx"),
+            "max_y": header.get("maxy"),
+            "max_z": header.get("maxz"),
+            "max_gpstime": header.get("max_gpstime"),
+
+            "coordinate_system": header.get("system_id"),
+            "las_version": f"{header.get('major_version')}.{header.get('minor_version')}" if header.get(
+                "major_version") else None,
+            "capture_software": header.get("software_id"),
+        }
+        return minimal_meta
+    except Exception as e:
+        logging.error(f"Metadata extraction failed for {file_path}: {e}")
+        return {}
+
+
 def process_req(ch, method, properties, body):
     start_time = time.time()
-    request = json.loads(body)
-
-    #Process request
-    las_file_url = request["url"]
     try:
-        download_file(las_file_url)
-    except HTTPError as e:
-        logging.warning("Couldn't download file from: {}, error: {}".format(las_file_url, e))
-    processing_time = int((time.time() - start_time) * 1000)
-    logging.info("Worker took {} ms to process the file".format(processing_time))
+        req = json.loads(body)
+        las_file_url = req["url"]
+        logging.info(f"Processing file from URL: {las_file_url}")
+
+        local_file = download_file(las_file_url)
+
+        metadata = extract_metadata(local_file)
+        logging.info(f"Metadata extracted: {json.dumps(metadata)}")
+
+        os.remove(local_file)
+        logging.info(f"Removed local file: {local_file}")
+    except Exception as e:
+        logging.error(f"Failed to process message: {e}")
+    finally:
+        processing_time = int((time.time() - start_time) * 1000)
+        logging.info(f"Worker took {processing_time} ms to process the message")
+
 
 def main():
     queue_name = "metadata_trigger"
