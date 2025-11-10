@@ -12,6 +12,7 @@ from requests.exceptions import HTTPError
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
 
+
 def download_file(url: str, dest_dir: str = ".", chunk_size: int = 10* 1024 ) -> str:
     os.makedirs(dest_dir, exist_ok=True)
     parsed = urlparse(url)
@@ -83,6 +84,10 @@ def extract_metadata(file_path: str) -> dict:
 
 def process_req(ch, method, properties, body):
     start_time = time.time()
+
+    worker_results_exchange = "worker-results"
+    worker_key_metadata = "worker.result.metadata"
+
     try:
         req = json.loads(body)
         las_file_url = req["url"]
@@ -92,6 +97,15 @@ def process_req(ch, method, properties, body):
 
         metadata = extract_metadata(local_file)
         logging.info(f"Metadata extracted: {json.dumps(metadata)}")
+
+        ch.basic_publish(
+            exchange=worker_results_exchange,
+            routing_key=worker_key_metadata,
+            body = json.dumps(metadata),
+            properties = pika.BasicProperties(content_type="application/json")
+        )
+        logging.info(f"Sent metadata to exchange: {worker_results_exchange}")
+
 
         os.remove(local_file)
         logging.info(f"Removed local file: {local_file}")
@@ -104,6 +118,7 @@ def process_req(ch, method, properties, body):
 
 def main():
     queue_name = "metadata_trigger"
+    worker_results_exchange = "worker-results"
     logging.info(f"Connecting to RabbitMQ...")
     while True:
         try:
@@ -117,6 +132,7 @@ def main():
             )
             channel = connection.channel()
             channel.queue_declare(queue=queue_name, durable=True)
+            channel.exchange_declare(exchange=worker_results_exchange, exchange_type="direct", durable=True)
             logging.info(f"Connected to RabbitMQ Listening on queue '{queue_name}'")
             break
         except Exception as e:
