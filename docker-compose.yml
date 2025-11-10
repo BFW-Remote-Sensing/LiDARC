@@ -21,11 +21,21 @@ services:
         - "9001:9001"   # Console port
       environment:
         MINIO_ROOT_USER: admin
-        MINIO_ROOT_PASSWORD: aseWS25LiDARC  
+        MINIO_ROOT_PASSWORD: aseWS25LiDARC
       volumes:
         - ./data:/data
         #minio_data:/data
       command: server /data --console-address ":9001"
+      networks:
+        - ase-network
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+        interval: 5s
+        timeout: 3s
+        retries: 5
+        start_period: 5s
+
+
   redis:
     image: redis:latest
     container_name: redis_cache
@@ -34,20 +44,24 @@ services:
     volumes:
       - ./data:/data
     restart: unless-stopped
+    networks:
+      - ase-network
+      
   minio-mc:
     image: quay.io/minio/mc:latest
     container_name: minio_initializer
     depends_on:
       minio:
-        condition: service_started
-        restart: true
+        condition: service_healthy
     entrypoint: >
       /bin/sh -c "
       /usr/bin/mc alias set myminio http://minio:9000 admin aseWS25LiDARC &&
       /usr/bin/mc mb myminio/basebucket || true
       "
     networks:
-      - default
+      - ase-network
+    restart: on-failure
+    
 
   postgres:
     image: postgres:16
@@ -61,6 +75,7 @@ services:
       - "5432:5432"
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - ase-network
 
@@ -79,6 +94,9 @@ services:
       context: ./LiDARC-backend
       dockerfile: Dockerfile
     container_name: backend
+    depends_on:
+      minio-mc:
+        condition: service_completed_successfully
     ports:
       - "8080:8080"
     networks:
