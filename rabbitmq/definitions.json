@@ -2,6 +2,9 @@
   "vhosts": [
     {
       "name": "/"
+    },
+    {
+      "name": "/worker"
     }
   ],
   "users": [
@@ -15,6 +18,13 @@
     {
       "user": "admin",
       "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "admin",
+      "vhost": "/worker",
       "configure": ".*",
       "write": ".*",
       "read": ".*"
@@ -49,7 +59,6 @@
       "auto_delete": false,
       "arguments": {}
     }
-
   ],
   "exchanges": [
     {
