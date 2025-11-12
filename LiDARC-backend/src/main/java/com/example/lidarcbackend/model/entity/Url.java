@@ -12,6 +12,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
@@ -21,7 +23,9 @@ import java.time.Instant;
 @Entity
 @Getter
 @Setter
+@Builder
 @Table(name = "urls")
+@AllArgsConstructor
 public class Url {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,7 +36,7 @@ public class Url {
   private File file;
   //TODO fetch correct base bucket from application properties
 
-  @Column(name = "s3_bucket", nullable = false, columnDefinition = "TEXT default '" + "basebucket" +"'")
+  @Column(name = "s3_bucket")
   private String bucket;
   @Column(name = "s3_url", nullable = false)
   private String presignedURL;
@@ -49,4 +53,7 @@ public class Url {
   @Column(name = "presigned")
   private Boolean presigned;
 
+  public Url() {
+
+  }
 }

@@ -12,6 +12,7 @@ import io.minio.UploadObjectArgs;
 import io.minio.errors.MinioException;
 import io.minio.http.Method;
 import jakarta.annotation.PostConstruct;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
@@ -165,6 +166,11 @@ public class MockPresignedUrlService implements IPresignedUrlService {
         .presignedURL(dummyUploadUrl)
         .uploaded(false)
         .build());
+  }
+
+  @Override
+  public Optional<FileInfoDto> uploadFinished(@NonNull String fileName) {
+    return Optional.empty();
   }
 
 

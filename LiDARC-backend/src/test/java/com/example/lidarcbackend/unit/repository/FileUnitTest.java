@@ -2,23 +2,12 @@ package com.example.lidarcbackend.unit.repository;
 
 import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.model.entity.Url;
-import com.example.lidarcbackend.repository.FileRepository;
-import com.example.lidarcbackend.repository.UrlRepository;
-import org.junit.jupiter.api.BeforeAll;
+import com.example.lidarcbackend.unit.AbstractUnitTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class FileRepositoryTest extends AbstractRepositoryTest{
+class FileUnitTest extends AbstractUnitTest {
 
 
 

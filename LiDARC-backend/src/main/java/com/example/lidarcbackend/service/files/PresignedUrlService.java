@@ -3,15 +3,20 @@ package com.example.lidarcbackend.service.files;
 import com.example.lidarcbackend.configuration.MinioProperties;
 import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import com.example.lidarcbackend.model.DTO.Mapper.UrlMapper;
+import com.example.lidarcbackend.model.DTO.Validator.FileNameValid;
 import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.model.entity.Url;
 import com.example.lidarcbackend.repository.FileRepository;
 import com.example.lidarcbackend.repository.UrlRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioAsyncClient;
 import io.minio.errors.MinioException;
 import io.minio.http.Method;
 import jakarta.annotation.PostConstruct;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
@@ -19,6 +24,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.time.Instant;
 import java.util.Optional;
 
 
@@ -54,7 +60,7 @@ public class PresignedUrlService implements IPresignedUrlService {
 
 
   @Override
-  public Optional<FileInfoDto> fetchFileInfo(String fileName)  {
+  public Optional<FileInfoDto> fetchFileInfo(@NonNull @NotBlank  String fileName)  {
     GetPresignedObjectUrlArgs presignedObjectUrlArgs = getPresignedObjectUrlArgs(fileName, Method.GET);
     if (presignedObjectUrlArgs == null) {
       return Optional.empty();
@@ -106,13 +112,22 @@ public class PresignedUrlService implements IPresignedUrlService {
       url.setFile(file);
       url.setPresignedURL(fileInfo.get().getPresignedURL());
       url.setMethod(Method.PUT);
+
       urlRepository.save(url);
     }
 
     return fileInfo;
   }
 
-
+  @Override
+  public Optional<FileInfoDto> uploadFinished(@NonNull String fileName) {
+    File file = fileRepository.findFileByFilenameAndUploaded(fileName, false).orElseThrow(() -> new IllegalArgumentException("File not found or already uploaded: " + fileName));
+    //TODO possibly check if the file actually exists in minio or add to contract that the caller has to ensure that
+    file.setUploaded(true);
+    file.setUploaded_at(Instant.now());
+    FileInfoDto dto = new FileInfoDto(fileRepository.save(file));
+    return Optional.of(dto);
+  }
 
 
   private Optional<FileInfoDto> getUrl(GetPresignedObjectUrlArgs presignedObjectUrlArgs, String fileName) {

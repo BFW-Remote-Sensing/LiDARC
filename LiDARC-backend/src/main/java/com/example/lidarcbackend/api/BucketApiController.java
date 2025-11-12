@@ -44,16 +44,8 @@ public class BucketApiController implements BucketApi {
   ) {
     String accept = request.getHeader("Accept");
     if (accept != null && accept.contains("application/json")) {
-      try {
-        FileInfoDto example =
-            objectMapper.readValue(
-                "{\n  \"fileName\" : \"graz2021_block6_060_065_elv.laz\",\n  \"presignedURL\" : \"presignedURL\",\n  \"uploaded\" : false\n}", FileInfoDto.class);
-        Optional<FileInfoDto> file = presignedUrlService.fetchFileInfo(example.getFileName());
-        return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
-      } catch (IOException e) {
-        log.error("Couldn't serialize response for content type application/json", e);
-        return new ResponseEntity<FileInfoDto>(HttpStatus.INTERNAL_SERVER_ERROR);
-      }
+      Optional<FileInfoDto> file = presignedUrlService.fetchFileInfo( body.getFileName());
+      return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
     return new ResponseEntity<FileInfoDto>(HttpStatus.NOT_IMPLEMENTED);
@@ -61,12 +53,18 @@ public class BucketApiController implements BucketApi {
 
   @Override
   public ResponseEntity<FileInfoDto> fetchURLForUpload(FileInfoDto body) {
-    return null;
+    String accept = request.getHeader("Accept");
+    if (accept != null && accept.contains("application/json")) {
+      Optional<FileInfoDto> file = presignedUrlService.fetchUploadUrl( body.getFileName());
+      return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.CONFLICT));
+    }
+
+    return new ResponseEntity<FileInfoDto>(HttpStatus.NOT_IMPLEMENTED);
   }
 
   @Override
   public ResponseEntity<FileInfoDto> uploadFinished(FileInfoDto body) {
-    return null;
+    return new ResponseEntity<FileInfoDto>(HttpStatus.NOT_IMPLEMENTED);
   }
 
 }

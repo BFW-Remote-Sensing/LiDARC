@@ -10,6 +10,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
@@ -24,6 +26,8 @@ import java.util.Set;
 @Table(name = "files")
 @Getter
 @Setter
+@Builder
+@AllArgsConstructor
 public class File {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -66,10 +70,13 @@ public class File {
   private Boolean uploaded;
 
   @Column(name="uploaded_at", updatable = false)
-  @CreationTimestamp
+  @CreationTimestamp //TODO change this to the actual upload time when implementing uploadFinished
   private Instant uploaded_at;
 
   @OneToMany(mappedBy = "file")
   private Set<Url> urls = new LinkedHashSet<>();
 
+  public File() {
+
+  }
 }

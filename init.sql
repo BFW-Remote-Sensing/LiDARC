@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS files (
 CREATE TABLE IF NOT EXISTS urls (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     file_id INTEGER NOT NULL,
-    s3_bucket TEXT NOT NULL DEFAULT 'basebucket',
+    s3_bucket TEXT DEFAULT 'basebucket',
     s3_url TEXT NOT NULL,
     presigned BOOLEAN DEFAULT TRUE,
     method VARCHAR(10) NOT NULL CHECK (method in ('GET', 'PUT')),

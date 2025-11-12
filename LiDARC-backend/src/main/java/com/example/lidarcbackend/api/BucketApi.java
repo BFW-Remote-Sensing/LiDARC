@@ -31,9 +31,10 @@ public interface BucketApi {
         @ApiResponse(responseCode = "200", description = "Successful operation", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.io.File.class))),
         
         @ApiResponse(responseCode = "400", description = "Invalid input"),
-        
-        @ApiResponse(responseCode = "422", description = "Validation exception")
-        
+
+        @ApiResponse(responseCode = "404", description = "File not Found"),
+
+
     })
     @RequestMapping(value = "/bucket",
         produces = { "application/json" }, 
@@ -51,7 +52,6 @@ public interface BucketApi {
 
       @ApiResponse(responseCode = "409", description = "File with that name already exists"),
 
-      @ApiResponse(responseCode = "422", description = "Validation exception")
 
   })
   @RequestMapping(value = "/bucket/upload",
@@ -71,10 +71,7 @@ public interface BucketApi {
       @ApiResponse(responseCode = "400", description = "Invalid input"),
 
       @ApiResponse(responseCode = "404", description = "File not Found"),
-
-      @ApiResponse(responseCode = "422", description = "Validation exception"),
-
-      @ApiResponse(responseCode = "200", description = "Unexpected error", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))) })
+  })
   @RequestMapping(value = "/bucket/upload",
       produces = { "application/json" },
       consumes = { "application/json" },
