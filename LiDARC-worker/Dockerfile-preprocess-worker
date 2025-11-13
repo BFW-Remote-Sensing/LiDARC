@@ -1,9 +1,9 @@
-FROM pdal/pdal:latest
-
-RUN apt-get update && apt-get install -y python3 python3-pip && pip3 install pdal pika requests
+FROM python:3.12-slim
 
 COPY src/ /app
 
+RUN pip install --no-cache-dir -r app/requirements.txt
+
 WORKDIR /app
 
-CMD ["/opt/conda/envs/pdal/bin/python", "preprocess_worker.py"]
+ENTRYPOINT ["python", "preprocess_worker.py"]

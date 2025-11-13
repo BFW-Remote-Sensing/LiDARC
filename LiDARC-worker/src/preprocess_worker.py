@@ -1,13 +1,16 @@
 import argparse
 import json
+from traceback import print_exc
 from urllib.parse import urlparse
 
-import pdal
 import pika
 import logging
 import time
 import requests
 import os
+import laspy
+import pandas as pd
+import numpy as np
 from requests import HTTPError
 from requests.adapters import HTTPAdapter, Retry
 
@@ -36,6 +39,7 @@ def download_file(url: str, dest_dir: str = ".", chunk_size: int = 10* 1024 ) ->
     session.mount("https://", HTTPAdapter(max_retries=retries))
     session.mount("http://", HTTPAdapter(max_retries=retries))
     try:
+        # TODO: Think about already processing the file while downloading
         with requests.get(url, stream=True) as r:
             r.raise_for_status()
             with open(local_filename, 'wb') as f:
@@ -47,23 +51,97 @@ def download_file(url: str, dest_dir: str = ".", chunk_size: int = 10* 1024 ) ->
             os.remove(local_filename)
         raise RuntimeError(f"Download failed for {url}: {e}") from e
 
+def calculate_grid(grid: dict):
+    x_min = grid["x_min"]
+    x_max = grid["x_max"]
+    y_min = grid["y_min"]
+    y_max = grid["y_max"]
+
+    grid_x = grid["x"]
+    grid_y = grid["y"]
+    grid_width = int(np.ceil((x_max - x_min) / grid_x))
+    grid_height = int(np.ceil((y_max - y_min) / grid_y))
+
+    grid_shape = (grid_height, grid_width)
+    count = np.zeros(grid_shape, dtype=np.uint32)
+    z_sum = np.zeros(grid_shape, dtype=np.float32)
+    z_min = np.full(grid_shape, np.inf,  dtype=np.float32)
+    z_max = np.full(grid_shape, -np.inf, dtype=np.float32)
+
+    return {
+        "grid_shape": grid_shape,
+        "x": grid_x,
+        "y": grid_y,
+        "z_max": z_max,
+        "count": count,
+        "x_min": x_min,
+        "y_min": y_min,
+    }
+def process_points(points, precomp_grid):
+    logging.debug("Processing points: {}".format(points))
+    x = points.x
+    y = points.y
+    z = points.z
+
+    ix = ((x - precomp_grid["x_min"]) / precomp_grid["x"]).astype(np.int32)
+    iy = ((y - precomp_grid["y_min"]) / precomp_grid["y"]).astype(np.int32)
+
+    np.add.at(precomp_grid["count"], (iy, ix), 1)
+
+
+
 def process_req(ch, method, properties, body):
     start_time = time.time()
     request = json.loads(body)
 
     #Process request
     las_file_url = request["url"]
+    # { "url": "", ... }
+    grid = request["grid"]
+    #TODO: What if grid already processed and defined in BE
+
+    downloaded_file_fn = ""
     try:
-        download_file(las_file_url)
+        downloaded_file_fn = download_file(las_file_url)
     except HTTPError as e:
         logging.warning("Couldn't download file from: {}, error: {}".format(las_file_url, e))
+        return
+
+    precomp_grid = calculate_grid(grid)
+
+    with laspy.open(downloaded_file_fn) as f:
+        logging.info("Processing point cloud from file: {}".format(las_file_url))
+        for points in f.chunk_iterator(1_000_000):
+            process_points(points, precomp_grid)
+
+    rows, cols = np.nonzero(precomp_grid["count"])
+    df = pd.DataFrame({
+        "x": precomp_grid["x_min"] + cols * precomp_grid["x"],
+        "y": precomp_grid["y_min"] + rows * precomp_grid["y"],
+        "count": precomp_grid["count"][cols, rows]
+    })
+    job_id = request["job_id"]
+    df.to_csv(f"Pre_Process_Job_{job_id}_output.csv")
+
     processing_time = int((time.time() - start_time) * 1000)
+
+    #TODO: Respond to RabbitMQ
+
     logging.info("Worker took {} ms to process the request".format(processing_time))
 
 def main():
+    # BE -> newJobPreProc -> RabbitMQ -QUEUE> preprocess_worker.py
+    # BE -> WORKER_EXCHANGE -> preprocess_trigger -> preprocess_worker.py
+    #
+    # preprocess_worker.py -> WORKER_EXCHANGE , routing_key="worker.preprocess" -> BE
+    #
+    # { "fileName": "graz2021_block6_060_065_elv.laz", "grid": [{ "gridId": 0, "gridFromId": 0, "gridToId": 100, "maxHeight": 10, "maxX": 100, "maxY": 20}]}
+    # 400m x 400m = 160 000m^2 -> (worst Case grid = 1m^2) = 160 000 grid cells
+    #
+    # (worst case, region mit 7000 files) -> 1 120 000 000
     connection = connect_rabbitmq()
     channel = connection.channel()
-    queue_name = "preprocess"
+    queue_name = "worker.preprocess"
     def callback(ch, method, properties, body):
         process_req(ch, method, properties, body)
 
@@ -77,13 +155,7 @@ def main():
     except Exception as e:
         logging.error("Worker error: {}".format(e))
 
-    data = "graz2021_block6_060_065_elv.las"
     print("Hello World!")
-    pipeline = pdal.Reader.las(filename=data).pipeline()
-    print(pipeline.execute())
-    arr = pipeline.arrays[0]
-    print(arr)
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
