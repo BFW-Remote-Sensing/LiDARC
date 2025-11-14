@@ -1,17 +1,16 @@
 import argparse
 import json
-from urllib.parse import urlparse
 
 import pika
 import logging
 import time
-import requests
-import os
 import laspy
 import pandas as pd
 import numpy as np
+import util.file_handler as file_handler
+
 from requests import HTTPError
-from requests.adapters import HTTPAdapter, Retry
+
 
 def connect_rabbitmq():
     while True:
@@ -23,32 +22,6 @@ def connect_rabbitmq():
             logging.error("RabbitMQ connection failed, Retrying in 5s... Error: {}".format(e))
             time.sleep(5)
 
-def download_file(url: str, dest_dir: str = ".", chunk_size: int = 10* 1024 ) -> str:
-    os.makedirs(dest_dir, exist_ok=True)
-    parsed = urlparse(url)
-    local_filename = os.path.join(dest_dir, os.path.basename(parsed.path))
-
-    session = requests.Session()
-    retries = Retry(
-        total=5,
-        backoff_factor=1,
-        status_forcelist=[500, 502, 503, 504],
-        allowed_methods=["GET"],
-    )
-    session.mount("https://", HTTPAdapter(max_retries=retries))
-    session.mount("http://", HTTPAdapter(max_retries=retries))
-    try:
-        # TODO: Think about already processing the file while downloading
-        with requests.get(url, stream=True) as r:
-            r.raise_for_status()
-            with open(local_filename, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=chunk_size):
-                    f.write(chunk)
-        return local_filename
-    except Exception as e:
-        if os.path.exists(local_filename):
-            os.remove(local_filename)
-        raise RuntimeError(f"Download failed for {url}: {e}") from e
 
 def calculate_grid(grid: dict):
     x_min = grid["x_min"]
@@ -87,7 +60,8 @@ def process_points(points, precomp_grid):
 
     np.add.at(precomp_grid["count"], (iy, ix), 1)
 
-
+def write_result_to_minio(df):
+    pass
 
 def process_req(ch, method, properties, body):
     start_time = time.time()
@@ -101,7 +75,7 @@ def process_req(ch, method, properties, body):
 
     downloaded_file_fn = ""
     try:
-        downloaded_file_fn = download_file(las_file_url)
+        downloaded_file_fn = file_handler.download_file(las_file_url)
     except HTTPError as e:
         logging.warning("Couldn't download file from: {}, error: {}".format(las_file_url, e))
         return
@@ -121,12 +95,17 @@ def process_req(ch, method, properties, body):
     })
     job_id = request["job_id"]
     df.to_csv(f"Pre_Process_Job_{job_id}_output.csv")
+    file_handler.upload_file_by_type(f"pre-process-job-{job_id}-output.csv", df)
+
+    write_result_to_minio(df)
 
     processing_time = int((time.time() - start_time) * 1000)
 
     #TODO: Respond to RabbitMQ
 
     logging.info("Worker took {} ms to process the request".format(processing_time))
+
+
 
 def main():
     # BE -> newJobPreProc -> RabbitMQ -QUEUE> preprocess_worker.py
