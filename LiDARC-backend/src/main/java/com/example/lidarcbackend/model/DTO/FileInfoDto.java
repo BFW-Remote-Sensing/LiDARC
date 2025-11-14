@@ -15,10 +15,10 @@ public class FileInfoDto {
 
     @JsonProperty("fileName")
     @NonNull
+    @FileNameValid
     private String fileName;
 
     @JsonProperty("presignedURL")
-    @FileNameValid
     private String presignedURL;
 
     @JsonProperty("uploaded")
