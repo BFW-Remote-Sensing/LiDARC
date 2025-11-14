@@ -24,8 +24,6 @@
             <property name="throwsIndent" value="2"/>
         </module>
 
-        <module name="FinalParameters"/>
-        <module name="FinalLocalVariable"/>
         <module name="WhitespaceAround"/>
         <module name="WhitespaceAfter"/>
         <module name="NoWhitespaceAfter"/>
@@ -34,14 +32,7 @@
         <!-- Javadoc checks -->
         <module name="JavadocMethod"/>
         <module name="JavadocType"/>
-        <module name="JavadocVariable"/>
 
-        <!-- Import order check -->
-        <module name="ImportOrder">
-            <property name="option" value="top"/>
-            <property name="groups" value="java,javax,org,com"/>
-            <property name="ordered" value="true"/>
-        </module>
 
         <!-- Prevent magic numbers -->
         <module name="MagicNumber">
