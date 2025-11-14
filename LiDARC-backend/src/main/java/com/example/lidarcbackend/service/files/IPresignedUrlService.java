@@ -7,6 +7,7 @@ import io.minio.errors.MinioException;
 import jakarta.validation.constraints.NotBlank;
 import lombok.NonNull;
 
+import java.io.File;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Optional;
@@ -54,7 +55,7 @@ public interface IPresignedUrlService {
    * @param fileName the name of the file that has been uploaded
    * @return Optional with FileInfoDto if upload is confirmed
    */
-  Optional<FileInfoDto> uploadFinished(@NonNull @NotBlank String fileName);
+  Optional<FileInfoDto> uploadFinished(@NonNull @NotBlank FileInfoDto fileName);
 
 
    static CompletableFuture<Boolean> bucketExists(MinioAsyncClient client, String bucketName) throws MinioException, GeneralSecurityException, IOException {

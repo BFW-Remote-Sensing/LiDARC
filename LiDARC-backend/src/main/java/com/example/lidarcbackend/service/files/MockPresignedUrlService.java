@@ -169,7 +169,7 @@ public class MockPresignedUrlService implements IPresignedUrlService {
   }
 
   @Override
-  public Optional<FileInfoDto> uploadFinished(@NonNull String fileName) {
+  public Optional<FileInfoDto> uploadFinished(@NonNull FileInfoDto fileInfoDto ) {
     return Optional.empty();
   }
 

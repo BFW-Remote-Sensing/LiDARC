@@ -5,6 +5,7 @@ import com.example.lidarcbackend.model.entity.File;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 
 @Getter
@@ -13,6 +14,7 @@ import lombok.Setter;
 public class FileInfoDto {
 
     @JsonProperty("fileName")
+    @NonNull
     private String fileName;
 
     @JsonProperty("presignedURL")

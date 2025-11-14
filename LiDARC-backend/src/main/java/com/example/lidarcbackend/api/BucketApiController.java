@@ -63,7 +63,13 @@ public class BucketApiController implements BucketApi {
   }
 
   @Override
-  public ResponseEntity<FileInfoDto> uploadFinished(FileInfoDto body) {
+  public ResponseEntity<FileInfoDto> uploadFinished(@Valid FileInfoDto body) {
+      String accept = request.getHeader("Accept");
+      if (accept != null && accept.contains("application/json")) {
+          Optional<FileInfoDto> file = presignedUrlService.uploadFinished(body);
+          return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.CONFLICT));
+      }
+
     return new ResponseEntity<FileInfoDto>(HttpStatus.NOT_IMPLEMENTED);
   }
 
