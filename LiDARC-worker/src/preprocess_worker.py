@@ -1,6 +1,5 @@
 import argparse
 import json
-from traceback import print_exc
 from urllib.parse import urlparse
 
 import pika
