@@ -1,10 +1,10 @@
 // java
 package com.example.lidarcbackend.configuration;
 
-import io.minio.MinioAsyncClient;
-import io.minio.MinioClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import io.minio.MinioAsyncClient;
+import io.minio.MinioClient;
 
 @Configuration
 public class MinioConfig {

@@ -1,5 +1,14 @@
 package com.example.lidarcbackend.service.files;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.Arrays;
+import java.util.Optional;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.springframework.context.annotation.Profile;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.web.ErrorResponseException;
 import com.example.lidarcbackend.configuration.MinioProperties;
 import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import io.minio.BucketExistsArgs;
@@ -15,16 +24,6 @@ import jakarta.annotation.PostConstruct;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-import org.springframework.web.ErrorResponseException;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.Arrays;
-import java.util.Optional;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @Service
 @Profile("development")
@@ -62,7 +61,8 @@ public class MockPresignedUrlService implements IPresignedUrlService {
 
   // Refresh the cached baseFile periodically so presigned URL doesn't expire.
   // Uses the scheduled thread pool from Spring.
-  @Scheduled(fixedDelayString = "${minio.defaultRefresh:10}") //default 10 min, always needs to be less than the url validity
+  @Scheduled(fixedDelayString = "${minio.defaultRefresh:10}")
+  //default 10 min, always needs to be less than the url validity
   public void refreshBaseFile() {
     // Try to refresh and recover silently on errors so scheduler keeps running
     try {
@@ -93,7 +93,7 @@ public class MockPresignedUrlService implements IPresignedUrlService {
    * @throws GeneralSecurityException
    * @throws IOException
    */
-   private boolean uploadBaseFile() throws MinioException, GeneralSecurityException, IOException {
+  private boolean uploadBaseFile() throws MinioException, GeneralSecurityException, IOException {
     try {
       UploadObjectArgs uploadObjectArgs = UploadObjectArgs.builder()
           .bucket(minioProperties.getBucket())
@@ -169,8 +169,8 @@ public class MockPresignedUrlService implements IPresignedUrlService {
   }
 
   @Override
-  public Optional<FileInfoDto> uploadFinished(@NonNull FileInfoDto fileInfoDto ) {
-    return Optional.empty();
+  public Optional<FileInfoDto> uploadFinished(@NonNull FileInfoDto fileInfoDto) {
+    return Optional.of(fileInfoDto);
   }
 
 

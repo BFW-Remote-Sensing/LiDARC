@@ -1,50 +1,49 @@
 package com.example.lidarcbackend.repository;
 
-import com.example.lidarcbackend.model.entity.File;
-import com.example.lidarcbackend.model.entity.Url;
-import io.minio.http.Method;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import com.example.lidarcbackend.model.entity.File;
+import com.example.lidarcbackend.model.entity.Url;
+import io.minio.http.Method;
 
 
 @Repository
-public interface UrlRepository extends JpaRepository<Url,Long> {
+public interface UrlRepository extends JpaRepository<Url, Long> {
 
-    /**
-     * Find all Url records for a specific File entity.
-     */
-    List<Url> findByFile(File file);
+  /**
+   * Find all Url records for a specific File entity.
+   */
+  List<Url> findByFile(File file);
 
-    /**
-     * Find the most recently created Url for a File (useful to get the active/last presigned URL).
-     */
-    Optional<Url> findFirstByFileOrderByCreatedAtDesc(File file);
+  /**
+   * Find the most recently created Url for a File (useful to get the active/last presigned URL).
+   */
+  Optional<Url> findFirstByFileOrderByCreatedAtDesc(File file);
 
-    /**
-     * Find by file id directly.
-     */
-    Optional<Url> findByFileId(Long fileId);
+  /**
+   * Find by file id directly.
+   */
+  Optional<Url> findByFileId(Long fileId);
 
-    /**
-     * Find all Urls for a specific bucket and filename.
-     */
-    List<Url> findByBucketAndFile_Filename(String bucket, String filename);
+  /**
+   * Find all Urls for a specific bucket and filename.
+   */
+  List<Url> findByBucketAndFile_Filename(String bucket, String filename);
 
-    /**
-     * Check whether a URL record exists for given bucket and filename.
-     */
-    boolean existsByBucketAndFile_Filename(String bucket, String filename);
+  /**
+   * Check whether a URL record exists for given bucket and filename.
+   */
+  boolean existsByBucketAndFile_Filename(String bucket, String filename);
 
-    /**
-     * Delete all Url records belonging to a file id.
-     */
-    void deleteByFileId(Long fileId);
+  /**
+   * Delete all Url records belonging to a file id.
+   */
+  void deleteByFileId(Long fileId);
 
-    List<Url> findByFileId_AndMethod(Long fileId, Method method);
+  List<Url> findByFileId_AndMethod(Long fileId, Method method);
 
-    List<Url> findByFileId_AndMethod_AndExpiresAtAfter(Long fileId, Method method, Instant expiresAtAfter);
+  List<Url> findByFileId_AndMethod_AndExpiresAtAfter(Long fileId, Method method, Instant expiresAtAfter);
 }

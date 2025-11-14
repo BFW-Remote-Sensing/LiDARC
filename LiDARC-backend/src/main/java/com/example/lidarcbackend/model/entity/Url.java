@@ -1,5 +1,7 @@
 package com.example.lidarcbackend.model.entity;
 
+import java.time.Instant;
+import org.hibernate.annotations.ColumnDefault;
 import io.minio.http.Method;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -16,9 +18,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
-
-import java.time.Instant;
 
 @Entity
 @Getter
@@ -45,7 +44,7 @@ public class Url {
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
-  @Column(name= "method", nullable = false)
+  @Column(name = "method", nullable = false)
   @Enumerated(EnumType.STRING)
   private Method method;
 
