@@ -1,0 +1,39 @@
+:host {
+  display: block;
+  padding: 16px;
+}
+
+/* Center the card and make it responsive */
+mat-card {
+  width: 100%;
+  max-width: 900px; /* card won't grow beyond this */
+  margin: 0 auto; /* center horizontally */
+  box-sizing: border-box;
+}
+
+/* Keep content readable on small screens */
+.upload {
+  display: block;
+}
+
+/* Allow table to scroll horizontally on very small screens */
+mat-card-content {
+  overflow-x: auto;
+}
+
+/* Controls spacing */
+.controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+@media (max-width: 520px) {
+  :host {
+    padding: 10px;
+  }
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
