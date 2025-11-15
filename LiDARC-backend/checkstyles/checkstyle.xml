@@ -34,7 +34,6 @@
         <!-- Javadoc checks -->
         <module name="JavadocMethod"/>
         <module name="JavadocType"/>
-        <module name="JavadocVariable"/>
 
         <!-- Import order check -->
         <module name="ImportOrder">

@@ -5,11 +5,6 @@
  */
 package com.example.lidarcbackend.api;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,10 +14,17 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 
 
 @Validated
+@RequestMapping(BucketApi.BASE_URL)
 public interface BucketApi {
+  String BASE_URL = "/api/v1/bucket";
 
   @Operation(summary = "Fetch presigned URL from bucket", description = "Fetch a presigned url for a specific file name from the bucket.", tags = {"bucket"})
   @ApiResponses(value = {
@@ -34,15 +36,18 @@ public interface BucketApi {
 
 
   })
-  @RequestMapping(value = "/bucket",
+  @RequestMapping(,
       produces = {"application/json"},
       consumes = {"application/json"},
       method = RequestMethod.POST)
-  ResponseEntity<FileInfoDto> fetchFile(@Parameter(in = ParameterIn.DEFAULT, description = "Fetch a presigned url for a specific file name from the bucket.", required = true, schema = @Schema()) @Valid
-                                        @RequestBody FileInfoDto body
+  ResponseEntity<FileInfoDto> fetchFile(
+      @Parameter(in = ParameterIn.DEFAULT, description = "Fetch a presigned url for a specific file name from the bucket.", required = true, schema = @Schema())
+      @Valid
+      @RequestBody FileInfoDto body
   );
 
-  @Operation(summary = "Fetch presigned URL from bucket to upload a file", description = "Fetch presigned URL from bucket to upload a file to the bucket.", tags = {"bucket"})
+  @Operation(summary = "Fetch presigned URL from bucket to upload a file", description = "Fetch presigned URL from bucket to upload a file to the bucket.", tags = {
+      "bucket"})
   @ApiResponses(value = {
       @ApiResponse(responseCode = "200", description = "Successful operation", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.io.File.class))),
 
@@ -52,16 +57,19 @@ public interface BucketApi {
 
 
   })
-  @RequestMapping(value = "/bucket/upload",
+  @RequestMapping(value = "/upload",
       produces = {"application/json"},
       consumes = {"application/json"},
       method = RequestMethod.POST)
-  ResponseEntity<FileInfoDto> fetchURLForUpload(@Parameter(in = ParameterIn.DEFAULT, description = "Fetch a presigned upload url for a specific file name from the bucket.", required = true, schema = @Schema()) @Valid
-                                                @RequestBody FileInfoDto body
+  ResponseEntity<FileInfoDto> fetchURLForUpload(
+      @Parameter(in = ParameterIn.DEFAULT, description = "Fetch a presigned upload url for a specific file name from the bucket.", required = true, schema = @Schema())
+      @Valid
+      @RequestBody FileInfoDto body
   );
 
 
-  @Operation(summary = "Signalizes that the upload of a file has finished", description = "Signalizes that the upload of a file has finished, changes relevant metadata for that file.", tags = {"bucket"})
+  @Operation(summary = "Signalizes that the upload of a file has finished", description = "Signalizes that the upload of a file has finished, changes relevant metadata for that file.", tags = {
+      "bucket"})
   @ApiResponses(value = {
       @ApiResponse(responseCode = "200", description = "Successful operation", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.io.File.class))),
 
@@ -69,12 +77,14 @@ public interface BucketApi {
 
       @ApiResponse(responseCode = "404", description = "File not Found"),
   })
-  @RequestMapping(value = "/bucket/upload",
+  @RequestMapping(value = "/upload",
       produces = {"application/json"},
       consumes = {"application/json"},
       method = RequestMethod.PUT)
-  ResponseEntity<FileInfoDto> uploadFinished(@Parameter(in = ParameterIn.DEFAULT, description = "Signalizes that the upload of a file has finished, changes relevant metadata for that file.", required = true, schema = @Schema()) @Valid
-                                             @RequestBody FileInfoDto body
+  ResponseEntity<FileInfoDto> uploadFinished(
+      @Parameter(in = ParameterIn.DEFAULT, description = "Signalizes that the upload of a file has finished, changes relevant metadata for that file.", required = true, schema = @Schema())
+      @Valid
+      @RequestBody FileInfoDto body
   ); // returns
 
 

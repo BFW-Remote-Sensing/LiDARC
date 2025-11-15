@@ -1,13 +1,5 @@
 package com.example.lidarcbackend.api;
 
-import java.util.Optional;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
 import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import com.example.lidarcbackend.service.files.IPresignedUrlService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,11 +9,22 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Optional;
 
 @RestController
+@RequestMapping(BucketApiController.BASE_URL)
 @Slf4j
 public class BucketApiController implements BucketApi {
-
+  static final String BASE_URL = "/api/v1/bucket";
 
   private final ObjectMapper objectMapper;
 
@@ -36,6 +39,7 @@ public class BucketApiController implements BucketApi {
     this.request = request;
     this.presignedUrlService = presignedUrlService;
   }
+
 
   public ResponseEntity<FileInfoDto> fetchFile(
       @Parameter(in = ParameterIn.DEFAULT, description = "Fetch a presigned url for a specific file name from the bucket.", required = true, schema = @Schema())
