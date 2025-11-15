@@ -1,0 +1,119 @@
+{
+  "vhosts": [
+    {
+      "name": "/"
+    },
+    {
+      "name": "/worker"
+    }
+  ],
+  "users": [
+    {
+      "name": "admin",
+      "password": "admin",
+      "tags": "administrator"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "admin",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "admin",
+      "vhost": "/worker",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "queues": [
+    {
+      "name": "test_queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "preprocessing.job",
+      "vhost": "/worker",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "comparison.job",
+      "vhost": "/worker",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "metadata.job",
+      "vhost": "/worker",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "test_exchange",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "worker.job",
+      "vhost": "/worker",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "test_exchange",
+      "vhost": "/",
+      "destination": "test_queue",
+      "destination_type": "queue",
+      "routing_key": "routing.*",
+      "arguments": {}
+    },
+    {
+      "source": "worker.job",
+      "vhost": "/worker",
+      "destination": "preprocessing.job",
+      "destination_type": "queue",
+      "routing_key": "job.preprocessor.create",
+      "arguments": {}
+    },
+    {
+      "source": "worker.job",
+      "vhost": "/worker",
+      "destination": "comparison.job",
+      "destination_type": "queue",
+      "routing_key": "job.comparison.create",
+      "arguments": {}
+    },
+    {
+      "source": "worker.job",
+      "vhost": "/worker",
+      "destination": "metadata.job",
+      "destination_type": "queue",
+      "routing_key": "job.comparison.create",
+      "arguments": {}
+    }
+  ],
+  "policies": [],
+  "parameters": []
+}
