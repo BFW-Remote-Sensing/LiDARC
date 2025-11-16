@@ -40,7 +40,7 @@
             } @else {
             <!--TODO change this to actually stop an upload-->
             <mat-progress-bar mode="determinate" [value]="f.progress"></mat-progress-bar>
-            <button matIconButton type="button" (click)="removeFile(f)">
+            <button matIconButton type="button" (click)="upload(f)">
               <mat-icon>stop</mat-icon>
             </button>
             <div>{{ f.status }}</div>

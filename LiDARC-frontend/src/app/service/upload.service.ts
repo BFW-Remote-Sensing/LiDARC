@@ -12,7 +12,7 @@ export class UploadService {
 
   // Ask your backend for a presigned URL (adapt endpoint/payload)
   getPresignedUploadUrl(file: File): Observable<FileInfo> {
-    console.log('sending presign requeset for file ' + file.name);
+    console.log('sending presign request for file ' + file.name);
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
       Accept: 'application/json',
@@ -37,7 +37,7 @@ export class UploadService {
     // use HttpClient.request so we can pass a dynamic method
     console.log('uploading file ' + file.name + ' to ' + url + ' with ' + headers);
     return this.httpClient.put(url, formData, {
-      headers: headers,
+      //headers: headers,
       reportProgress: true,
       observe: 'events',
       withCredentials: false,
@@ -52,7 +52,7 @@ export class UploadService {
         if (!info || !info.presignedURL) {
           return throwError(() => new Error('Presign request failed: missing presignedUrl'));
         }
-        return this.uploadToPresignedUrl(file, info.presignedURL, 'POST');
+        return this.uploadToPresignedUrl(file, info.presignedURL, 'PUT');
       })
     );
   }

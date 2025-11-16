@@ -1,15 +1,18 @@
-import { ChangeDetectorRef, Component } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Output, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatList, MatListItem } from '@angular/material/list';
+import { FileInfo } from '../../dto/fileInfo';
 import { MatIcon } from '@angular/material/icon';
 import { MatTable, MatTableModule } from '@angular/material/table';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { MatCardModule } from '@angular/material/card';
-import { debounceTime, map, Observable } from 'rxjs';
+import { BehaviorSubject, debounceTime, map, Observable, takeUntil, throwError } from 'rxjs';
 import { DataSource } from '@angular/cdk/collections';
 import { UploadService } from '../../service/upload.service';
 import { HttpEventType, HttpResponse } from '@angular/common/http';
+import { NgZone } from '@angular/core';
 
 @Component({
   selector: 'app-upload',
@@ -58,7 +61,6 @@ export class UploadComponent {
       const exists = this.files.some((e) => e.file.name === f.name && e.file.type === f.type);
       if (!exists) {
         this.files.push({ file: f, progress: 0, status: 'idle' });
-        this.cdr.detectChanges;
         changed = true;
       }
     }
@@ -73,13 +75,10 @@ export class UploadComponent {
 
     this.uploadService
       .uploadFileUsingPresign(fileUpload.file)
-      .pipe(
-        debounceTime(50),
-        map((event: any) => event.target.value)
-      )
+      .pipe(debounceTime(50))
       .subscribe({
         next: (event) => {
-          if (event.type === HttpEventType.UploadProgress && event.total) {
+          if (event.type === HttpEventType.UploadProgress && event.total != null) {
             const newProgress = Math.round((100 * event.loaded) / event.total);
             this.files = this.files.map((file) => {
               if (file === fileUpload) {
@@ -108,7 +107,11 @@ export class UploadComponent {
             this.form.get('files')!.setValue(this.files);
           }
         },
-        error: () => {},
+        error: () => {
+          fileUpload.status = 'error';
+          this.cdr.detectChanges(); //need to detect Changes for some reason
+          this.form.get('files')!.setValue(this.files);
+        },
       });
   }
 
