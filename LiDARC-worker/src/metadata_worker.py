@@ -66,8 +66,7 @@ def extract_metadata(file_path: str) -> dict:
                 "point_count": header.point_count,
                 "creation_date": str(header.creation_date)
             }
-        logging.info(json.dumps(metadata, indent=4))
-        return {}
+        return metadata
 
 
     except Exception as e:
@@ -88,16 +87,16 @@ def process_req(ch, method, properties, body):
 
         local_file = download_file(las_file_url)
 
-        extract_metadata(local_file)
-        #logging.info(f"Metadata extracted: {json.dumps(metadata)}")
+        metadata = extract_metadata(local_file)
+        logging.info(f"Metadata extracted: {json.dumps(metadata)}")
 
-        #ch.basic_publish(
-        #    exchange=worker_results_exchange,
-        #    routing_key=worker_key_metadata,
-        #    body = json.dumps(metadata),
-        #    properties = pika.BasicProperties(content_type="application/json")
-        #)
-        #logging.info(f"Sent metadata to exchange: {worker_results_exchange}")
+        ch.basic_publish(
+            exchange=worker_results_exchange,
+            routing_key=worker_key_metadata,
+            body = json.dumps(metadata),
+            properties = pika.BasicProperties(content_type="application/json")
+        )
+        logging.info(f"Sent metadata to exchange: {worker_results_exchange}")
 
 
         os.remove(local_file)
