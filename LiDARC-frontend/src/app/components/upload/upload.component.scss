@@ -37,3 +37,10 @@ mat-card-content {
     align-items: stretch;
   }
 }
+
+.text-spinner {
+  font-size: 1em; /* matches the surrounding text */
+  line-height: 1; /* nicer vertical alignment */
+  display: inline-flex; /* aligns inline with text */
+  align-items: center;
+}

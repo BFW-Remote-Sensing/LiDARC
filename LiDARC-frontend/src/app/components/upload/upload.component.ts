@@ -2,17 +2,16 @@ import { ChangeDetectorRef, Component, EventEmitter, Output, ViewChild } from '@
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatList, MatListItem } from '@angular/material/list';
-import { FileInfo } from '../../dto/fileInfo';
 import { MatIcon } from '@angular/material/icon';
 import { MatTable, MatTableModule } from '@angular/material/table';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { MatCardModule } from '@angular/material/card';
-import { BehaviorSubject, debounceTime, map, Observable, takeUntil, throwError } from 'rxjs';
 import { DataSource } from '@angular/cdk/collections';
 import { UploadService } from '../../service/upload.service';
 import { HttpEventType, HttpResponse } from '@angular/common/http';
-import { NgZone } from '@angular/core';
+import { ToastrService } from 'ngx-toastr';
+import { debounceTime, map, Observable } from 'rxjs';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 
 @Component({
   selector: 'app-upload',
@@ -25,7 +24,7 @@ import { NgZone } from '@angular/core';
     MatTableModule,
     MatTable,
     MatIcon,
-    MatProgressBar,
+    MatProgressSpinner,
   ],
   templateUrl: './upload.component.html',
   styleUrls: ['./upload.component.scss'],
@@ -33,13 +32,14 @@ import { NgZone } from '@angular/core';
 export class UploadComponent {
   public files: UploadFile[] = [];
   columnsToDisplay = ['file name', 'actions'];
-
+  public fileToSubscriptionMap: Map<UploadFile, any> = new Map();
   form: FormGroup;
 
   constructor(
     private fb: FormBuilder,
     private uploadService: UploadService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private toastr: ToastrService
   ) {
     this.form = this.fb.group({
       // store selected files array in the control; adapt type as needed
@@ -67,13 +67,16 @@ export class UploadComponent {
 
     if (changed) {
       this.files = [...this.files]; // one immutable update
+      this.files.forEach((file) => this.fileToSubscriptionMap.set(file, this.upload(file)));
     }
   }
 
   upload(fileUpload: UploadFile) {
     if (fileUpload.status === 'uploading') return;
+    fileUpload.status = 'uploading';
+    this.cdr.detectChanges(); //need to detect Changes for some reason
 
-    this.uploadService
+    return this.uploadService
       .uploadFileUsingPresign(fileUpload.file)
       .pipe(debounceTime(50))
       .subscribe({
@@ -93,26 +96,65 @@ export class UploadComponent {
             });
             this.form.get('files')!.setValue(this.files);
           } else if (event instanceof HttpResponse) {
-            this.files = this.files.map((file) => {
-              if (file === fileUpload) {
-                file.status = 'done';
-                this.cdr.detectChanges(); //need to detect Changes for some reason
-                file.progress = 100;
-                this.cdr.detectChanges(); //need to detect Changes for some reason
-                return file;
-              } else {
-                return file;
-              }
-            });
-            this.form.get('files')!.setValue(this.files);
+            if (event.status == 200) {
+              this.files = this.files.map((file) => {
+                if (file === fileUpload) {
+                  file.status = 'done';
+                  this.cdr.detectChanges(); //need to detect Changes for some reason
+                  file.progress = 100;
+                  this.cdr.detectChanges(); //need to detect Changes for some reason
+                  this.fileToSubscriptionMap.delete(fileUpload);
+                  return file;
+                } else {
+                  return file;
+                }
+              });
+              this.form.get('files')!.setValue(this.files);
+            } else {
+              //TODO test this
+              this.toastr.error(
+                'Upload failed file with name: ' +
+                  fileUpload.file.name +
+                  ' \n Consider reuploading ' +
+                  'StatusCode: ' +
+                  event.status
+              );
+              this.files = this.files.map((file) => {
+                if (file === fileUpload) {
+                  file.status = 'error';
+                  this.cdr.detectChanges(); //need to detect Changes for some reason
+                  return file;
+                } else {
+                  return file;
+                }
+              });
+            }
           }
         },
-        error: () => {
+        error: (e) => {
+          this.toastr.error(
+            'Could not upload file with name: ' +
+              fileUpload.file.name +
+              ' \n Consider reuploading ' +
+              e.status
+          );
           fileUpload.status = 'error';
           this.cdr.detectChanges(); //need to detect Changes for some reason
           this.form.get('files')!.setValue(this.files);
         },
       });
+  }
+
+  cancel(uploadFile: UploadFile) {
+    const subscription = this.fileToSubscriptionMap.get(uploadFile);
+    if (subscription) {
+      subscription.unsubscribe();
+      this.fileToSubscriptionMap.delete(uploadFile);
+      uploadFile.status = 'idle';
+      uploadFile.progress = 0;
+      this.files = [...this.files]; // one immutable update
+      this.form.get('files')!.setValue(this.files);
+    }
   }
 
   removeFile(fileUpload: UploadFile) {
