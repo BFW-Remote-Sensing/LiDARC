@@ -6,7 +6,6 @@ import pytest_check as check
 from preprocess_worker import process_req, calculate_grid
 import json
 import os
-import math
 
 def test_process_req_accumulates_points_correctly_in_grid(small_las_file, tmp_path):
     os.chdir(tmp_path)
@@ -26,8 +25,6 @@ def test_process_req_accumulates_points_correctly_in_grid(small_las_file, tmp_pa
         "grid": grid_def,
         "job_id": "12345"
     }
-
-
 
     with patch("preprocess_worker.file_handler.download_file", return_value=small_las_file), \
         patch("preprocess_worker.file_handler.upload_file_by_type"), \

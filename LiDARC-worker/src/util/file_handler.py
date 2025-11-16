@@ -9,7 +9,8 @@ from minio.error import S3Error
 from urllib.parse import urlparse
 from requests.adapters import HTTPAdapter, Retry
 
-bucket_name = os.environ.get("BUCKET_NAME", "basebucket")
+BUCKET_NAME = os.environ.get("BUCKET_NAME", "basebucket")
+BASE_URL = os.environ.get("BASE_URL", "http://localhost:9000/")
 def minio_client():
     #TODO: Read env
     endpoint_url = os.environ.get("MINIO_ENDPOINT_URL", "minio:9000")
@@ -28,16 +29,16 @@ client = minio_client() #TODO: Think if this is appropriate like this, seems ske
 
 def upload_file(source_file):
     destination_file = source_file.split("/")[-1]
-    found = client.bucket_exists(bucket_name)
+    found = client.bucket_exists(BUCKET_NAME)
     if not found:
-        logging.warning(f"Bucket {bucket_name} does not exist")
+        logging.warning(f"Bucket {BUCKET_NAME} does not exist")
     else:
-        logging.info(f"Bucket {bucket_name} exists, proceeding to upload!")
+        logging.info(f"Bucket {BUCKET_NAME} exists, proceeding to upload!")
 
     client.fput_object(
-        bucket_name, destination_file, source_file
+        BUCKET_NAME, destination_file, source_file
     )
-    logging.info(f"Uploaded {source_file} to {bucket_name} as {destination_file}")
+    logging.info(f"Uploaded {source_file} to {BUCKET_NAME} as {destination_file}")
 
 def upload_file_by_type(destination_file, data):
     ext = os.path.splitext(destination_file)[1].lower()
@@ -57,16 +58,18 @@ def upload_file_by_type(destination_file, data):
     return handlers[ext]()
 
 def upload_csv(destination_file, data_buf, length):
-    client.put_object(bucket_name,
+    client.put_object(BUCKET_NAME,
                       destination_file,
                       data_buf,
                       length=length,
                       content_type="application/csv")
+    
+    return BASE_URL + destination_file
 
 def upload_df_as_csv(destination_file, df):
     csv_bytes = df.to_csv().encode('utf-8')
     csv_buffer = BytesIO(csv_bytes)
-    upload_csv(destination_file, csv_buffer, len(csv_bytes))
+    return upload_csv(destination_file, csv_buffer, len(csv_bytes))
 
 def upload_json(destination_file, json_obj):
     if isinstance(json_obj, str):
@@ -76,24 +79,26 @@ def upload_json(destination_file, json_obj):
 
     json_buffer = BytesIO(json_bytes)
     client.put_object(
-        bucket_name,
+        BUCKET_NAME,
         destination_file,
         json_buffer,
         length=len(json_bytes),
         content_type="application/json"
     )
+    return BASE_URL + destination_file
 
 def upload_df_as_json(destination_file, df):
     json_bytes = df.to_json(orient="records").encode('utf-8')
     json_buffer = BytesIO(json_bytes)
 
     client.put_object(
-        bucket_name,
+        BUCKET_NAME,
         destination_file,
         json_buffer,
         length=len(json_bytes),
         content_type="application/json"
     )
+    return BASE_URL + destination_file
 
 def download_file(url: str, dest_dir: str = ".", chunk_size: int = 10* 1024 ) -> str:
     os.makedirs(dest_dir, exist_ok=True)

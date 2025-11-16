@@ -1,22 +1,35 @@
 import argparse
 import json
+import os
 
 import pika
 import logging
 import time
 import laspy
+import sys
+import signal
 import pandas as pd
 import numpy as np
 import util.file_handler as file_handler
 
 from requests import HTTPError
 
+def handle_sigterm(signum, frame):
+    logging.info("SIGTERM received")
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, handle_sigterm)
 
 def connect_rabbitmq():
     while True:
         try:
-            credentials = pika.PlainCredentials(username='admin', password='admin') #TODO: set to environment vars
-            connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq', port=5672, credentials=credentials))
+            user = os.environ.get("RABBITMQ_USER", "admin")
+            password = os.environ.get("RABBITMQ_PSWD", "admin")
+            host = os.environ.get("RABBITMQ_HOST", "rabbitmq")
+            port = os.environ.get("RABBITMQ_PORT", "5672")
+            vhost = os.environ.get("RABBITMQ_VHOST", "/worker")
+            credentials = pika.PlainCredentials(username=user, password=password)
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host=host, port=port, virtual_host=vhost, credentials=credentials))
             return connection
         except Exception as e:
             logging.error("RabbitMQ connection failed, Retrying in 5s... Error: {}".format(e))
@@ -64,17 +77,12 @@ def process_points(points, precomp_grid):
     np.minimum.at(precomp_grid["z_min"], (iy, ix), z)
     np.maximum.at(precomp_grid["z_max"], (iy, ix), z)
 
-
-def write_result_to_minio(df):
-    pass
-
 def process_req(ch, method, properties, body):
     start_time = time.time()
     request = json.loads(body)
 
     #Process request
     las_file_url = request["url"]
-    # { "url": "", ... }
     grid = request["grid"]
     #TODO: What if grid already processed and defined in BE
 
@@ -83,6 +91,9 @@ def process_req(ch, method, properties, body):
         downloaded_file_fn = file_handler.download_file(las_file_url)
     except HTTPError as e:
         logging.warning("Couldn't download file from: {}, error: {}".format(las_file_url, e))
+        return
+    if downloaded_file_fn == "":
+        logging.warning("File not downloaded, stopping processing the request!")
         return
 
     precomp_grid = calculate_grid(grid)
@@ -110,14 +121,27 @@ def process_req(ch, method, properties, body):
     })
     job_id = request["job_id"]
     df.to_csv(f"pre-process-job-{job_id}-output.csv")
-    file_handler.upload_file_by_type(f"pre-process-job-{job_id}-output.csv", df)
+    uploaded_url = file_handler.upload_file_by_type(f"pre-process-job-{job_id}-output.csv", df)
+    logging.info(f"Uploaded precompute file to: {uploaded_url}")
 
     processing_time = int((time.time() - start_time) * 1000)
-
-    #TODO: Respond to RabbitMQ
-
     logging.info("Worker took {} ms to process the request".format(processing_time))
 
+    response = {
+        "job_id": job_id,
+        "status": "success",
+        "result_url": uploaded_url,
+        "summary": {
+            "n_cells": int(precomp_grid["grid_shape"][0] * precomp_grid["grid_shape"][1]),
+            "max_z": float(df["z_max"].max()),
+            "min_z": float(df["z_min"].min())
+        }
+    }
+    ch.basic_publish(
+        exchange=os.environ.get("EXCHANGE_NAME", "worker.job"),
+        routing_key="job.preprocessor.result",
+        body=json.dumps(response)
+    )
 
 
 def main():
@@ -132,7 +156,7 @@ def main():
     # (worst case, region mit 7000 files) -> 1 120 000 000
     connection = connect_rabbitmq()
     channel = connection.channel()
-    queue_name = "worker.preprocess"
+    queue_name = os.environ.get("QUEUE_NAME", "preprocessing.job")
     def callback(ch, method, properties, body):
         process_req(ch, method, properties, body)
 
