@@ -44,7 +44,7 @@ def extract_metadata(file_path: str) -> dict:
     try:
         filename = os.path.basename(file_path)
         match = re.search(r"\d{4}", filename)
-        creation_year = int(match.group(0)) if match else None
+        capture_year = int(match.group(0)) if match else None
         size_bytes = os.path.getsize(file_path)
 
         with laspy.open(file_path) as las:
@@ -52,7 +52,7 @@ def extract_metadata(file_path: str) -> dict:
 
             metadata = {
                 "filename": filename,
-                "creation_year": creation_year,
+                "capture_year": capture_year,
                 "size_bytes": size_bytes,
                 "min_x": header.x_min,
                 "min_y": header.y_min,
@@ -64,7 +64,7 @@ def extract_metadata(file_path: str) -> dict:
                 "las_version": f"{header.version[0]}.{header.version[1]}",
                 "capture_software": header.generating_software,
                 "point_count": header.point_count,
-                "creation_date": str(header.creation_date)
+                "file_creation_date": str(header.creation_date)
             }
         return metadata
 
