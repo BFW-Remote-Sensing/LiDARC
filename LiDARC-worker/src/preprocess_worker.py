@@ -29,12 +29,14 @@ def calculate_grid(grid: dict):
     y_min = grid["y_min"]
     y_max = grid["y_max"]
 
-    grid_x = grid["x"]
-    grid_y = grid["y"]
-    grid_width = int(np.ceil((x_max - x_min) / grid_x))
-    grid_height = int(np.ceil((y_max - y_min) / grid_y))
+    grid_width = grid["x"]
+    grid_height = grid["y"]
 
-    grid_shape = (grid_height, grid_width)
+    grid_cells_x = int(np.ceil((x_max - x_min) / grid_width))
+    grid_cells_y = int(np.ceil((y_max - y_min) / grid_height))
+
+    grid_shape = (grid_cells_y, grid_cells_x)
+
     count = np.zeros(grid_shape, dtype=np.uint32)
     z_sum = np.zeros(grid_shape, dtype=np.float32)
     z_min = np.full(grid_shape, np.inf,  dtype=np.float32)
@@ -42,8 +44,8 @@ def calculate_grid(grid: dict):
 
     return {
         "grid_shape": grid_shape,
-        "x": grid_x,
-        "y": grid_y,
+        "grid_width": grid_width,
+        "grid_height": grid_height,
         "z_max": z_max,
         "count": count,
         "x_min": x_min,
@@ -55,8 +57,8 @@ def process_points(points, precomp_grid):
     y = points.y
     z = points.z
 
-    ix = ((x - precomp_grid["x_min"]) / precomp_grid["x"]).astype(np.int32)
-    iy = ((y - precomp_grid["y_min"]) / precomp_grid["y"]).astype(np.int32)
+    ix = ((x - precomp_grid["x_min"]) / precomp_grid["grid_width"]).astype(np.int32)
+    iy = ((y - precomp_grid["y_min"]) / precomp_grid["grid_height"]).astype(np.int32)
 
     np.add.at(precomp_grid["count"], (iy, ix), 1)
 
@@ -88,13 +90,21 @@ def process_req(ch, method, properties, body):
             process_points(points, precomp_grid)
 
     rows, cols = np.nonzero(precomp_grid["count"])
+
+    grid_width = precomp_grid["grid_width"]
+    grid_height = precomp_grid["grid_height"]
+    x_min = precomp_grid["x_min"]
+    y_min = precomp_grid["y_min"]
+
     df = pd.DataFrame({
-        "x": precomp_grid["x_min"] + cols * precomp_grid["x"],
-        "y": precomp_grid["y_min"] + rows * precomp_grid["y"],
-        "count": precomp_grid["count"][cols, rows]
+        "x0": x_min + cols * grid_width,
+        "x1": x_min + (cols + 1) * grid_width,
+        "y0": y_min + rows * grid_height,
+        "y1": y_min + (rows + 1) * grid_height,
+        "count": precomp_grid["count"][rows, cols]
     })
     job_id = request["job_id"]
-    df.to_csv(f"Pre_Process_Job_{job_id}_output.csv")
+    df.to_csv(f"pre-process-job-{job_id}-output.csv")
     file_handler.upload_file_by_type(f"pre-process-job-{job_id}-output.csv", df)
 
     write_result_to_minio(df)
