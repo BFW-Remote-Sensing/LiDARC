@@ -38,7 +38,6 @@ def calculate_grid(grid: dict):
     grid_shape = (grid_cells_y, grid_cells_x)
 
     count = np.zeros(grid_shape, dtype=np.uint32)
-    z_sum = np.zeros(grid_shape, dtype=np.float32)
     z_min = np.full(grid_shape, np.inf,  dtype=np.float32)
     z_max = np.full(grid_shape, -np.inf, dtype=np.float32)
 
@@ -47,6 +46,7 @@ def calculate_grid(grid: dict):
         "grid_width": grid_width,
         "grid_height": grid_height,
         "z_max": z_max,
+        "z_min": z_min,
         "count": count,
         "x_min": x_min,
         "y_min": y_min,
@@ -55,12 +55,15 @@ def process_points(points, precomp_grid):
     logging.debug("Processing points: {}".format(points))
     x = points.x
     y = points.y
-    z = points.z
+    z = np.array(points.z)
 
     ix = ((x - precomp_grid["x_min"]) / precomp_grid["grid_width"]).astype(np.int32)
     iy = ((y - precomp_grid["y_min"]) / precomp_grid["grid_height"]).astype(np.int32)
 
     np.add.at(precomp_grid["count"], (iy, ix), 1)
+    np.minimum.at(precomp_grid["z_min"], (iy, ix), z)
+    np.maximum.at(precomp_grid["z_max"], (iy, ix), z)
+
 
 def write_result_to_minio(df):
     pass
@@ -101,13 +104,13 @@ def process_req(ch, method, properties, body):
         "x1": x_min + (cols + 1) * grid_width,
         "y0": y_min + rows * grid_height,
         "y1": y_min + (rows + 1) * grid_height,
-        "count": precomp_grid["count"][rows, cols]
+        "count": precomp_grid["count"][rows, cols],
+        "z_max": precomp_grid["z_max"][rows, cols],
+        "z_min": precomp_grid["z_min"][rows, cols]
     })
     job_id = request["job_id"]
     df.to_csv(f"pre-process-job-{job_id}-output.csv")
     file_handler.upload_file_by_type(f"pre-process-job-{job_id}-output.csv", df)
-
-    write_result_to_minio(df)
 
     processing_time = int((time.time() - start_time) * 1000)
 
