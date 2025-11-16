@@ -2,9 +2,11 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
+import pytest_check as check
 from preprocess_worker import process_req, calculate_grid
 import json
 import os
+import math
 
 def test_process_req_accumulates_points_correctly_in_grid(small_las_file, tmp_path):
     os.chdir(tmp_path)
@@ -43,11 +45,30 @@ def test_process_req_accumulates_points_correctly_in_grid(small_las_file, tmp_pa
     }
 
     #Check if points are inside the grid 0.0, 0.0 -> grid cell 1 which goes from x0<->x1 => 0.0 <-> 1.0 and y0<->y1 => 0.0 <-> 1.0
-    assert points[(0.0, 0.0)] == 2
-    assert points[(2.0, 2.0)] == 1
-    assert points[(9.0, 9.0)] == 1
+    expected_points = {
+        (0.0, 0.0): 2,
+        (2.0, 2.0): 1,
+        (9.0, 9.0): 1,
+    }
+    for key, expected in expected_points.items():
+        check.equal(points.get(key, None), expected, f"Point count mismatch at grid cell {key}")
 
-    assert len(points) == 3
+    check.equal(len(points), 3, "Unexpected number of grid cells")
+
+    z_maxes = {
+        (row['x0'], row['y0']): row['z_max'] for _, row in df.iterrows()
+    }
+    expected_zmax = {
+        (0.0, 0.0): 10.0,
+        (2.0, 2.0): 20.0,
+        (9.0, 9.0): 15.0,
+    }
+    for key, expected in expected_zmax.items():
+        check.equal(z_maxes.get(key, None), expected, f"Z_MAX mismatch at grid cell {key}")
+
+    check.equal(df.loc[0, 'z_min'], 5.0, "Z_MIN in grid cell 0 is not 5.0")
+    check.equal(df['z_max'].max(), 20.0, "Max Z_MAX value mismatch")
+    check.equal(df['z_min'].min(), 5.0, "Min Z_MAX value mismatch")
 
 @pytest.mark.parametrize("generated_las_file", [{
     "num_points": 1000,
