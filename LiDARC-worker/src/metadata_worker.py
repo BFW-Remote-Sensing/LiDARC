@@ -1,8 +1,9 @@
 import json
 import logging
 import os
-import subprocess
+import laspy
 import time
+import re
 from urllib.parse import urlparse
 
 import pika
@@ -41,42 +42,34 @@ def download_file(url: str, dest_dir: str = ".", chunk_size: int = 10* 1024 ) ->
 
 def extract_metadata(file_path: str) -> dict:
     try:
-        result = subprocess.run(
-            ["pdal", "info", "--metadata", file_path],
-            capture_output=True,
-            text=True
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"pdal error: {result.stderr.strip()}")
+        filename = os.path.basename(file_path)
+        match = re.search(r"\d{4}", filename)
+        creation_year = int(match.group(0)) if match else None
+        size_bytes = os.path.getsize(file_path)
 
-        pdal_out = json.loads(result.stdout)
-        meta = pdal_out.get("metadata", {})
+        with laspy.open(file_path) as las:
+            header = las.header
 
-        reader_key = next((k for k in meta.keys() if k.startswith("readers.")), None)
-        header = meta[reader_key] if reader_key else meta
+            metadata = {
+                "filename": filename,
+                "creation_year": creation_year,
+                "size_bytes": size_bytes,
+                "min_x": header.x_min,
+                "min_y": header.y_min,
+                "min_z": header.z_min,
+                "max_x": header.x_max,
+                "max_y": header.y_max,
+                "max_z": header.z_max,
+                "coordinate_system": header.system_identifier,
+                "las_version": f"{header.version[0]}.{header.version[1]}",
+                "capture_software": header.generating_software,
+                "point_count": header.point_count,
+                "creation_date": str(header.creation_date)
+            }
+        logging.info(json.dumps(metadata, indent=4))
+        return {}
 
-        minimal_meta = {
-            "filename": os.path.basename(file_path),
-            "size_bytes": os.path.getsize(file_path),
 
-            "creation_year": header.get("creation_year"),
-
-            "min_x": header.get("minx"),
-            "min_y": header.get("miny"),
-            "min_z": header.get("minz"),
-            "min_gpstime": header.get("min_gpstime"),
-
-            "max_x": header.get("maxx"),
-            "max_y": header.get("maxy"),
-            "max_z": header.get("maxz"),
-            "max_gpstime": header.get("max_gpstime"),
-
-            "coordinate_system": header.get("system_id"),
-            "las_version": f"{header.get('major_version')}.{header.get('minor_version')}" if header.get(
-                "major_version") else None,
-            "capture_software": header.get("software_id"),
-        }
-        return minimal_meta
     except Exception as e:
         logging.error(f"Metadata extraction failed for {file_path}: {e}")
         return {}
@@ -95,16 +88,16 @@ def process_req(ch, method, properties, body):
 
         local_file = download_file(las_file_url)
 
-        metadata = extract_metadata(local_file)
-        logging.info(f"Metadata extracted: {json.dumps(metadata)}")
+        extract_metadata(local_file)
+        #logging.info(f"Metadata extracted: {json.dumps(metadata)}")
 
-        ch.basic_publish(
-            exchange=worker_results_exchange,
-            routing_key=worker_key_metadata,
-            body = json.dumps(metadata),
-            properties = pika.BasicProperties(content_type="application/json")
-        )
-        logging.info(f"Sent metadata to exchange: {worker_results_exchange}")
+        #ch.basic_publish(
+        #    exchange=worker_results_exchange,
+        #    routing_key=worker_key_metadata,
+        #    body = json.dumps(metadata),
+        #    properties = pika.BasicProperties(content_type="application/json")
+        #)
+        #logging.info(f"Sent metadata to exchange: {worker_results_exchange}")
 
 
         os.remove(local_file)
