@@ -24,8 +24,6 @@
             <property name="throwsIndent" value="2"/>
         </module>
 
-        <module name="FinalParameters"/>
-        <module name="FinalLocalVariable"/>
         <module name="WhitespaceAround"/>
         <module name="WhitespaceAfter"/>
         <module name="NoWhitespaceAfter"/>

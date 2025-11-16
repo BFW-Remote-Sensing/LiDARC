@@ -36,7 +36,7 @@ public interface BucketApi {
 
 
   })
-  @RequestMapping(,
+  @RequestMapping(
       produces = {"application/json"},
       consumes = {"application/json"},
       method = RequestMethod.POST)

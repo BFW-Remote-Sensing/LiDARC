@@ -1,12 +1,5 @@
 package com.example.lidarcbackend.service.files;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Service;
 import com.example.lidarcbackend.configuration.MinioProperties;
 import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import com.example.lidarcbackend.model.DTO.Mapper.UrlMapper;
@@ -23,6 +16,14 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
 
 
 @Slf4j
@@ -85,7 +86,8 @@ public class PresignedUrlService implements IPresignedUrlService {
 
   @Override
   public Optional<FileInfoDto> fetchUploadUrl(String fileName) {
-    GetPresignedObjectUrlArgs presignedObjectUrlArgs = getPresignedObjectUrlArgs(fileName, Method.PUT);
+    Method method = Method.PUT;
+    GetPresignedObjectUrlArgs presignedObjectUrlArgs = getPresignedObjectUrlArgs(fileName, method);
     if (presignedObjectUrlArgs == null) {
       return Optional.empty();
     }
@@ -102,7 +104,7 @@ public class PresignedUrlService implements IPresignedUrlService {
     file = fileRepository.save(file);
 
 
-    List<Url> presignedUrls = urlRepository.findByFileId_AndMethod_AndExpiresAtAfter(file.getId(), Method.PUT, Instant.now());
+    List<Url> presignedUrls = urlRepository.findByFileId_AndMethod_AndExpiresAtAfter(file.getId(), method, Instant.now());
 
     Optional<Url> createdUpload = presignedUrls.stream().findAny();
     FileInfoDto fileInfo;
@@ -116,7 +118,7 @@ public class PresignedUrlService implements IPresignedUrlService {
         fileInfo = fOpt.get();
         url.setFile(file);
         url.setPresignedURL(fOpt.get().getPresignedURL());
-        url.setMethod(Method.PUT);
+        url.setMethod(method);
         url.setExpiresAt(Instant.now().plusSeconds(minioProperties.getDefaultExpiryTime())
         );
         urlRepository.save(url);
@@ -131,7 +133,8 @@ public class PresignedUrlService implements IPresignedUrlService {
 
   @Override
   public Optional<FileInfoDto> uploadFinished(@NonNull FileInfoDto body) {
-    File file = fileRepository.findFileByFilenameAndUploaded(body.getFileName(), false).orElseThrow(() -> new IllegalArgumentException("File not found or already uploaded: " + body.getFileName()));
+    File file = fileRepository.findFileByFilenameAndUploaded(body.getFileName(), false)
+        .orElseThrow(() -> new IllegalArgumentException("File not found or already uploaded: " + body.getFileName()));
     //TODO possibly check if the file actually exists in minio or add to contract that the caller has to ensure that
     file.setUploaded(true);
     file.setUploaded_at(Instant.now());

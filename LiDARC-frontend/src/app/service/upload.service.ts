@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpEvent, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpEvent, HttpHeaders, HttpRequest } from '@angular/common/http';
 import { FileInfo } from '../dto/fileInfo';
 import { defaultBucketPath, Globals } from '../globals/globals';
-import { Observable, switchMap } from 'rxjs';
+import { Observable, switchMap, throwError } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -12,30 +12,48 @@ export class UploadService {
 
   // Ask your backend for a presigned URL (adapt endpoint/payload)
   getPresignedUploadUrl(file: File): Observable<FileInfo> {
-    return this.httpClient.post<FileInfo>('/api/uploads/presign', {
-      fileName: file.name,
-      contentType: file.type,
-      size: file.size,
+    console.log('sending presign requeset for file ' + file.name);
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
     });
+    const payload: FileInfo = {
+      fileName: file.name,
+      method: 'POST',
+    };
+    return this.httpClient.post<FileInfo>(
+      this.globals.backendUri + defaultBucketPath + '/upload',
+      payload,
+      { headers }
+    );
   }
 
   // Perform the upload to the presigned URL; returns raw HttpEvent stream so caller can track progress
   uploadToPresignedUrl(file: File, url: string, method = 'PUT'): Observable<HttpEvent<any>> {
-    const headers = new HttpHeaders({ 'Content-Type': file.type || 'application/octet-stream' });
+    const headers = new HttpHeaders({ 'Content-Type': 'multipart/form-data' });
+    var formData = new FormData();
+    formData.append('file', file);
+
     // use HttpClient.request so we can pass a dynamic method
-    return this.httpClient.request(method, url, {
-      body: file,
-      headers,
+    console.log('uploading file ' + file.name + ' to ' + url + ' with ' + headers);
+    return this.httpClient.put(url, formData, {
+      headers: headers,
       reportProgress: true,
       observe: 'events',
-      responseType: 'text' as 'json',
+      withCredentials: false,
     });
   }
 
   // Convenience: get presigned URL then upload -> returns the HttpEvent stream
   uploadFileUsingPresign(file: File): Observable<HttpEvent<any>> {
     return this.getPresignedUploadUrl(file).pipe(
-      switchMap((info) => this.uploadToPresignedUrl(file, info.presignedUrl, (info as any).method || 'PUT'))
+      switchMap((info) => {
+        console.log(info);
+        if (!info || !info.presignedURL) {
+          return throwError(() => new Error('Presign request failed: missing presignedUrl'));
+        }
+        return this.uploadToPresignedUrl(file, info.presignedURL, 'POST');
+      })
     );
   }
 }

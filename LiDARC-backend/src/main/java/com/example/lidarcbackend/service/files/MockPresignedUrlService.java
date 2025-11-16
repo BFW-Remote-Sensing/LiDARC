@@ -1,14 +1,5 @@
 package com.example.lidarcbackend.service.files;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.Arrays;
-import java.util.Optional;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.springframework.context.annotation.Profile;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-import org.springframework.web.ErrorResponseException;
 import com.example.lidarcbackend.configuration.MinioProperties;
 import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import io.minio.BucketExistsArgs;
@@ -24,6 +15,16 @@ import jakarta.annotation.PostConstruct;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.web.ErrorResponseException;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.Arrays;
+import java.util.Optional;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @Service
 @Profile("development")
@@ -159,13 +160,18 @@ public class MockPresignedUrlService implements IPresignedUrlService {
 
   @Override
   public Optional<FileInfoDto> fetchUploadUrl(String fileName) {
-    // Mock implementation: return a dummy presigned URL for upload
-    String dummyUploadUrl = "https://mock-storage-service.com/upload/" + fileName + "?signature=mockSignature";
-    return Optional.of(FileInfoDto.builder()
-        .fileName(fileName)
-        .presignedURL(dummyUploadUrl)
-        .uploaded(false)
-        .build());
+
+    GetPresignedObjectUrlArgs presignedObjectUrlArgs = GetPresignedObjectUrlArgs.builder()
+        .method(Method.PUT)
+        .bucket(minioProperties.getBucket())
+        .object(fileName)
+        .expiry(minioProperties.getDefaultExpiryTime())
+        .build();
+
+    if (presignedObjectUrlArgs == null) {
+      return Optional.empty();
+    }
+    return getUrl(presignedObjectUrlArgs, fileName);
   }
 
   @Override
@@ -173,5 +179,15 @@ public class MockPresignedUrlService implements IPresignedUrlService {
     return Optional.of(fileInfoDto);
   }
 
+
+  private Optional<FileInfoDto> getUrl(GetPresignedObjectUrlArgs presignedObjectUrlArgs, String fileName) {
+    try {
+      String url = minioClient.getPresignedObjectUrl(presignedObjectUrlArgs);
+      return Optional.of(FileInfoDto.builder().fileName(minioProperties.getBaseObject()).presignedURL(url).build());
+    } catch (MinioException | GeneralSecurityException | IOException e) {
+      log.info("Could not fetch presigned {} URL for file: {}", presignedObjectUrlArgs.method().toString(), fileName, e);
+      return Optional.empty();
+    }
+  }
 
 }

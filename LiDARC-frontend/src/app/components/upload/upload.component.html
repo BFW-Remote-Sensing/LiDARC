@@ -20,7 +20,7 @@
     </mat-card-actions>
 
     <mat-card-content>
-      <table mat-table [dataSource]="files$">
+      <table mat-table [dataSource]="files">
         <ng-container matColumnDef="file name">
           <th mat-header-cell *matHeaderCellDef>Files</th>
           <td mat-cell *matCellDef="let f">{{ f.file.name }}</td>
@@ -36,11 +36,14 @@
             <button matIconButton type="button" (click)="upload(f)">
               <mat-icon>upload</mat-icon>
             </button>
+            <div>{{ f.status }}</div>
             } @else {
             <!--TODO change this to actually stop an upload-->
-            <button matIconButton type="button" (click)="upload(f)">
+            <mat-progress-bar mode="determinate" [value]="f.progress"></mat-progress-bar>
+            <button matIconButton type="button" (click)="removeFile(f)">
               <mat-icon>stop</mat-icon>
             </button>
+            <div>{{ f.status }}</div>
             }
           </td>
         </ng-container>
