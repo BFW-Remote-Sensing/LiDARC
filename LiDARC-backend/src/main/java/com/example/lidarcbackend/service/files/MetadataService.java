@@ -1,10 +1,14 @@
 package com.example.lidarcbackend.service.files;
 
+import com.example.lidarcbackend.model.CoordinateSystem;
 import com.example.lidarcbackend.model.FileMetadata;
+import com.example.lidarcbackend.repository.CoordinateSystemRepository;
 import com.example.lidarcbackend.repository.FileMetadataRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.checkerframework.checker.units.qual.C;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -12,60 +16,71 @@ import java.util.Map;
 @Slf4j
 public class MetadataService implements IMetadataService {
 
-    private FileMetadataRepository repository;
+    private final FileMetadataRepository fileRepository;
+    private CoordinateSystemRepository coordinateSystemRepository;
 
-    public MetadataService(FileMetadataRepository repository) {
-        this.repository = repository;
+    public MetadataService(FileMetadataRepository fileRepository, CoordinateSystemRepository coordinateSystemRepository) {
+        this.fileRepository = fileRepository;
+        this.coordinateSystemRepository = coordinateSystemRepository;
     }
+
 
     @Override
     public void processMetadata(Map<String, Object> metadata) {
-        log.info("Processing Metadata result:");
-        FileMetadata file = new FileMetadata();
-        // Basic string fields
-        file.setFilename((String) metadata.get("filename"));
-        file.setLasVersion((String) metadata.get("las_version"));
-        file.setCaptureSoftware((String) metadata.get("capture_software"));
+        log.info("Processing Metadata result...");
 
-        // Numeric fields with conversions
-        Object creationYearObj = metadata.get("creation_year");
-        if (creationYearObj != null) {
-            file.setCreationYear(((Number) creationYearObj).shortValue());
-        }
+        String csString = (String) metadata.get("coordinate_system");
+        CoordinateSystem cs = null;
+        if(csString != null && !csString.isEmpty()) {
+            String[] parts = csString.split(":");
+            if (parts.length == 2) {
+                String authority = parts[0].toUpperCase();
+                String code = parts[1];
+                cs = coordinateSystemRepository.findByAuthorityAndCode(authority, code)
+                        .orElseGet(() -> {
+                            CoordinateSystem newCs = new CoordinateSystem();
+                            newCs.setAuthority(authority);
+                            newCs.setCode(code);
+                            return coordinateSystemRepository.save(newCs);
+                        });
 
-        Object sizeObj = metadata.get("size_bytes");
-        if (sizeObj != null) {
-            file.setSizeBytes(((Number) sizeObj).longValue());
-        }
-
-        file.setMinX(castToDouble(metadata.get("min_x")));
-        file.setMinY(castToDouble(metadata.get("min_y")));
-        file.setMinZ(castToDouble(metadata.get("min_z")));
-        file.setMinGpsTime(castToDouble(metadata.get("min_gpstime")));
-
-        file.setMaxX(castToDouble(metadata.get("max_x")));
-        file.setMaxY(castToDouble(metadata.get("max_y")));
-        file.setMaxZ(castToDouble(metadata.get("max_z")));
-        file.setMaxGpsTime(castToDouble(metadata.get("max_gpstime")));
-
-        // Coordinate system parsing (e.g., "31256;austria2022")
-        String coordRaw = (String) metadata.get("coordinate_system");
-        if (coordRaw != null) {
-            try {
-                file.setCoordinateSystem(Integer.parseInt(coordRaw.split(";")[0]));
-            } catch (NumberFormatException e) {
-                // fallback or log error
-                file.setCoordinateSystem(null);
             }
         }
 
-        // Uploaded flags
-        file.setUploaded(true);
-        file.setUploadedAt(LocalDateTime.now());
+        FileMetadata fileMetadata = new FileMetadata();
+        //text
+        fileMetadata.setFilename((String) metadata.get("filename"));
+        fileMetadata.setLasVersion((String) metadata.get("las_version"));
+        fileMetadata.setCaptureSoftware((String) metadata.get("capture_software"));
+        fileMetadata.setSystemIdentifier((String) metadata.get("system_identifier"));
 
-        // Save to database
-        repository.save(file);
+        //numeric
+        fileMetadata.setCaptureYear(castToShort(metadata.get("capture_year")));
+        fileMetadata.setSizeBytes(castToLong(metadata.get("size_bytes")));
+        fileMetadata.setMinX(castToDouble(metadata.get("min_x")));
+        fileMetadata.setMinY(castToDouble(metadata.get("min_y")));
+        fileMetadata.setMinZ(castToDouble(metadata.get("min_z")));
+        fileMetadata.setMaxX(castToDouble(metadata.get("max_x")));
+        fileMetadata.setMaxY(castToDouble(metadata.get("max_y")));
+        fileMetadata.setMaxZ(castToDouble(metadata.get("max_z")));
+        fileMetadata.setPointCount(castToLong(metadata.get("point_count")));
 
+        //date
+        fileMetadata.setFileCreationDate(castToLocalDate(metadata.get("file_creation_date")));
+
+        //coordinate system
+        if (cs != null) {
+            fileMetadata.setCoordinateSystem(cs.getId().intValue());
+        } else {
+            //TODO should not happen (handle properly)
+            fileMetadata.setCoordinateSystem(null);
+        }
+
+        // uploaded flags
+        fileMetadata.setUploaded(true);
+        fileMetadata.setUploadedAt(LocalDateTime.now());
+
+        fileRepository.save(fileMetadata);
     }
 
     private Double castToDouble(Object obj) {
@@ -74,6 +89,36 @@ public class MetadataService implements IMetadataService {
         try {
             return Double.parseDouble(obj.toString());
         } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private Short castToShort(Object obj) {
+        if (obj == null) return null;
+        if (obj instanceof Number) return ((Number) obj).shortValue();
+        try {
+            return Short.parseShort(obj.toString());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private Long castToLong(Object obj) {
+        if (obj == null) return null;
+        if (obj instanceof Number) return ((Number) obj).longValue();
+        try {
+            return Long.parseLong(obj.toString());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private LocalDate castToLocalDate(Object obj) {
+        if (obj == null) return null;
+        if (obj instanceof LocalDate) return (LocalDate) obj;
+        try {
+            return LocalDate.parse(obj.toString());
+        } catch (Exception e) {
             return null;
         }
     }
