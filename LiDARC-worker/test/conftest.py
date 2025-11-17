@@ -5,9 +5,32 @@ import tempfile
 import laspy
 import numpy as np
 import pytest
+import json
+from importlib.resources import files
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../src"))
 
 sys.path.append(project_root)
+
+
+@pytest.fixture(scope="session")
+def load_fixture():
+    """
+    Provides a function to load a file from the fixture folder.
+    """
+    def _load(path):
+        p = files("tests.fixtures").joinpath(path)
+        return p.read_text(encoding="utf-8")
+    return _load
+
+
+@pytest.fixture(scope="session")
+def load_json(load_fixture):
+    """
+    Provides a function to load a JSON from the fixture folder.
+    """
+    def _load(path):
+        return json.loads(load_fixture(path))
+    return _load
 
 @pytest.fixture
 def small_las_file():

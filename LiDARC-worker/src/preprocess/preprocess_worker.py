@@ -10,6 +10,9 @@ import sys
 import signal
 import pandas as pd
 import numpy as np
+from jsonschema.exceptions import ValidationError
+from jsonschema.validators import validate
+from schemas.precompute import schema as precompute_schema
 import util.file_handler as file_handler
 
 from requests import HTTPError
@@ -28,6 +31,7 @@ def connect_rabbitmq():
             host = os.environ.get("RABBITMQ_HOST", "rabbitmq")
             port = os.environ.get("RABBITMQ_PORT", "5672")
             vhost = os.environ.get("RABBITMQ_VHOST", "/worker")
+
             credentials = pika.PlainCredentials(username=user, password=password)
             connection = pika.BlockingConnection(pika.ConnectionParameters(host=host, port=port, virtual_host=vhost, credentials=credentials))
             return connection
@@ -64,6 +68,14 @@ def calculate_grid(grid: dict):
         "x_min": x_min,
         "y_min": y_min,
     }
+
+def validate_request(json_req):
+    try:
+        validate(instance=json_req, schema=precompute_schema)
+    except ValidationError as e:
+        logging.warning(f"The precompute job request is invalid")
+        return False
+
 def process_points(points, precomp_grid):
     logging.debug("Processing points: {}".format(points))
     x = points.x
@@ -77,23 +89,40 @@ def process_points(points, precomp_grid):
     np.minimum.at(precomp_grid["z_min"], (iy, ix), z)
     np.maximum.at(precomp_grid["z_max"], (iy, ix), z)
 
+def mk_error_msg(job_id: str, error_msg: str):
+    return {"jobId": job_id, "status": "error", "msg": error_msg}
+
+def publish_response(ch, response_dict):
+    ch.basic_publish(
+        exchange=os.environ.get("EXCHANGE_NAME", "worker.job"),
+        routing_key="job.preprocessor.create",
+        body=json.dumps(response_dict),
+        properties = pika.BasicProperties("application/json")
+    )
+
 def process_req(ch, method, properties, body):
     start_time = time.time()
     request = json.loads(body)
+    job_id = request["jobId"]
+    if not validate_request(request):
+        logging.warning("The precompute job is cancelled because of a Validation Error")
+        publish_response(ch, mk_error_msg(job_id, "Precompute job is cancelled because job request is invalid"))
+        return
 
     #Process request
     las_file_url = request["url"]
     grid = request["grid"]
-    #TODO: What if grid already processed and defined in BE
 
     downloaded_file_fn = ""
     try:
         downloaded_file_fn = file_handler.download_file(las_file_url)
     except HTTPError as e:
         logging.warning("Couldn't download file from: {}, error: {}".format(las_file_url, e))
+        publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, precompute job cancelled".format(las_file_url)))
         return
     if downloaded_file_fn == "":
         logging.warning("File not downloaded, stopping processing the request!")
+        publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, precompute job cancelled".format(las_file_url)))
         return
 
     precomp_grid = calculate_grid(grid)
@@ -137,11 +166,7 @@ def process_req(ch, method, properties, body):
             "min_z": float(df["z_min"].min())
         }
     }
-    ch.basic_publish(
-        exchange=os.environ.get("EXCHANGE_NAME", "worker.job"),
-        routing_key="job.preprocessor.result",
-        body=json.dumps(response)
-    )
+    publish_response(ch, response)
 
 
 def main():

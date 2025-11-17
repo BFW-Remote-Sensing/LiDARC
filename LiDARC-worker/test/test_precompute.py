@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 import pytest_check as check
-from preprocess_worker import process_req, calculate_grid
+from preprocess_worker import process_req, calculate_grid, mk_error_msg
 import json
 import os
 
