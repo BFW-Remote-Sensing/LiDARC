@@ -1,13 +1,14 @@
 package com.example.lidarcbackend.repository;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.model.entity.Url;
 import io.minio.http.Method;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
 
 
 @Repository
@@ -46,4 +47,14 @@ public interface UrlRepository extends JpaRepository<Url, Long> {
   List<Url> findByFileId_AndMethod(Long fileId, Method method);
 
   List<Url> findByFileId_AndMethod_AndExpiresAtAfter(Long fileId, Method method, Instant expiresAtAfter);
+
+  List<Url> findAllByExpiresAt(Instant expiresAt);
+
+  List<Url> findByFile_Filename_AndMethod_AndExpiresAtAfter(String fileFilename, Method method, Instant expiresAtAfter);
+
+  String file(File file);
+
+  List<Url> findUrlByExpiresAtBefore(Instant expiresAtBefore);
+
+  void deleteByFileIdAndMethod(Long fileId, Method method);
 }

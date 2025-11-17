@@ -10,6 +10,7 @@ public class UrlMapperImpl implements UrlMapper {
     FileInfoDto fileInfoDto = new FileInfoDto();
     fileInfoDto.setPresignedURL(url.getPresignedURL());
     fileInfoDto.setFileName(url.getFile().getFilename());
+    fileInfoDto.setUrlExpiresAt(url.getExpiresAt());
     return fileInfoDto;
   }
 }
