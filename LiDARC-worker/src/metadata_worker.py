@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import laspy
+from pyproj import CRS
 import time
 import re
 from urllib.parse import urlparse
@@ -40,6 +41,35 @@ def download_file(url: str, dest_dir: str = ".", chunk_size: int = 10* 1024 ) ->
             os.remove(local_filename)
         raise RuntimeError(f"Download failed for {url}: {e}") from e
 
+
+def parse_coordinate_system(header) -> str:
+    # try to parse crs from header
+    try:
+        crs = header.parse_crs()
+        if crs:
+            auth_code = crs.to_authority()
+            if auth_code:
+                authority, code = auth_code
+                return f"{authority.upper()}:{code}"
+    except:
+        pass
+
+    # if no crs found in header --> fallback to system_identifier
+    system_id = getattr(header, "system_identifier", "").strip()
+    if system_id:
+        m = re.match(r"^(\d{3,7})", system_id)
+        if m:
+            code = int(m.group(1))
+            for auth in ["EPSG", "ESRI", "IGNF"]:
+                try:
+                    CRS.from_authority(auth, code)
+                    return f"{auth}:{code}"
+                except:
+                    continue
+    # if nothing found --> UNKNOWN:UNKNOWN
+    return f"UNKNOWN:UNKNOWN"
+
+
 def extract_metadata(file_path: str) -> dict:
     try:
         filename = os.path.basename(file_path)
@@ -60,14 +90,14 @@ def extract_metadata(file_path: str) -> dict:
                 "max_x": header.x_max,
                 "max_y": header.y_max,
                 "max_z": header.z_max,
-                "coordinate_system": header.system_identifier,
+                "system_identifier": header.system_identifier,
                 "las_version": f"{header.version[0]}.{header.version[1]}",
                 "capture_software": header.generating_software,
                 "point_count": header.point_count,
-                "file_creation_date": str(header.creation_date)
+                "file_creation_date": str(header.creation_date),
+                "coordinate_system": parse_coordinate_system(header)
             }
         return metadata
-
 
     except Exception as e:
         logging.error(f"Metadata extraction failed for {file_path}: {e}")

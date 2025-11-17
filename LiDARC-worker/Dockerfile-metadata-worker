@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-RUN pip install --no-cache-dir laspy pika requests minio
+RUN pip install --no-cache-dir laspy pika requests minio pyproj
 
 COPY src/ /app
 WORKDIR /app
