@@ -31,25 +31,42 @@ echarts.use([LegacyGridContainLabel, TooltipComponent, VisualMapComponent, BarCh
 })
 
 export class Heatmap implements OnInit, AfterViewInit {
-  chartOptions!: EChartsCoreOption;
+  optionsLeft!: EChartsCoreOption;
+  optionsRight!: EChartsCoreOption;
 
-  ngOnInit() {
-    const rows = 50;
-    const cols = 50;
-    const data1 = this.generateVegetationData(rows, cols);
-    const data2 = this.generateVegetationData(rows, cols);
-    // Specify the configuration items and data for the chart
-    this.chartOptions = {
+  rows = 400;
+  cols = 400;
+
+  ngOnInit(): void {
+    //later we will fetch real data and insert it into the options
+    const dataLeft = this.generateVegetationData(this.rows, this.cols);
+    const dataRight = this.generateVegetationData(this.rows, this.cols);
+
+    this.optionsLeft = this.createHeatmapOptions(dataLeft, 'Set A');
+    this.optionsRight = this.createHeatmapOptions(dataRight, 'Set B');
+  }
+
+
+  private createHeatmapOptions(data: number[][], title: string): EChartsCoreOption {
+    const rows = this.rows;
+    const cols = this.cols;
+
+
+    return {
+      title: {
+        text: title,
+        left: 'center',
+      },
       tooltip: {
         position: 'top',
         formatter: (params: any) => {
           const [x, y, value] = params.value;
-          return `x: ${x}, y: ${y}<br/>Wert: ${value.toFixed(2)}`;
+          return `x: ${x}, y: ${y}<br/>Höhe: ${value.toFixed(2)} m`;
         },
       },
       grid: {
-        height: '80%',
-        top: '10%',
+        height: '75%',
+        top: 40,
       },
       xAxis: {
         type: 'category',
@@ -63,17 +80,19 @@ export class Heatmap implements OnInit, AfterViewInit {
       },
       visualMap: {
         min: 0,
-        max: 30,              // Wertebereich (z.B. 0–30 m Vegetationshöhe)
+        max: 30,
         calculable: true,
         orient: 'vertical',
-        left: 'left',
-        top: 'center',
+        left: 0,
+        top: 'middle',
+        inRange: {
+          color: ['#e5f5e0', '#a6dba0', '#5aae61', '#1b7837', '#00441b'],
+        }
       },
       series: [
         {
-          name: 'Heatmap',
           type: 'heatmap',
-          data1,
+          data,
           emphasis: {
             itemStyle: {
               borderColor: '#333',
@@ -86,25 +105,31 @@ export class Heatmap implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
+    this.connectHeatmaps();
+  }
+
+  private connectHeatmaps() {
     setTimeout(() => {
       const chartElement1 = document.getElementById('chart1');
       const chartElement2 = document.getElementById('chart2');
-      // 1) DOM-Elemente sicherstellen
+      //ensure dom is present
       if (!chartElement1 || !chartElement2) {
         console.error('Chart DOM elements not found');
         return;
       }
 
-      // 2) ECharts-Instanzen holen
+
       const chart1 = getInstanceByDom(chartElement1);
       const chart2 = getInstanceByDom(chartElement2);
 
-      // 3) Instanzen können auch undefined sein → checken
+      //check for null values
       if (!chart1 || !chart2) {
         console.error('ECharts instances not found on given elements');
         return;
       }
-      connect([chart1,chart2]);
+
+      //make interactive connected charts
+      connect([chart1, chart2]);
     });
   }
 
