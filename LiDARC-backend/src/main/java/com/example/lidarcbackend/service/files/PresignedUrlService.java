@@ -16,8 +16,9 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -34,30 +35,17 @@ import java.util.Optional;
 public class PresignedUrlService implements IPresignedUrlService {
 
   private final MinioAsyncClient minioClient;
-
-  //private final FileDao fileDao;
-
   private final MinioProperties minioProperties;
 
+  //private final FileDao fileDao;
   private final UrlRepository urlRepository;
   private final FileRepository fileRepository;
-
-
+  private final RabbitTemplate rabbitTemplate;
   private final UrlMapper urlMapper;
-
   //minimum added time to the current time when checking for expiry
   private final int minimumAddedTime = 20;
-
-
-  @Scheduled(fixedDelayString = "${minio.defaultRefresh:5000}")
-  //default 10 min, always needs to be less than the url validity
-  public void removeExpiredUrls() {
-    // Try to refresh and recover silently on errors so scheduler keeps running
-    urlRepository.findUrlByExpiresAtBefore(Instant.now().plusSeconds(minimumAddedTime)).forEach(url -> {
-      log.info("Removing expired URL for file: {}", url.getFile().getFilename());
-      urlRepository.delete(url);
-    });
-  }
+  @Value("${spring.rabbitmq.template.routing-key:metadata_trigger}")
+  private String routingKey;
 
 
   @PostConstruct
@@ -106,6 +94,7 @@ public class PresignedUrlService implements IPresignedUrlService {
 
       return Optional.of(fileInfoDtoActual);
     } else {
+      //refactor
       return Optional.empty();
     }
   }
@@ -169,16 +158,38 @@ public class PresignedUrlService implements IPresignedUrlService {
   @Override
   public Optional<FileInfoDto> uploadFinished(@NonNull FileInfoDto body) {
     File file = fileRepository.findFileByFilenameAndUploaded(body.getFileName(), false)
-        .orElseThrow(() -> new IllegalArgumentException("File not found or already uploaded: " + body.getFileName()));
+        .orElse(null);
+    if (file == null) {
+      return Optional.empty();
+    }
+    GetPresignedObjectUrlArgs presignedObjectUrlArgs = getPresignedObjectUrlArgs(body.getFileName(), Method.GET);
+    if (presignedObjectUrlArgs == null) {
+      return Optional.empty();
+    }
+    //expiry should be set before fetching url
+    Instant expiresAt = Instant.now().plusSeconds(minioProperties.getDefaultExpiryTime());
+    Optional<FileInfoDto> fileInfoOpt = getUrl(presignedObjectUrlArgs, body.getFileName());
+    if (fileInfoOpt.isEmpty()) {
+      return Optional.empty();
+    }
     //TODO possibly check if the file actually exists in minio or add to contract that the caller has to ensure that
     file.setUploaded(true);
     file.setUploaded_at(Instant.now());
-    FileInfoDto dto = new FileInfoDto(fileRepository.save(file));
+    file = fileRepository.save(file);
+    FileInfoDto dto = new FileInfoDto(file);
+    //remove old urls TODO Bugfix somehow deletion doesn't work
+    //urlRepository.deleteByFileIdAndMethod(file.getId(), Method.PUT);
 
-    //remove old urls
-    urlRepository.deleteByFileIdAndMethod(file.getId(), Method.PUT);
+    dto.setUploaded(true);
+    dto.setPresignedURL(fileInfoOpt.get().getPresignedURL());
+    dto.setUrlExpiresAt(expiresAt);
+    sendFinishMessage(dto.getPresignedURL());
 
     return Optional.of(dto);
+  }
+
+  private void sendFinishMessage(String presignedUploadUrl) {
+    rabbitTemplate.convertAndSend(this.routingKey, presignedUploadUrl);
   }
 
 
