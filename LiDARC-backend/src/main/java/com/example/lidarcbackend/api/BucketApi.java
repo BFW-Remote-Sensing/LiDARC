@@ -5,6 +5,11 @@
  */
 package com.example.lidarcbackend.api;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -83,7 +88,6 @@ public interface BucketApi {
       method = RequestMethod.PUT)
   ResponseEntity<FileInfoDto> uploadFinished(
       @Parameter(in = ParameterIn.DEFAULT, description = "Signalizes that the upload of a file has finished, changes relevant metadata for that file.", required = true, schema = @Schema())
-      @Valid
       @RequestBody FileInfoDto body
   ); // returns
 

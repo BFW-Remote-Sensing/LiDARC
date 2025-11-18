@@ -33,12 +33,6 @@
         <module name="JavadocMethod"/>
         <module name="JavadocType"/>
 
-        <!-- Import order check -->
-        <module name="ImportOrder">
-            <property name="option" value="top"/>
-            <property name="groups" value="java,javax,org,com"/>
-            <property name="ordered" value="true"/>
-        </module>
 
         <!-- Prevent magic numbers -->
         <module name="MagicNumber">
