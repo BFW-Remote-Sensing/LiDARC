@@ -114,7 +114,6 @@ def extract_metadata(file_path: str) -> dict:
         return metadata
 
     except Exception as e:
-        logging.error(f"Metadata extraction failed for {file_path}: {e}")
         return {}
 
 
@@ -142,6 +141,11 @@ def process_req(ch, method, properties, body):
             return
 
         metadata = extract_metadata(local_file)
+
+        if metadata == {}:
+            logging.error(f"Metadata extraction failed for {las_file_url}.")
+            return
+
         logging.debug(f"Metadata extracted: {json.dumps(metadata)}")
 
         ch.basic_publish(
