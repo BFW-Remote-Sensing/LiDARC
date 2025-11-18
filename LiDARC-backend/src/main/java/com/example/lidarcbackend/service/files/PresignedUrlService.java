@@ -1,12 +1,5 @@
 package com.example.lidarcbackend.service.files;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Service;
 import com.example.lidarcbackend.configuration.MinioProperties;
 import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import com.example.lidarcbackend.model.DTO.Mapper.UrlMapper;
@@ -23,6 +16,16 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
 
 
 @Slf4j
@@ -32,16 +35,17 @@ import lombok.extern.slf4j.Slf4j;
 public class PresignedUrlService implements IPresignedUrlService {
 
   private final MinioAsyncClient minioClient;
-
-  //private final FileDao fileDao;
-
   private final MinioProperties minioProperties;
 
+  //private final FileDao fileDao;
   private final UrlRepository urlRepository;
   private final FileRepository fileRepository;
-
-
+  private final RabbitTemplate rabbitTemplate;
   private final UrlMapper urlMapper;
+  //minimum added time to the current time when checking for expiry
+  private final int minimumAddedTime = 20;
+  @Value("${spring.rabbitmq.template.routing-key:metadata_trigger}")
+  private String routingKey;
 
 
   @PostConstruct
@@ -58,10 +62,19 @@ public class PresignedUrlService implements IPresignedUrlService {
 
   @Override
   public Optional<FileInfoDto> fetchFileInfo(@NonNull @NotBlank String fileName) {
+    List<Url> presignedUrls = urlRepository.findByFile_Filename_AndMethod_AndExpiresAtAfter(fileName, Method.GET, Instant.now().plusSeconds(minimumAddedTime));
+    if (!presignedUrls.isEmpty()) {
+      Url url = presignedUrls.getFirst();
+      FileInfoDto fileInfoDto = urlMapper.urlToFileInfoDto(url);
+      return Optional.of(fileInfoDto);
+    }
+
     GetPresignedObjectUrlArgs presignedObjectUrlArgs = getPresignedObjectUrlArgs(fileName, Method.GET);
     if (presignedObjectUrlArgs == null) {
       return Optional.empty();
     }
+    //expiry should be set before fetching url
+    Instant expiresAt = Instant.now().plusSeconds(minioProperties.getDefaultExpiryTime());
     Optional<FileInfoDto> fileInfo = getUrl(presignedObjectUrlArgs, fileName);
 
     if (fileInfo.isPresent()) {
@@ -74,11 +87,14 @@ public class PresignedUrlService implements IPresignedUrlService {
       url.setFile(f.get());
       url.setPresignedURL(fileInfoDtoActual.getPresignedURL());
       url.setMethod(Method.GET);
+      url.setCreatedAt(Instant.now());
+      url.setExpiresAt(expiresAt);
 
       fileInfoDtoActual = urlMapper.urlToFileInfoDto(urlRepository.save(url));
 
       return Optional.of(fileInfoDtoActual);
     } else {
+      //refactor
       return Optional.empty();
     }
   }
@@ -94,53 +110,86 @@ public class PresignedUrlService implements IPresignedUrlService {
       return Optional.empty();
     }
 
-    //save empty file to repo and set uploaded to false
+    Instant expiresAt = Instant.now().plusSeconds(minioProperties.getDefaultExpiryTime());
 
-    File file = new File();
-    file.setFilename(fileName);
-    file.setUploaded(false);
-    file = fileRepository.save(file);
-
-
-    List<Url> presignedUrls = urlRepository.findByFileId_AndMethod_AndExpiresAtAfter(file.getId(), Method.PUT, Instant.now());
-
-    Optional<Url> createdUpload = presignedUrls.stream().findAny();
-    FileInfoDto fileInfo;
-    if (createdUpload.isPresent()) {
-      fileInfo = new FileInfoDto(file);
-      fileInfo.setPresignedURL(createdUpload.get().getPresignedURL());
-    } else {
-      Optional<FileInfoDto> fOpt = getUrl(presignedObjectUrlArgs, fileName);
-      if (fOpt.isPresent()) {
-        Url url = new Url();
-        fileInfo = fOpt.get();
-        url.setFile(file);
-        url.setPresignedURL(fOpt.get().getPresignedURL());
-        url.setMethod(Method.PUT);
-        url.setExpiresAt(Instant.now().plusSeconds(minioProperties.getDefaultExpiryTime())
-        );
-        urlRepository.save(url);
-      } else {
-        return Optional.empty();
+    Optional<File> fileOpt = fileRepository.findFileByFilenameAndUploaded(fileName, false);
+    File file;
+    if (fileOpt.isPresent()) {
+      //file already exists but not yet uploaded
+      //check whether there is a valid upload url
+      List<Url> presignedUrls = urlRepository.findByFile_Filename_AndMethod_AndExpiresAtAfter(fileName, Method.PUT, Instant.now());
+      Optional<Url> createdUpload = presignedUrls.stream().findAny();
+      if (createdUpload.isPresent()) {
+        FileInfoDto fileInfo;
+        fileInfo = new FileInfoDto(fileOpt.get());
+        fileInfo.setPresignedURL(createdUpload.get().getPresignedURL());
+        fileInfo.setUploaded(false);
+        return Optional.of(fileInfo);
       }
+
+      file = fileOpt.get();
+    } else {
+      file = new File();
+      file.setFilename(fileName);
+      file.setUploaded(false);
+      file = fileRepository.save(file);
     }
 
+    Optional<FileInfoDto> fOpt = getUrl(presignedObjectUrlArgs, fileName);
+    if (fOpt.isPresent()) {
+      Url url = new Url();
 
-    return Optional.of(fileInfo);
+      FileInfoDto fileInfo = new FileInfoDto();
+      fileInfo.setFileName(fileName);
+      fileInfo = fOpt.get();
+      fileInfo.setUrlExpiresAt(expiresAt);
+      url.setFile(file);
+      url.setPresignedURL(fOpt.get().getPresignedURL());
+      url.setMethod(Method.PUT);
+      url.setExpiresAt(expiresAt);
+      url.setCreatedAt(Instant.now());
+      urlRepository.save(url);
+      return Optional.of(fileInfo);
+    } else {
+      return Optional.empty();
+    }
   }
 
   @Override
   public Optional<FileInfoDto> uploadFinished(@NonNull FileInfoDto body) {
-    File file = fileRepository.findFileByFilenameAndUploaded(body.getFileName(), false).orElseThrow(() -> new IllegalArgumentException("File not found or already uploaded: " + body.getFileName()));
+    File file = fileRepository.findFileByFilenameAndUploaded(body.getFileName(), false)
+        .orElse(null);
+    if (file == null) {
+      return Optional.empty();
+    }
+    GetPresignedObjectUrlArgs presignedObjectUrlArgs = getPresignedObjectUrlArgs(body.getFileName(), Method.GET);
+    if (presignedObjectUrlArgs == null) {
+      return Optional.empty();
+    }
+    //expiry should be set before fetching url
+    Instant expiresAt = Instant.now().plusSeconds(minioProperties.getDefaultExpiryTime());
+    Optional<FileInfoDto> fileInfoOpt = getUrl(presignedObjectUrlArgs, body.getFileName());
+    if (fileInfoOpt.isEmpty()) {
+      return Optional.empty();
+    }
     //TODO possibly check if the file actually exists in minio or add to contract that the caller has to ensure that
     file.setUploaded(true);
     file.setUploaded_at(Instant.now());
-    FileInfoDto dto = new FileInfoDto(fileRepository.save(file));
+    file = fileRepository.save(file);
+    FileInfoDto dto = new FileInfoDto(file);
+    //remove old urls TODO Bugfix somehow deletion doesn't work
+    //urlRepository.deleteByFileIdAndMethod(file.getId(), Method.PUT);
 
-    //remove old urls
-    urlRepository.deleteByFileId(file.getId());
+    dto.setUploaded(true);
+    dto.setPresignedURL(fileInfoOpt.get().getPresignedURL());
+    dto.setUrlExpiresAt(expiresAt);
+    sendFinishMessage(dto.getPresignedURL());
 
     return Optional.of(dto);
+  }
+
+  private void sendFinishMessage(String presignedUploadUrl) {
+    rabbitTemplate.convertAndSend(this.routingKey, presignedUploadUrl);
   }
 
 

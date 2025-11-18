@@ -1,13 +1,5 @@
 package com.example.lidarcbackend.api;
 
-import java.util.Optional;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
 import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import com.example.lidarcbackend.service.files.IPresignedUrlService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,6 +9,15 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Optional;
 
 @RestController
 @Slf4j
@@ -52,7 +53,7 @@ public class BucketApiController implements BucketApi {
   }
 
   @Override
-  public ResponseEntity<FileInfoDto> fetchURLForUpload(FileInfoDto body) {
+  public ResponseEntity<FileInfoDto> fetchURLForUpload(@Valid FileInfoDto body) {
     String accept = request.getHeader("Accept");
     if (accept != null && accept.contains("application/json")) {
       Optional<FileInfoDto> file = presignedUrlService.fetchUploadUrl(body.getFileName());
@@ -63,11 +64,14 @@ public class BucketApiController implements BucketApi {
   }
 
   @Override
-  public ResponseEntity<FileInfoDto> uploadFinished(@Valid FileInfoDto body) {
+  public ResponseEntity<FileInfoDto> uploadFinished(
+      @Parameter(in = ParameterIn.DEFAULT, description = "Signalizes that the upload of a file has finished, changes relevant metadata for that file.", required = true, schema = @Schema())
+      @RequestBody FileInfoDto body
+  ) {
     String accept = request.getHeader("Accept");
     if (accept != null && accept.contains("application/json")) {
       Optional<FileInfoDto> file = presignedUrlService.uploadFinished(body);
-      return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.CONFLICT));
+      return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
     return new ResponseEntity<FileInfoDto>(HttpStatus.NOT_IMPLEMENTED);
