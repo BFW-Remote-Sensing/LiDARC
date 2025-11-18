@@ -106,7 +106,7 @@ services:
     image: preprocess-lidarc-worker
     build:
       context: ./LiDARC-worker
-      dockerfile: LiDARC-worker/Dockerfile-preprocess-worker
+      dockerfile: Dockerfile-preprocess-worker
     container_name: preprocess-worker
     depends_on:
       minio:
