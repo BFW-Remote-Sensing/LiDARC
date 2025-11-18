@@ -58,6 +58,20 @@
       "durable": true,
       "auto_delete": false,
       "arguments": {}
+    },
+    {
+      "name": "worker_metadata_job",
+      "vhost": "/worker",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "worker_metadata_result",
+      "vhost": "/worker",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
     }
   ],
   "exchanges": [
@@ -74,6 +88,24 @@
       "name": "worker.job",
       "vhost": "/worker",
       "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "worker-job",
+      "vhost": "/worker",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "worker-results",
+      "vhost": "/worker",
+      "type": "topic",
       "durable": true,
       "auto_delete": false,
       "internal": false,
@@ -111,6 +143,22 @@
       "destination": "metadata.job",
       "destination_type": "queue",
       "routing_key": "job.comparison.create",
+      "arguments": {}
+    },
+    {
+      "source": "worker-job",
+      "vhost": "/worker",
+      "destination": "worker_metadata_job",
+      "destination_type": "queue",
+      "routing_key": "worker.metadata.job.start",
+      "arguments": {}
+    },
+    {
+      "source": "worker-results",
+      "vhost": "/worker",
+      "destination": "worker_metadata_result",
+      "destination_type": "queue",
+      "routing_key": "worker.metadata.result",
       "arguments": {}
     }
   ],
