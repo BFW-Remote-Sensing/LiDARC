@@ -2,10 +2,12 @@ import json
 import logging
 import os
 import laspy
+import argparse
+import signal
+import sys
 from pyproj import CRS
 import time
 import re
-from urllib.parse import urlparse
 
 import pika
 import requests
@@ -13,7 +15,35 @@ from requests.adapters import HTTPAdapter, Retry
 from requests.exceptions import HTTPError
 import util.file_handler as file_handler
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
+def handle_sigterm(signum, frame):
+    logging.info("SIGTERM received")
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, handle_sigterm)
+
+def connect_rabbitmq():
+    logging.info(f"Connecting to RabbitMQ...")
+    while True:
+        try:
+            user = os.environ.get("RABBITMQ_USER", "admin")
+            password = os.environ.get("RABBITMQ_PSWD", "admin")
+            host = os.environ.get("RABBITMQ_HOST", "rabbitmq")
+            port = os.environ.get("RABBITMQ_PORT", "5672")
+            vhost = os.environ.get("RABBITMQ_VHOST", "/worker")
+
+            credentials = pika.PlainCredentials(username=user, password=password)
+            connection = pika.BlockingConnection(
+                pika.ConnectionParameters(
+                    host=host,
+                    port=port,
+                    virtual_host=vhost,
+                    credentials=credentials
+                )
+            )
+            return connection
+        except Exception as e:
+            logging.error("RabbitMQ connection failed, Retrying in 5s... Error: {}".format(e))
+            time.sleep(5)
 
 
 def parse_coordinate_system(header) -> str:
@@ -80,14 +110,13 @@ def extract_metadata(file_path: str) -> dict:
 
 def process_req(ch, method, properties, body):
     start_time = time.time()
-
     worker_results_exchange = "worker-results"
     worker_key_metadata = "worker.result.metadata"
 
     try:
         req = json.loads(body)
         las_file_url = req["url"]
-        logging.info(f"Processing file from URL: {las_file_url}")
+        logging.info(f"Processing file from URL: {las_file_url}.")
 
         local_file = ""
         try:
@@ -100,7 +129,7 @@ def process_req(ch, method, properties, body):
             return
 
         metadata = extract_metadata(local_file)
-        logging.info(f"Metadata extracted: {json.dumps(metadata)}")
+        logging.debug(f"Metadata extracted: {json.dumps(metadata)}")
 
         ch.basic_publish(
             exchange=worker_results_exchange,
@@ -108,44 +137,39 @@ def process_req(ch, method, properties, body):
             body = json.dumps(metadata),
             properties = pika.BasicProperties(content_type="application/json")
         )
-        logging.info(f"Sent metadata to exchange: {worker_results_exchange}")
+        logging.debug(f"Sent metadata to exchange: {worker_results_exchange}")
 
 
         os.remove(local_file)
-        logging.info(f"Removed local file: {local_file}")
+        logging.debug(f"Removed local file: {local_file}")
     except Exception as e:
         logging.error(f"Failed to process message: {e}")
     finally:
         processing_time = int((time.time() - start_time) * 1000)
-        logging.info(f"Worker took {processing_time} ms to process the message")
+        logging.info(f"Worker took {processing_time} ms to process the message.")
 
 
 def main():
     queue_name = "metadata_trigger"
-    worker_results_exchange = "worker-results"
-    logging.info(f"Connecting to RabbitMQ...")
-    while True:
-        try:
-            connection = pika.BlockingConnection(
-                pika.ConnectionParameters(
-                    host="rabbitmq",
-                    port=5672,
-                    virtual_host="/",
-                    credentials=pika.PlainCredentials(username='admin', password='admin'),
-                )
-            )
-            channel = connection.channel()
-            channel.queue_declare(queue=queue_name, durable=True)
-            channel.exchange_declare(exchange=worker_results_exchange, exchange_type="direct", durable=True)
-            logging.info(f"Connected to RabbitMQ Listening on queue '{queue_name}'")
-            break
-        except Exception as e:
-            logging.warning(f"RabbitMQ Connection Error: {e}. Retrying in 5 seconds...")
-            time.sleep(5)
 
+    connection = connect_rabbitmq()
+    channel = connection.channel()
+
+    channel.queue_declare(queue=queue_name, durable=True)
     channel.basic_consume(queue=queue_name, on_message_callback=process_req, auto_ack=True)
-    channel.start_consuming()
+    logging.info(f"Connected to RabbitMQ Listening on queue '{queue_name}'")
+    try:
+        channel.start_consuming()
+    except KeyboardInterrupt:
+        logging.warning("Worker interrupted")
+    except Exception as e:
+        logging.error("Worker error: {}".format(e))
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-v", "--verbose", default=False, action="store_true", help="Enable debug logging")
+    args = parser.parse_args()
+
+    logging.basicConfig(level=(logging.DEBUG if args.verbose else logging.INFO))
     main()
