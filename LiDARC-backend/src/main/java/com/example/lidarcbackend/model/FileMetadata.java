@@ -1,6 +1,7 @@
 package com.example.lidarcbackend.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,11 +18,15 @@ public class FileMetadata {
     private Long id;
 
     @Column(unique = true, nullable = false)
+    @NotBlank(message = "Filename is required")
     private String filename;
 
+    @Min(value = 1900, message = "capture_year must be >= 1900")
+    @Max(value = 9999, message = "capture_year must be <= 9999")
     @Column(name = "capture_year")
     private Short captureYear;
 
+    @NotNull(message = "File size must not be null")
     @Column(name = "size_bytes")
     private Long sizeBytes;
 
@@ -39,15 +44,19 @@ public class FileMetadata {
     @Column(name = "max_z")
     private Double maxZ;
 
+    @Size(max = 255)
     @Column(name = "system_identifier")
     private String systemIdentifier;
 
-    @Column(name = "coordinate_system")
+    @NotNull(message = "Coordinate system is required")
+    @Column(name = "coordinate_system", nullable = false)
     private Integer coordinateSystem;
 
+    @Size(max = 32)
     @Column(name = "las_version")
     private String lasVersion;
 
+    @Size(max = 128)
     @Column(name = "capture_software")
     private String captureSoftware;
 

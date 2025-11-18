@@ -4,6 +4,8 @@ import com.example.lidarcbackend.model.CoordinateSystem;
 import com.example.lidarcbackend.model.FileMetadata;
 import com.example.lidarcbackend.repository.CoordinateSystemRepository;
 import com.example.lidarcbackend.repository.FileMetadataRepository;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.checkerframework.checker.units.qual.C;
 import org.springframework.stereotype.Service;
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @Slf4j
@@ -18,10 +21,12 @@ public class MetadataService implements IMetadataService {
 
     private final FileMetadataRepository fileRepository;
     private CoordinateSystemRepository coordinateSystemRepository;
+    private final Validator validator;
 
-    public MetadataService(FileMetadataRepository fileRepository, CoordinateSystemRepository coordinateSystemRepository) {
+    public MetadataService(FileMetadataRepository fileRepository, CoordinateSystemRepository coordinateSystemRepository, Validator validator) {
         this.fileRepository = fileRepository;
         this.coordinateSystemRepository = coordinateSystemRepository;
+        this.validator = validator;
     }
 
 
@@ -72,7 +77,6 @@ public class MetadataService implements IMetadataService {
         if (cs != null) {
             fileMetadata.setCoordinateSystem(cs.getId().intValue());
         } else {
-            //TODO should not happen (handle properly)
             fileMetadata.setCoordinateSystem(null);
         }
 
@@ -80,8 +84,22 @@ public class MetadataService implements IMetadataService {
         fileMetadata.setUploaded(true);
         fileMetadata.setUploadedAt(LocalDateTime.now());
 
-        //TODO handle constraint violations
+        Set<ConstraintViolation<FileMetadata>> violations = validator.validate(fileMetadata);
+        if(!violations.isEmpty()) {
+            for (ConstraintViolation<FileMetadata> v : violations) {
+                log.error("Validation error on {}: {}", v.getPropertyPath(), v.getMessage());
+            }
+            return;
+        }
+
+        if (fileRepository.findByFilename(fileMetadata.getFilename()).isPresent()) {
+            log.warn("Duplicate filename detected, skipping save: {}", fileMetadata.getFilename());
+            return;
+        }
+
+
         fileRepository.save(fileMetadata);
+        log.info("Saved FileMetadata for file: {}", fileMetadata.getFilename());
     }
 
     private Double castToDouble(Object obj) {
