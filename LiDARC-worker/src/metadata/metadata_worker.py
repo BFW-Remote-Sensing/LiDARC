@@ -18,6 +18,11 @@ from schemas.metadata import schema as metadata_schema
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 
+
+TRIGGER_QUEUE_NAME = "worker_metadata_job"
+WORKER_RESULTS_EXCHANGE = "worker-results"
+WORKER_RESULTS_KEY_METADATA = "worker.metadata.result"
+
 def handle_sigterm(signum, frame):
     logging.info("SIGTERM received")
     sys.exit(0)
@@ -51,6 +56,7 @@ def connect_rabbitmq():
 def validate_request(json_req):
     try:
         validate(instance=json_req, schema=metadata_schema)
+        return True
     except ValidationError as e:
         logging.warning(f"The metadata job request is invalid")
         return False
@@ -119,8 +125,6 @@ def extract_metadata(file_path: str) -> dict:
 
 def process_req(ch, method, properties, body):
     start_time = time.time()
-    worker_results_exchange = "worker-results"
-    worker_key_metadata = "worker.result.metadata"
 
     try:
         req = json.loads(body)
@@ -149,12 +153,12 @@ def process_req(ch, method, properties, body):
         logging.debug(f"Metadata extracted: {json.dumps(metadata)}")
 
         ch.basic_publish(
-            exchange=worker_results_exchange,
-            routing_key=worker_key_metadata,
+            exchange=WORKER_RESULTS_EXCHANGE,
+            routing_key=WORKER_RESULTS_KEY_METADATA,
             body = json.dumps(metadata),
             properties = pika.BasicProperties(content_type="application/json")
         )
-        logging.debug(f"Sent metadata to exchange: {worker_results_exchange}")
+        logging.debug(f"Sent metadata to exchange: {WORKER_RESULTS_EXCHANGE}")
 
 
         os.remove(local_file)
@@ -167,14 +171,11 @@ def process_req(ch, method, properties, body):
 
 
 def main():
-    queue_name = "metadata_trigger"
-
     connection = connect_rabbitmq()
     channel = connection.channel()
 
-    channel.queue_declare(queue=queue_name, durable=True)
-    channel.basic_consume(queue=queue_name, on_message_callback=process_req, auto_ack=True)
-    logging.info(f"Connected to RabbitMQ Listening on queue '{queue_name}'")
+    channel.basic_consume(queue=TRIGGER_QUEUE_NAME, on_message_callback=process_req, auto_ack=True)
+    logging.info(f"Connected to RabbitMQ Listening on queue '{TRIGGER_QUEUE_NAME}'")
     try:
         channel.start_consuming()
     except KeyboardInterrupt:

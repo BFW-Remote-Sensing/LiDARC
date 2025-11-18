@@ -38,9 +38,6 @@ CREATE TABLE IF NOT EXISTS coordinate_system (
     code VARCHAR(50)
 );
 
-INSERT INTO coordinate_system (id, coordinate_system, coordinate_system_prefix)
-VALUES (31256, '31256', 'EPSG')
-ON CONFLICT (id) DO NOTHING;
 
 
 ALTER TABLE files 

@@ -80,6 +80,7 @@ public class MetadataService implements IMetadataService {
         fileMetadata.setUploaded(true);
         fileMetadata.setUploadedAt(LocalDateTime.now());
 
+        //TODO handle constraint violations
         fileRepository.save(fileMetadata);
     }
 

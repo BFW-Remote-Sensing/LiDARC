@@ -2,7 +2,7 @@ package com.example.lidarcbackend.configuration;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
@@ -18,8 +18,8 @@ public class RabbitConfig {
     public static final String WORKER_RESULTS_EXCHANGE = "worker-results";
 
     // queue for metadata worker results
-    public static final String METADATA_WORKER_RESULTS_QUEUE = "worker_result_metadata";
-    public static final String METADATA_WORKER_RESULTS_KEY = "worker.result.metadata";
+    public static final String METADATA_WORKER_RESULTS_QUEUE = "worker_metadata_result";
+    public static final String METADATA_WORKER_RESULTS_KEY = "worker.metadata.result";
 
     @Bean
     public RabbitAdmin rabbitAdmin(ConnectionFactory connectionFactory) {
@@ -39,8 +39,8 @@ public class RabbitConfig {
     }
 
     @Bean
-    public DirectExchange workerResultsExchange() {
-        return new DirectExchange(WORKER_RESULTS_EXCHANGE);
+    public TopicExchange workerResultsExchange() {
+        return new TopicExchange(WORKER_RESULTS_EXCHANGE);
     }
 
     @Bean
@@ -49,7 +49,7 @@ public class RabbitConfig {
     }
 
     @Bean
-    public Binding metadataBinding(@Qualifier("workerResultsExchange") DirectExchange workerResultsExchange,
+    public Binding metadataBinding(@Qualifier("workerResultsExchange") TopicExchange workerResultsExchange,
                                    @Qualifier("metadataWorkerResultsQueue") Queue metadataWorkerResultsQueue) {
         return BindingBuilder.bind(metadataWorkerResultsQueue)
                 .to(workerResultsExchange)
