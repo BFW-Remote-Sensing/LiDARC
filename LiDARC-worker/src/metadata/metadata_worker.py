@@ -14,6 +14,9 @@ import requests
 from requests.adapters import HTTPAdapter, Retry
 from requests.exceptions import HTTPError
 import util.file_handler as file_handler
+from schemas.metadata import schema as metadata_schema
+from jsonschema.exceptions import ValidationError
+from jsonschema.validators import validate
 
 def handle_sigterm(signum, frame):
     logging.info("SIGTERM received")
@@ -44,6 +47,13 @@ def connect_rabbitmq():
         except Exception as e:
             logging.error("RabbitMQ connection failed, Retrying in 5s... Error: {}".format(e))
             time.sleep(5)
+
+def validate_request(json_req):
+    try:
+        validate(instance=json_req, schema=metadata_schema)
+    except ValidationError as e:
+        logging.warning(f"The metadata job request is invalid")
+        return False
 
 
 def parse_coordinate_system(header) -> str:
@@ -115,6 +125,9 @@ def process_req(ch, method, properties, body):
 
     try:
         req = json.loads(body)
+        if not validate_request(req):
+            logging.warning("The metadata job is cancelled because of a Validation Error")
+            return
         las_file_url = req["url"]
         logging.info(f"Processing file from URL: {las_file_url}.")
 
