@@ -13,7 +13,7 @@ BUCKET_NAME = os.environ.get("BUCKET_NAME", "basebucket")
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:9000/")
 def minio_client():
     #TODO: Read env
-    endpoint_url = os.environ.get("MINIO_ENDPOINT_URL", "minio:9000")
+    endpoint_url = os.environ.get("MINIO_ENDPOINT", "minio:9000")
     access_key = os.environ.get("MINIO_ACCESS_KEY", "admin")
     secret_key = os.environ.get("MINIO_SECRET_KEY", "aseWS25LiDARC")
     secure = os.environ.get("MINIO_SECURE", False)

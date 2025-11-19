@@ -11,6 +11,36 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")
 
 sys.path.append(project_root)
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--e2e",
+        action="store_true",
+        default=False,
+        help="run e2e tests",
+    )
+    parser.addoption(
+        "--external-only",
+        action="store_true",
+        default=False,
+        help="run only tests that are marked with @pytest.mark.allow_external",
+    )
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "e2e: slow/external integration tests")
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--external-only"):
+        skip_it = pytest.mark.skip(reason="requires keyword allow_external")
+        for item in items:
+            if "allow_external" not in item.keywords:
+                item.add_marker(skip_it)
+        return
+    if config.getoption("--e2e"):
+        return
+    skip_it = pytest.mark.skip(reason="requires --e2e")
+    for item in items:
+        if "e2e" in item.keywords:
+            item.add_marker(skip_it)
 
 @pytest.fixture(scope="session")
 def load_fixture():

@@ -26,10 +26,10 @@ def connect_rabbitmq():
     while True:
         try:
             user = os.environ.get("RABBITMQ_USER", "admin")
-            password = os.environ.get("RABBITMQ_PSWD", "admin")
+            password = os.environ.get("RABBITMQ_PASSWORD", "admin")
             host = os.environ.get("RABBITMQ_HOST", "rabbitmq")
-            port = os.environ.get("RABBITMQ_PORT", "5672")
-            vhost = os.environ.get("RABBITMQ_VHOST", "/worker")
+            port = int(os.environ.get("RABBITMQ_PORT", "5672"))
+            vhost = os.environ.get("RABBITMQ_VHOST", "/")
 
             credentials = pika.PlainCredentials(username=user, password=password)
             connection = pika.BlockingConnection(pika.ConnectionParameters(host=host, port=port, virtual_host=vhost, credentials=credentials))
@@ -84,6 +84,8 @@ def process_points(points, precomp_grid):
 
     ix = ((x - precomp_grid["x_min"]) / precomp_grid["grid_width"]).astype(np.int32)
     iy = ((y - precomp_grid["y_min"]) / precomp_grid["grid_height"]).astype(np.int32)
+    valid = (ix >= 0) & (iy >= 0) & (ix < precomp_grid["grid_shape"][1]) & (iy < precomp_grid["grid_shape"][0])
+    ix, iy, z = ix[valid], iy[valid], z[valid]
 
     np.add.at(precomp_grid["count"], (iy, ix), 1)
     np.minimum.at(precomp_grid["z_min"], (iy, ix), z)
@@ -173,18 +175,10 @@ def process_req(ch, method, properties, body):
 
 
 def main():
-    # BE -> newJobPreProc -> RabbitMQ -QUEUE> preprocess_worker.py
-    # BE -> WORKER_EXCHANGE -> preprocess_trigger -> preprocess_worker.py
-    #
-    # preprocess_worker.py -> WORKER_EXCHANGE , routing_key="worker.preprocess" -> BE
-    #
-    # { "fileName": "graz2021_block6_060_065_elv.laz", "grid": [{ "gridId": 0, "gridFromId": 0, "gridToId": 100, "maxHeight": 10, "maxX": 100, "maxY": 20}]}
-    # 400m x 400m = 160 000m^2 -> (worst Case grid = 1m^2) = 160 000 grid cells
-    #
-    # (worst case, region mit 7000 files) -> 1 120 000 000
     connection = connect_rabbitmq()
     channel = connection.channel()
     queue_name = os.environ.get("QUEUE_NAME", "preprocessing.job")
+    channel.queue_declare(queue=queue_name, durable=True) #TODO: Think if this is best practice or not
     def callback(ch, method, properties, body):
         process_req(ch, method, properties, body)
 
