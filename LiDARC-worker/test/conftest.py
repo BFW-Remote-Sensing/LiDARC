@@ -18,7 +18,7 @@ def load_fixture():
     Provides a function to load a file from the fixture folder.
     """
     def _load(path):
-        p = files("tests.fixtures").joinpath(path)
+        p = files("test.fixtures").joinpath(path)
         return p.read_text(encoding="utf-8")
     return _load
 

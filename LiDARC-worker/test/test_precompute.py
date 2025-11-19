@@ -3,39 +3,36 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 import pytest_check as check
-from preprocess_worker import process_req, calculate_grid, mk_error_msg
+from preprocess.preprocess_worker import process_req, calculate_grid, mk_error_msg
 import json
 import os
 
-def test_process_req_accumulates_points_correctly_in_grid(small_las_file, tmp_path):
+def test_process_req_accumulates_points_correctly_in_grid(small_las_file, tmp_path, load_json):
     os.chdir(tmp_path)
 
     # Resulting grid is 1m per cell and max points are 10m -> 100cells
-    grid_def = {
-        "x_min": 0.0,
-        "x_max": 10.0,
-        "y_min": 0.0,
-        "y_max": 10.0,
-        "x": 1.0,
-        "y": 1.0,
-    }
+    request = load_json("valid_precompute_job_small_las_file.json")
 
-    request = {
-        "url": "http://example.com/test.las",
-        "grid": grid_def,
-        "job_id": "12345"
-    }
+    captured_upload = {}
 
-    with patch("preprocess_worker.file_handler.download_file", return_value=small_las_file), \
-        patch("preprocess_worker.file_handler.upload_file_by_type"), \
-        patch("preprocess_worker.write_result_to_minio"):
+    def fake_upload_file_by_type(filename, df):
+        captured_upload["filename"] = filename
+        captured_upload["df"] = df
+        return "http://minio.local/bucket/preprocess.csv"
+
+    with patch("preprocess.preprocess_worker.file_handler.download_file", return_value=small_las_file), \
+            patch("preprocess.preprocess_worker.file_handler.upload_file_by_type", side_effect=fake_upload_file_by_type), \
+            patch("preprocess.preprocess_worker.publish_response") as mock_publish:
 
         process_req(None, None, None, json.dumps(request))
 
-    output_csv = tmp_path / "pre-process-job-12345-output.csv"
-    assert (output_csv.exists())
+    mock_publish.assert_called_once()
+    published_response = mock_publish.call_args[0][1]
+    check.equal(published_response["status"], "success", "Response status was not success")
+    check.equal(published_response["jobId"], "12345", "JobId mismatch")
 
-    df = pd.read_csv(output_csv, index_col=0)
+    check.equal(captured_upload["filename"], "pre-process-job-12345-output.csv", "Filename mismatch")
+    df = captured_upload["df"]
     #Get the grid border which is x0 and y0
     points = {
         (row['x0'], row['y0']): row['count'] for _, row in df.iterrows()
@@ -92,7 +89,7 @@ def test_precompute_generates_grid_with_all_points(generated_las_file, tmp_path)
         "job_id": "12345"
     }
 
-    with patch("preprocess_worker.file_handler.download_file", return_value=generated_las_file[0]), \
+    with patch("preprocess.preprocess_worker.file_handler.download_file", return_value=generated_las_file[0]), \
             patch("preprocess_worker.file_handler.upload_file_by_type"), \
             patch("preprocess_worker.write_result_to_minio"):
 
@@ -101,3 +98,15 @@ def test_precompute_generates_grid_with_all_points(generated_las_file, tmp_path)
     output_csv = tmp_path / "pre-process-job-12345-output.csv"
     df = pd.read_csv(output_csv, index_col=0)
     assert df['count'].sum() == num_points, f"Number of points should be {num_points}"
+
+def test_invalid_job_msg_returns_error_msg(load_json):
+    invalid_job_msg = load_json("invalid_precompute_job.json")
+    job_id = invalid_job_msg["jobId"]
+    with patch("preprocess.preprocess_worker.publish_response") as mock_publish:
+        process_req(None, None, None, json.dumps(invalid_job_msg))
+        assert mock_publish.call_count == 1
+
+        expected_msg = mk_error_msg(
+            job_id, "Precompute job is cancelled because job request is invalid") #TODO: This expected message might change later which could lead to failed test
+
+        mock_publish.assert_called_once_with(None, expected_msg)

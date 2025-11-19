@@ -14,7 +14,6 @@ from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 from schemas.precompute import schema as precompute_schema
 import util.file_handler as file_handler
-
 from requests import HTTPError
 
 def handle_sigterm(signum, frame):
@@ -41,10 +40,10 @@ def connect_rabbitmq():
 
 
 def calculate_grid(grid: dict):
-    x_min = grid["x_min"]
-    x_max = grid["x_max"]
-    y_min = grid["y_min"]
-    y_max = grid["y_max"]
+    x_min = grid["xMin"]
+    x_max = grid["xMax"]
+    y_min = grid["yMin"]
+    y_max = grid["yMax"]
 
     grid_width = grid["x"]
     grid_height = grid["y"]
@@ -73,8 +72,9 @@ def validate_request(json_req):
     try:
         validate(instance=json_req, schema=precompute_schema)
     except ValidationError as e:
-        logging.warning(f"The precompute job request is invalid")
-        return False
+        logging.warning(f"The precompute job request is invalid, ValidationError error: {e}")
+        return False #TODO: Might be an exception here as well
+    return True
 
 def process_points(points, precomp_grid):
     logging.debug("Processing points: {}".format(points))
@@ -103,6 +103,10 @@ def publish_response(ch, response_dict):
 def process_req(ch, method, properties, body):
     start_time = time.time()
     request = json.loads(body)
+    if not request["jobId"]:
+        logging.warning("The precompute job is cancelled because there is no job id")
+        publish_response(ch, mk_error_msg(job_id="-42", error_msg="Precompute job is cancelled because job has no job id"))
+
     job_id = request["jobId"]
     if not validate_request(request):
         logging.warning("The precompute job is cancelled because of a Validation Error")
@@ -148,7 +152,6 @@ def process_req(ch, method, properties, body):
         "z_max": precomp_grid["z_max"][rows, cols],
         "z_min": precomp_grid["z_min"][rows, cols]
     })
-    job_id = request["job_id"]
     df.to_csv(f"pre-process-job-{job_id}-output.csv")
     uploaded_url = file_handler.upload_file_by_type(f"pre-process-job-{job_id}-output.csv", df)
     logging.info(f"Uploaded precompute file to: {uploaded_url}")
@@ -157,13 +160,13 @@ def process_req(ch, method, properties, body):
     logging.info("Worker took {} ms to process the request".format(processing_time))
 
     response = {
-        "job_id": job_id,
+        "jobId": job_id,
         "status": "success",
-        "result_url": uploaded_url,
+        "resultUrl": uploaded_url,
         "summary": {
-            "n_cells": int(precomp_grid["grid_shape"][0] * precomp_grid["grid_shape"][1]),
-            "max_z": float(df["z_max"].max()),
-            "min_z": float(df["z_min"].min())
+            "nCells": int(precomp_grid["grid_shape"][0] * precomp_grid["grid_shape"][1]),
+            "maxZ": float(df["z_max"].max()),
+            "minZ": float(df["z_min"].min())
         }
     }
     publish_response(ch, response)
