@@ -29,7 +29,7 @@ def connect_rabbitmq():
             password = os.environ.get("RABBITMQ_PASSWORD", "admin")
             host = os.environ.get("RABBITMQ_HOST", "rabbitmq")
             port = int(os.environ.get("RABBITMQ_PORT", "5672"))
-            vhost = os.environ.get("RABBITMQ_VHOST", "/")
+            vhost = os.environ.get("RABBITMQ_VHOST", "/worker")
 
             credentials = pika.PlainCredentials(username=user, password=password)
             connection = pika.BlockingConnection(pika.ConnectionParameters(host=host, port=port, virtual_host=vhost, credentials=credentials))
@@ -56,6 +56,8 @@ def calculate_grid(grid: dict):
     count = np.zeros(grid_shape, dtype=np.uint32)
     z_min = np.full(grid_shape, np.inf,  dtype=np.float32)
     z_max = np.full(grid_shape, -np.inf, dtype=np.float32)
+    veg_height_min = np.full(grid_shape, np.inf, dtype=np.float32)
+    veg_height_max = np.full(grid_shape, -np.inf, dtype=np.float32)
 
     return {
         "grid_shape": grid_shape,
@@ -63,9 +65,11 @@ def calculate_grid(grid: dict):
         "grid_height": grid_height,
         "z_max": z_max,
         "z_min": z_min,
+        "veg_height_min": veg_height_min,
+        "veg_height_max": veg_height_max,
         "count": count,
         "x_min": x_min,
-        "y_min": y_min,
+        "y_min": y_min
     }
 
 def validate_request(json_req):
@@ -81,7 +85,7 @@ def process_points(points, precomp_grid):
     x = points.x
     y = points.y
     z = np.array(points.z)
-
+    veg_height = points[precomp_grid["veg_height_key"]]
     ix = ((x - precomp_grid["x_min"]) / precomp_grid["grid_width"]).astype(np.int32)
     iy = ((y - precomp_grid["y_min"]) / precomp_grid["grid_height"]).astype(np.int32)
     valid = (ix >= 0) & (iy >= 0) & (ix < precomp_grid["grid_shape"][1]) & (iy < precomp_grid["grid_shape"][0])
@@ -90,6 +94,8 @@ def process_points(points, precomp_grid):
     np.add.at(precomp_grid["count"], (iy, ix), 1)
     np.minimum.at(precomp_grid["z_min"], (iy, ix), z)
     np.maximum.at(precomp_grid["z_max"], (iy, ix), z)
+    np.minimum.at(precomp_grid["veg_height_min"], (iy, ix), veg_height)
+    np.maximum.at(precomp_grid["veg_height_max"], (iy, ix), veg_height)
 
 def mk_error_msg(job_id: str, error_msg: str):
     return {"jobId": job_id, "status": "error", "msg": error_msg}
@@ -132,8 +138,11 @@ def process_req(ch, method, properties, body):
         return
 
     precomp_grid = calculate_grid(grid)
-
+    precomp_grid["veg_height_key"] = "gps_time"
     with laspy.open(downloaded_file_fn) as f:
+        if "ndsm" in  f.header.point_format.extra_dimension_names:
+            logging.info("File to process is using ndsm for vegetational height of trees")
+            precomp_grid["veg_height_key"] = "ndsm"
         logging.info("Processing point cloud from file: {}".format(las_file_url))
         for points in f.chunk_iterator(1_000_000):
             process_points(points, precomp_grid)
@@ -152,7 +161,9 @@ def process_req(ch, method, properties, body):
         "y1": y_min + (rows + 1) * grid_height,
         "count": precomp_grid["count"][rows, cols],
         "z_max": precomp_grid["z_max"][rows, cols],
-        "z_min": precomp_grid["z_min"][rows, cols]
+        "z_min": precomp_grid["z_min"][rows, cols],
+        "veg_height_max": precomp_grid["veg_height_max"][rows, cols],
+        "veg_height_min": precomp_grid["veg_height_min"][rows, cols]
     })
     df.to_csv(f"pre-process-job-{job_id}-output.csv")
     uploaded_url = file_handler.upload_file_by_type(f"pre-process-job-{job_id}-output.csv", df)
@@ -168,7 +179,9 @@ def process_req(ch, method, properties, body):
         "summary": {
             "nCells": int(precomp_grid["grid_shape"][0] * precomp_grid["grid_shape"][1]),
             "maxZ": float(df["z_max"].max()),
-            "minZ": float(df["z_min"].min())
+            "minZ": float(df["z_min"].min()),
+            "maxVegHeight": float(df["veg_height_max"].max()),
+            "minVegHeight": float(df["veg_height_min"].min())
         }
     }
     publish_response(ch, response)
