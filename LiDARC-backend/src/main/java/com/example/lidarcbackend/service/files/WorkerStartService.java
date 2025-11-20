@@ -2,7 +2,6 @@ package com.example.lidarcbackend.service.files;
 
 import com.example.lidarcbackend.configuration.RabbitProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.boot.configurationprocessor.json.JSONArray;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -18,7 +17,7 @@ public class WorkerStartService {
     }
 
 
-    public void startMetadataJob(JSONArray payload) {
+    public void startMetadataJob(String payload) {
         rabbitTemplate.convertAndSend(
                 props.getJobExchange(),                       // → worker.job
                 props.getRouting().getMetadataStart(),     // → worker.metadata.job.start
@@ -26,7 +25,7 @@ public class WorkerStartService {
         );
     }
 
-    public void startPreprocessingJob(JSONArray payload) {
+    public void startPreprocessingJob(String payload) {
         rabbitTemplate.convertAndSend(
                 props.getJobExchange(),                       // immer worker.job
                 props.getRouting().getPreprocessingStart(),
@@ -34,7 +33,7 @@ public class WorkerStartService {
         );
     }
 
-    public void startComparisonJob(JSONArray payload) {
+    public void startComparisonJob(String payload) {
         rabbitTemplate.convertAndSend(
                 props.getJobExchange(),
                 props.getRouting().getComparisonStart(),

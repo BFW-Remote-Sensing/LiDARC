@@ -102,7 +102,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - RABBITMQ_HOST = rabbitmq
+      - RABBITMQ_HOST=rabbitmq
     networks:
       - ase-network
   preprocess-worker:
