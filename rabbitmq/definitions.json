@@ -29,50 +29,19 @@
       "write": ".*",
       "read": ".*"
     }
-  ],
-  "queues": [
+  ],"exchanges": [
     {
-      "name": "test_queue",
+      "name": "worker.job",
       "vhost": "/",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {}
-    },
-    {
-      "name": "preprocessing.job",
-      "vhost": "/worker",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {}
-    },
-    {
-      "name": "comparison.job",
-      "vhost": "/worker",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {}
-    },
-    {
-      "name": "metadata.job",
-      "vhost": "/worker",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {}
-    }
-  ],
-  "exchanges": [
-    {
-      "name": "test_exchange",
-      "vhost": "/",
-      "type": "topic",
+      "type": "direct",
       "durable": true,
       "auto_delete": false,
       "internal": false,
       "arguments": {}
     },
     {
-      "name": "worker.job",
-      "vhost": "/worker",
+      "name": "worker.results",
+      "vhost": "/",
       "type": "direct",
       "durable": true,
       "auto_delete": false,
@@ -80,37 +49,100 @@
       "arguments": {}
     }
   ],
+  "queues": [
+    {
+      "name": "worker.metadata.job",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "worker.preprocessing.job",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "worker.comparison.job",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+
+    {
+      "name": "worker.metadata.result",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "worker.preprocessing.result",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "worker.comparison.result",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
   "bindings": [
     {
-      "source": "test_exchange",
+      "source": "worker.job",
       "vhost": "/",
-      "destination": "test_queue",
+      "destination": "worker.metadata.job",
       "destination_type": "queue",
-      "routing_key": "routing.*",
+      "routing_key": "worker.metadata.job.start",
       "arguments": {}
     },
     {
       "source": "worker.job",
-      "vhost": "/worker",
-      "destination": "preprocessing.job",
+      "vhost": "/",
+      "destination": "worker.preprocessing.job",
       "destination_type": "queue",
-      "routing_key": "job.preprocessor.create",
+      "routing_key": "worker.preprocessing.job.start",
       "arguments": {}
     },
     {
       "source": "worker.job",
-      "vhost": "/worker",
-      "destination": "comparison.job",
+      "vhost": "/",
+      "destination": "worker.comparison.job",
       "destination_type": "queue",
-      "routing_key": "job.comparison.create",
+      "routing_key": "worker.comparison.job.start",
+      "arguments": {}
+    },
+
+
+    {
+      "source": "worker.results",
+      "vhost": "/",
+      "destination": "worker.metadata.result",
+      "destination_type": "queue",
+      "routing_key": "worker.metadata.result",
       "arguments": {}
     },
     {
-      "source": "worker.job",
-      "vhost": "/worker",
-      "destination": "metadata.job",
+      "source": "worker.results",
+      "vhost": "/",
+      "destination": "worker.preprocessing.result",
       "destination_type": "queue",
-      "routing_key": "job.comparison.create",
+      "routing_key": "worker.preprocessing.result",
+      "arguments": {}
+    },
+    {
+      "source": "worker.results",
+      "vhost": "/",
+      "destination": "worker.comparison.result",
+      "destination_type": "queue",
+      "routing_key": "worker.comparison.result",
       "arguments": {}
     }
   ],
