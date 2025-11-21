@@ -8,6 +8,54 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitConfig {
+
+    //DATA MOCK
+    public static final String TEST_EXCHANGE = "test-exchange";
+    public static final String TEST_QUEUE = "test.queue";
+    public static final String TEST_RK = "test";
+
+    // ============================
+    // EXCHANGES
+    // ============================
+    public static final String WORKER_JOB_EXCHANGE = "worker-job";
+    public static final String WORKER_RESULTS_EXCHANGE = "worker-results";
+
+
+    // ============================
+    // JOB QUEUES (Java → Python)
+    // ============================
+    public static final String WORKER_METADATA_JOB_QUEUE = "worker.metadata.job";
+    public static final String WORKER_PREPROCESSING_JOB_QUEUE = "worker.preprocessing.job";
+    public static final String WORKER_COMPARISON_JOB_QUEUE = "worker.comparison.job";
+
+
+    // ============================
+    // RESULT QUEUES (Python → Java)
+    // ============================
+    public static final String WORKER_METADATA_RESULT_QUEUE = "worker.metadata.result";
+    public static final String WORKER_PREPROCESSING_RESULT_QUEUE = "worker.preprocessing.result";
+    public static final String WORKER_COMPARISON_RESULT_QUEUE = "worker.comparison.result";
+
+
+    // ============================
+    // ROUTING KEYS — Jobs (Start)
+    // ============================
+    public static final String WORKER_METADATA_START_ROUTING_KEY = "worker.metadata.job.start";
+    public static final String WORKER_PREPROCESSING_START_ROUTING_KEY = "worker.preprocessing.job.start";
+    public static final String WORKER_COMPARISON_START_ROUTING_KEY = "worker.comparison.job.start";
+
+
+    // ============================
+    // ROUTING KEYS — Results
+    // (Used by Python Workers)
+    // ============================
+    public static final String WORKER_METADATA_RESULT_ROUTING_KEY = "worker.metadata.result";
+    public static final String WORKER_PREPROCESSING_RESULT_ROUTING_KEY = "worker.preprocessing.result";
+    public static final String WORKER_COMPARISON_RESULT_ROUTING_KEY = "worker.comparison.result";
+
+
+
+
     @Bean
     public Jackson2JsonMessageConverter jackson2JsonMessageConverter() {
         return new Jackson2JsonMessageConverter();

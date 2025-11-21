@@ -6,14 +6,14 @@
   ],
   "users": [
     {
-      "name": "admin",
-      "password": "admin",
+      "name": "testuser",
+      "password": "testpass",
       "tags": "administrator"
     }
   ],
   "permissions": [
     {
-      "user": "admin",
+      "user": "testuser",
       "vhost": "/",
       "configure": ".*",
       "write": ".*",
@@ -35,6 +35,14 @@
       "vhost": "/",
       "type": "direct",
       "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {"name": "test-exchange",
+      "vhost": "/",
+      "type": "direct",
+      "durable": false,
       "auto_delete": false,
       "internal": false,
       "arguments": {}
@@ -80,6 +88,13 @@
       "name": "worker.comparison.result",
       "vhost": "/",
       "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "test.queue",
+      "vhost": "/",
+      "durable": false,
       "auto_delete": false,
       "arguments": {}
     }
@@ -131,6 +146,14 @@
       "destination": "worker.comparison.result",
       "destination_type": "queue",
       "routing_key": "worker.comparison.result",
+      "arguments": {}
+    },
+    {
+      "source": "test-exchange",
+      "vhost": "/",
+      "destination": "test.queue",
+      "destination_type": "queue",
+      "routing_key": "test",
       "arguments": {}
     }
   ],
