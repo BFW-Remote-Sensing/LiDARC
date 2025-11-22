@@ -31,9 +31,40 @@ public class MetadataService implements IMetadataService {
 
 
     @Override
-    public void processMetadata(Map<String, Object> metadata) {
+    public void processMetadata(Map<String, Object> result) {
         log.info("Processing Metadata result...");
 
+        String status = (String) result.get("status");
+        String jobId = (String) result.get("job_id");
+
+        if (status == null || jobId == null) {
+            log.error("Invalid result message received, missing jobId or status");
+            return;
+        }
+
+        if (!status.equalsIgnoreCase("success")) {
+            log.warn("Metadata job {} failed: {}", jobId, result.get("msg"));
+            return;
+        }
+
+        Object metadataObj = result.get("metadata");
+        if (!(metadataObj instanceof Map)) {
+            log.error("Invalid metadata object for job {}", jobId);
+            return;
+        }
+
+        Map<String, Object> metadata = (Map<String, Object>) metadataObj;
+
+        FileMetadata fileMetadata = parseMetadata(metadata);
+        if (fileMetadata == null) {
+            log.error("Invalid metadata object for job {}", jobId);
+        } else {
+            fileRepository.save(fileMetadata);
+            log.info("Saved FileMetadata for file: {}", fileMetadata.getFilename());
+        }
+    }
+
+    private FileMetadata parseMetadata(Map<String, Object> metadata) {
         String csString = (String) metadata.get("coordinate_system");
         CoordinateSystem cs = null;
         if(csString != null && !csString.isEmpty()) {
@@ -89,17 +120,14 @@ public class MetadataService implements IMetadataService {
             for (ConstraintViolation<FileMetadata> v : violations) {
                 log.error("Validation error on {}: {}", v.getPropertyPath(), v.getMessage());
             }
-            return;
+            return null;
         }
 
         if (fileRepository.findByFilename(fileMetadata.getFilename()).isPresent()) {
             log.warn("Duplicate filename detected, skipping save: {}", fileMetadata.getFilename());
-            return;
+            return null;
         }
-
-
-        fileRepository.save(fileMetadata);
-        log.info("Saved FileMetadata for file: {}", fileMetadata.getFilename());
+        return fileMetadata;
     }
 
     private Double castToDouble(Object obj) {

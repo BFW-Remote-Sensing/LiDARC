@@ -53,6 +53,18 @@ def connect_rabbitmq():
             logging.error("RabbitMQ connection failed, Retrying in 5s... Error: {}".format(e))
             time.sleep(5)
 
+def mk_error_msg(job_id: str, error_msg: str):
+    return {"jobId": job_id, "status": "error", "msg": error_msg}
+
+def publish_response(ch, response_dict):
+    ch.basic_publish(
+        exchange=WORKER_RESULTS_EXCHANGE,
+        routing_key=WORKER_RESULTS_KEY_METADATA,
+        body=json.dumps(response_dict),
+        properties=pika.BasicProperties(content_type="application/json")
+    )
+    logging.debug(f"Sent response to exchange: {WORKER_RESULTS_EXCHANGE}")
+
 def validate_request(json_req):
     try:
         validate(instance=json_req, schema=metadata_schema)
@@ -125,12 +137,20 @@ def extract_metadata(file_path: str) -> dict:
 
 def process_req(ch, method, properties, body):
     start_time = time.time()
-
+    job_id = -42
     try:
         req = json.loads(body)
+        if not req["jobId"]:
+            logging.warning("The metadata job is cancelled because there is no job id")
+            publish_response(ch, mk_error_msg(job_id="-42", error_msg="Metadata job is cancelled because job has no job id"))
+
+        job_id = req["jobId"]
+
         if not validate_request(req):
             logging.warning("The metadata job is cancelled because of a Validation Error")
+            publish_response(ch, mk_error_msg(job_id, "Metadata job is cancelled because job request is invalid"))
             return
+
         las_file_url = req["url"]
         logging.info(f"Processing file from URL: {las_file_url}.")
 
@@ -139,32 +159,31 @@ def process_req(ch, method, properties, body):
             local_file = file_handler.download_file(las_file_url)
         except HTTPError as e:
             logging.warning("Couldn't download file from: {}, error: {}".format(las_file_url, e))
+            publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, metadata job cancelled".format(las_file_url)))
             return
         if local_file == "":
             logging.warning("File not downloaded, stopping processing the request!")
+            publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, metadata job cancelled".format(las_file_url)))
             return
 
         metadata = extract_metadata(local_file)
 
         if metadata == {}:
             logging.error(f"Metadata extraction failed for {las_file_url}.")
+            publish_response(ch, mk_error_msg(job_id, "Couldn't extract metadata from file from: {}, metadata job cancelled".format(las_file_url)))
             return
 
-        logging.debug(f"Metadata extracted: {json.dumps(metadata)}")
+        response = {
+            "job_id": job_id,
+            "status":"success",
+            "metadata": metadata
+        }
 
-        ch.basic_publish(
-            exchange=WORKER_RESULTS_EXCHANGE,
-            routing_key=WORKER_RESULTS_KEY_METADATA,
-            body = json.dumps(metadata),
-            properties = pika.BasicProperties(content_type="application/json")
-        )
-        logging.debug(f"Sent metadata to exchange: {WORKER_RESULTS_EXCHANGE}")
-
-
+        publish_response(ch, response)
         os.remove(local_file)
-        logging.debug(f"Removed local file: {local_file}")
     except Exception as e:
         logging.error(f"Failed to process message: {e}")
+        publish_response(ch, mk_error_msg(job_id, "An unexpected error occured, metadata job cancelled"))
     finally:
         processing_time = int((time.time() - start_time) * 1000)
         logging.info(f"Worker took {processing_time} ms to process the message.")
