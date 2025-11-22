@@ -25,9 +25,10 @@ def minio_client():
         secure=secure,
     )
 
-client = minio_client() #TODO: Think if this is appropriate like this, seems sketchy currently
+#client = minio_client() #TODO: Think if this is appropriate like this, seems sketchy currently
 
 def upload_file(source_file):
+    client = minio_client()
     destination_file = source_file.split("/")[-1]
     found = client.bucket_exists(BUCKET_NAME)
     if not found:
@@ -58,6 +59,7 @@ def upload_file_by_type(destination_file, data):
     return handlers[ext]()
 
 def upload_csv(destination_file, data_buf, length):
+    client = minio_client()
     client.put_object(BUCKET_NAME,
                       destination_file,
                       data_buf,
@@ -72,6 +74,7 @@ def upload_df_as_csv(destination_file, df):
     return upload_csv(destination_file, csv_buffer, len(csv_bytes))
 
 def upload_json(destination_file, json_obj):
+    client = minio_client()
     if isinstance(json_obj, str):
         json_bytes = json_obj.encode('utf-8')
     else:
@@ -88,6 +91,7 @@ def upload_json(destination_file, json_obj):
     return BASE_URL + destination_file
 
 def upload_df_as_json(destination_file, df):
+    client = minio_client()
     json_bytes = df.to_json(orient="records").encode('utf-8')
     json_buffer = BytesIO(json_bytes)
 

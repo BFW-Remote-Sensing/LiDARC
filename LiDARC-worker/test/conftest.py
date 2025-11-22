@@ -9,6 +9,7 @@ import json
 from importlib.resources import files
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../src"))
 
+
 sys.path.append(project_root)
 
 def pytest_addoption(parser):
@@ -62,7 +63,7 @@ def load_json(load_fixture):
         return json.loads(load_fixture(path))
     return _load
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def small_las_file():
     header = laspy.LasHeader(point_format=3, version="1.4")
 
