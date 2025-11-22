@@ -80,7 +80,7 @@ def parse_coordinate_system(header) -> str:
         m = re.match(r"^(\d{3,7})", system_id)
         if m:
             code = int(m.group(1))
-            for auth in ["EPSG", "ESRI", "IGNF"]:
+            for auth in ["EPSG", "ESRI"]:
                 try:
                     CRS.from_authority(auth, code)
                     return f"{auth}:{code}"

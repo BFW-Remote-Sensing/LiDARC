@@ -1,16 +1,48 @@
 import os
 import sys
 import tempfile
+from datetime import date
 
 import laspy
 import numpy as np
 import pytest
 import json
+from pyproj import CRS
 from importlib.resources import files
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../src"))
 
 sys.path.append(project_root)
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--e2e",
+        action="store_true",
+        default=False,
+        help="run e2e tests",
+    )
+    parser.addoption(
+        "--external-only",
+        action="store_true",
+        default=False,
+        help="run only tests that are marked with @pytest.mark.allow_external",
+    )
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "e2e: slow/external integration tests")
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--external-only"):
+        skip_it = pytest.mark.skip(reason="requires keyword allow_external")
+        for item in items:
+            if "allow_external" not in item.keywords:
+                item.add_marker(skip_it)
+        return
+    if config.getoption("--e2e"):
+        return
+    skip_it = pytest.mark.skip(reason="requires --e2e")
+    for item in items:
+        if "e2e" in item.keywords:
+            item.add_marker(skip_it)
 
 @pytest.fixture(scope="session")
 def load_fixture():
@@ -18,7 +50,7 @@ def load_fixture():
     Provides a function to load a file from the fixture folder.
     """
     def _load(path):
-        p = files("tests.fixtures").joinpath(path)
+        p = files("test.fixtures").joinpath(path)
         return p.read_text(encoding="utf-8")
     return _load
 
@@ -92,3 +124,30 @@ def generate_las_points(num_points=1000, x_range=(0, 100), y_range=(0, 100), z_r
     las.write(filename)
 
     return filename, max_z
+
+@pytest.fixture
+def las_with_header(tmp_path):
+    def _create(overrides: dict = None, filename = "graz2021_block6_060_065_elv.las", with_crs_header: bool = False):
+        # Default metadata
+        header = laspy.LasHeader(point_format=3, version="1.4")
+        header.system_identifier = "31256;austria2022"
+        header.generating_software = "bfwLasProcessing;MatchT 8.0"
+        header.creation_date = date(2024, 3, 14)
+
+        if with_crs_header:
+            crs = CRS.from_epsg(31256)
+            header.add_crs(crs)
+
+        # override header fields
+        if overrides:
+            for key, value in overrides.items():
+                setattr(header, key, value)
+
+        las = laspy.LasData(header)
+        las.x = np.array([0.5, 0.9, 2.0, 9.5])
+        las.y = np.array([0.5, 0.8, 2.5, 9.2])
+        las.z = np.array([5.0, 10.0, 20.0, 15.0])
+        file_path = tmp_path / filename
+        las.write(file_path)
+        return str(file_path)
+    return _create
