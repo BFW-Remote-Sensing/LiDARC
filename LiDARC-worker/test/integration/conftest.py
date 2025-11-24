@@ -68,11 +68,9 @@ def setup_bucket():
     #TODO: Teardown if needed??
 
 @pytest.fixture
-def run_preprocess_worker():
-    def _run():
-        thread = threading.Thread(target=preprocess.main(), daemon=True)
-        thread.start()
-        return thread
-    return _run
+def run_preprocess_worker(rabbitmq_ch, minio_client):
+    thread = threading.Thread(target=preprocess.main(), daemon=True)
+    thread.start()
+    yield thread
 
 

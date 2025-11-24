@@ -29,12 +29,6 @@ def consume_single_message(channel, queue):
     channel.start_consuming()
     return body
 
-
-def run_preprocess_worker():
-    thread = threading.Thread(target=preprocess_worker.main(), daemon=True)
-    thread.start()
-    return thread
-
 @pytest.mark.e2e
 def test_precompute_integration(minio_client, rabbitmq_ch, load_json):
     assert minio_client.bucket_exists("basebucket")
@@ -42,12 +36,12 @@ def test_precompute_integration(minio_client, rabbitmq_ch, load_json):
 
     def run_worker():
         preprocess_worker.main()
-
     worker_thread = threading.Thread(target=run_worker, daemon=True)
     worker_thread.start()
+
     test_msg = load_json("valid_precompute_job_small_las_file.json")
     test_msg["url"] = presigned_url
-    publish_message(rabbitmq_ch, "worker.job", "preprocessing.job", json.dumps(test_msg))
+    publish_message(rabbitmq_ch, "worker.job", "preprocessing.job", test_msg)
     body = consume_single_message(rabbitmq_ch, "preprocessing.result")
     assert body is not None, "Result message of preprocess worker is None"
     response = json.loads(body)

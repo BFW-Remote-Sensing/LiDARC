@@ -111,7 +111,7 @@ def publish_response(ch, response_dict):
 def process_req(ch, method, properties, body):
     start_time = time.time()
     request = json.loads(body)
-    if not request["jobId"]:
+    if "jobId" not in request:
         logging.warning("The precompute job is cancelled because there is no job id")
         publish_response(ch, mk_error_msg(job_id="-42", error_msg="Precompute job is cancelled because job has no job id"))
 
@@ -204,8 +204,6 @@ def main():
         logging.warning("Worker interrupted")
     except Exception as e:
         logging.error("Worker error: {}".format(e))
-
-    print("Hello World!")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
