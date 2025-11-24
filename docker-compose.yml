@@ -150,6 +150,28 @@ services:
         restart: true
     networks:
       - ase-network
+  comparison-worker:
+    image: comparison-lidarc-worker
+    build:
+      context: ./LiDARC-worker
+      dockerfile: Dockerfile-comparison-worker
+    container_name: comparison-worker
+    depends_on:
+      minio:
+        condition: service_started
+        restart: true
+      rabbitmq:
+        condition: service_started
+        restart: true
+      postgres:
+        condition: service_started
+        restart: true
+    networks:
+      - ase-network
+
+
+
+
 
   metadata-worker:
     image: metadata-lidarc-worker
