@@ -57,4 +57,6 @@ public interface UrlRepository extends JpaRepository<Url, Long> {
   List<Url> findUrlByExpiresAtBefore(Instant expiresAtBefore);
 
   void deleteByFileIdAndMethod(Long fileId, Method method);
+
+  List<Url> getUrlsByExpiresAtBefore(Instant expiresAtBefore);
 }

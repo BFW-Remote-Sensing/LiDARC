@@ -27,21 +27,39 @@ public class FileInfoDto {
   private Boolean uploaded;
 
   @JsonProperty("urlExpiresAt")
-  private Instant urlExpiresAt;public FileInfoDto() {
+  private Instant urlExpiresAt;
+
+  public FileInfoDto() {
   }
 
   public FileInfoDto(File file) {
     this.fileName = file.getFilename();
     this.presignedURL = null;
     this.uploaded = file.getUploaded();
-  this.urlExpiresAt = null;
+    this.urlExpiresAt = null;
   }
+
+  FileInfoDto(String fileName) {
+    this.fileName = fileName;
+  }
+
+  FileInfoDto(String fileName, String presignedURL) {
+    this.fileName = fileName;
+    this.presignedURL = presignedURL;
+  }
+
+  FileInfoDto(String fileName, String presignedURL, Boolean uploaded) {
+    this.fileName = fileName;
+    this.presignedURL = presignedURL;
+    this.uploaded = uploaded;
+  }
+
 
   FileInfoDto(String fileName, String presignedURL, Boolean uploaded, Instant urlExpiresAt) {
     this.fileName = fileName;
     this.presignedURL = presignedURL;
     this.uploaded = uploaded;
-  this.urlExpiresAt = urlExpiresAt;
+    this.urlExpiresAt = urlExpiresAt;
   }
 }
 

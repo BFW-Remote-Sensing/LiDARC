@@ -9,9 +9,11 @@ import com.example.lidarcbackend.repository.FileRepository;
 import com.example.lidarcbackend.repository.UrlRepository;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioAsyncClient;
+import io.minio.StatObjectArgs;
 import io.minio.errors.MinioException;
 import io.minio.http.Method;
 import jakarta.annotation.PostConstruct;
+import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotBlank;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -19,14 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Service;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import org.springframework.context.annotation.Profile;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -55,6 +50,18 @@ public class PresignedUrlService implements IPresignedUrlService {
   @Value("${spring.rabbitmq.template.routing-key:metadata_trigger}")
   private String routingKey;
 
+
+  @Scheduled(fixedDelayString = "${minio.defaultRefresh:2000}") //this needs to be less than the url expiry time
+  //default 10 min, always needs to be less than the url validity
+  @Transactional
+  public void invalidateUrls() {
+    // Try to refresh and recover silently on errors so scheduler keeps running
+    urlRepository.getUrlsByExpiresAtBefore(Instant.now()).forEach(url -> {
+      log.info("Deleting expired URL for file: {}", url.getFile() != null ? url.getFile().getFilename() : "unknown");
+      urlRepository.delete(url);
+    });
+
+  }
 
   @PostConstruct
   public void init() throws MinioException, GeneralSecurityException, IOException {
@@ -164,6 +171,7 @@ public class PresignedUrlService implements IPresignedUrlService {
   }
 
   @Override
+  @Transactional
   public Optional<FileInfoDto> uploadFinished(@NonNull FileInfoDto body) {
     File file = fileRepository.findFileByFilenameAndUploaded(body.getFileName(), false)
         .orElse(null);
@@ -180,13 +188,16 @@ public class PresignedUrlService implements IPresignedUrlService {
     if (fileInfoOpt.isEmpty()) {
       return Optional.empty();
     }
-    //TODO possibly check if the file actually exists in minio or add to contract that the caller has to ensure that
+
+    if (!checkExistence(body)) {
+      return Optional.empty();
+    }
+
     file.setUploaded(true);
     file.setUploaded_at(Instant.now());
     file = fileRepository.save(file);
     FileInfoDto dto = new FileInfoDto(file);
-    //remove old urls TODO Bugfix somehow deletion doesn't work
-    //urlRepository.deleteByFileIdAndMethod(file.getId(), Method.PUT);
+    urlRepository.deleteByFileIdAndMethod(file.getId(), Method.PUT);
 
     dto.setUploaded(true);
     dto.setPresignedURL(fileInfoOpt.get().getPresignedURL());
@@ -197,7 +208,18 @@ public class PresignedUrlService implements IPresignedUrlService {
   }
 
   private void sendFinishMessage(String presignedUploadUrl) {
-    rabbitTemplate.convertAndSend(this.routingKey, presignedUploadUrl);
+    //rabbitTemplate.convertAndSend(this.routingKey, presignedUploadUrl);
+  }
+
+  private boolean checkExistence(FileInfoDto body) {
+    StatObjectArgs statObjectArgs = getStatObjectArgs(body.getFileName());
+    try {
+      minioClient.statObject(statObjectArgs);
+      return true;
+    } catch (MinioException | GeneralSecurityException | IOException e) {
+      log.info("Could not get stat object {} after upload finished call", body.getFileName(), e);
+      return false;
+    }
   }
 
 
@@ -211,6 +233,13 @@ public class PresignedUrlService implements IPresignedUrlService {
     }
   }
 
+
+  private StatObjectArgs getStatObjectArgs(String fileName) {
+    return StatObjectArgs.builder()
+        .bucket(minioProperties.getBucket())
+        .object(fileName)
+        .build();
+  }
 
   private GetPresignedObjectUrlArgs getPresignedObjectUrlArgs(String fileName, Method method) {
     return GetPresignedObjectUrlArgs.builder()

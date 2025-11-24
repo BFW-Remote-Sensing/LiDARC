@@ -53,11 +53,15 @@ public class BucketApiController implements BucketApi {
   }
 
   @Override
-  public ResponseEntity<FileInfoDto> fetchURLForUpload(@Valid FileInfoDto body) {
+  public ResponseEntity<FileInfoDto> fetchURLForUpload(
+      @Parameter(in = ParameterIn.DEFAULT, description = "Fetch a presigned url for a specific file name from the bucket.", required = true, schema = @Schema())
+      @Valid
+      @RequestBody FileInfoDto body) {
     String accept = request.getHeader("Accept");
     if (accept != null && accept.contains("application/json")) {
       Optional<FileInfoDto> file = presignedUrlService.fetchUploadUrl(body.getFileName());
-      return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.CONFLICT));
+      return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK))
+          .orElseGet(() -> new ResponseEntity<FileInfoDto>(new FileInfoDto(), HttpStatus.CONFLICT));
     }
 
     return new ResponseEntity<FileInfoDto>(HttpStatus.NOT_IMPLEMENTED);
@@ -71,7 +75,7 @@ public class BucketApiController implements BucketApi {
     String accept = request.getHeader("Accept");
     if (accept != null && accept.contains("application/json")) {
       Optional<FileInfoDto> file = presignedUrlService.uploadFinished(body);
-      return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+      return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(new FileInfoDto(), HttpStatus.NOT_FOUND));
     }
 
     return new ResponseEntity<FileInfoDto>(HttpStatus.NOT_IMPLEMENTED);

@@ -2,7 +2,13 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpEvent, HttpHeaders, HttpRequest } from '@angular/common/http';
 import { FileInfo } from '../dto/fileInfo';
 import { defaultBucketPath, Globals } from '../globals/globals';
-import { Observable, switchMap, throwError } from 'rxjs';
+import { Observable, switchMap, throwError, tap } from 'rxjs';
+import { HttpEventType, HttpResponse } from '@angular/common/http';
+
+const headers = new HttpHeaders({
+  'Content-Type': 'application/json',
+  Accept: 'application/json',
+});
 
 @Injectable({
   providedIn: 'root',
@@ -13,13 +19,9 @@ export class UploadService {
   // Ask your backend for a presigned URL (adapt endpoint/payload)
   getPresignedUploadUrl(file: File): Observable<FileInfo> {
     console.log('sending presign request for file ' + file.name);
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    });
+
     const payload: FileInfo = {
       fileName: file.name,
-      method: 'POST',
     };
     return this.httpClient.post<FileInfo>(
       this.globals.backendUri + defaultBucketPath + '/upload',
@@ -42,6 +44,18 @@ export class UploadService {
       observe: 'events',
       withCredentials: false,
     });
+  }
+
+  onComplete?(file: File) {
+    // callback to signal to backend that upload is complete
+    const payload: FileInfo = {
+      fileName: file.name,
+    };
+    return this.httpClient.put<FileInfo>(
+      this.globals.backendUri + defaultBucketPath + '/upload',
+      payload,
+      { headers }
+    );
   }
 
   // Convenience: get presigned URL then upload -> returns the HttpEvent stream

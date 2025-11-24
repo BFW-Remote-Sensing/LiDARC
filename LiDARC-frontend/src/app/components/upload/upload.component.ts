@@ -31,7 +31,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 })
 export class UploadComponent {
   public files: UploadFile[] = [];
-  columnsToDisplay = ['file name', 'actions'];
+  columnsToDisplay = ['file name', 'status', 'actions'];
   public fileToSubscriptionMap: Map<UploadFile, any> = new Map();
   form: FormGroup;
 
@@ -56,18 +56,21 @@ export class UploadComponent {
 
   addFiles(newFiles: File[]) {
     let changed = false;
+    const changedFiles: UploadFile[] = [];
 
     for (const f of newFiles) {
       const exists = this.files.some((e) => e.file.name === f.name && e.file.type === f.type);
       if (!exists) {
-        this.files.push({ file: f, progress: 0, status: 'idle' });
+        const actualFile: UploadFile = { file: f, progress: 0, status: 'idle' };
+        this.files.push(actualFile);
+        changedFiles.push(actualFile);
         changed = true;
       }
     }
 
     if (changed) {
       this.files = [...this.files]; // one immutable update
-      this.files.forEach((file) => this.fileToSubscriptionMap.set(file, this.upload(file)));
+      changedFiles.forEach((file) => this.fileToSubscriptionMap.set(file, this.upload(file)));
     }
   }
 
@@ -75,7 +78,6 @@ export class UploadComponent {
     if (fileUpload.status === 'uploading') return;
     fileUpload.status = 'uploading';
     this.cdr.detectChanges(); //need to detect Changes for some reason
-
     return this.uploadService
       .uploadFileUsingPresign(fileUpload.file)
       .pipe(debounceTime(50))
@@ -104,6 +106,25 @@ export class UploadComponent {
                   file.progress = 100;
                   this.cdr.detectChanges(); //need to detect Changes for some reason
                   this.fileToSubscriptionMap.delete(fileUpload);
+
+                  this.uploadService.onComplete?.(fileUpload.file).subscribe({
+                    next: (res) => {
+                      console.log(
+                        'notified backend of completed upload for file ' + fileUpload.file.name
+                      );
+                    },
+                    error: (e) => {
+                      console.error(
+                        'could not notify backend of completed upload for file ' +
+                          fileUpload.file.name +
+                          ' ' +
+                          e.status
+                      );
+                      file.status = 'error';
+                      this.cdr.detectChanges(); //need to detect Changes for some reason
+                    },
+                  });
+
                   return file;
                 } else {
                   return file;
@@ -144,13 +165,16 @@ export class UploadComponent {
         },
       });
   }
+  reUpload(fileUpload: UploadFile) {
+    this.fileToSubscriptionMap.set(fileUpload, this.upload(fileUpload));
+  }
 
   cancel(uploadFile: UploadFile) {
     const subscription = this.fileToSubscriptionMap.get(uploadFile);
     if (subscription) {
       subscription.unsubscribe();
       this.fileToSubscriptionMap.delete(uploadFile);
-      uploadFile.status = 'idle';
+      uploadFile.status = 'error'; //needs to be different than 'idle' to allow reupload
       uploadFile.progress = 0;
       this.files = [...this.files]; // one immutable update
       this.form.get('files')!.setValue(this.files);

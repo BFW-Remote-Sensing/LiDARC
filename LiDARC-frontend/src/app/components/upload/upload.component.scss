@@ -44,3 +44,41 @@ mat-card-content {
   display: inline-flex; /* aligns inline with text */
   align-items: center;
 }
+
+/* Make table use fixed layout so column widths are respected */
+table[mat-table] {
+  width: 100%;
+  table-layout: fixed;
+}
+
+/* Column sizing by position (matches columnsToDisplay order) */
+/* 1: filename column - fixed width and allow wrapping */
+table[mat-table] th.mat-header-cell:nth-child(1),
+table[mat-table] td.mat-cell:nth-child(1) {
+  width: 320px; /* adjust as needed */
+  max-width: 320px;
+  white-space: normal; /* allow wrapping */
+  overflow-wrap: anywhere;
+}
+
+/* 2: status column - fixed narrow width */
+table[mat-table] th.mat-header-cell:nth-child(2),
+table[mat-table] td.mat-cell:nth-child(2),
+table[mat-table] th.mat-header-cell:nth-child(2) {
+  width: 110px; /* adjust as needed */
+  max-width: 110px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 3: actions column - fixed narrow width */
+table[mat-table] th.mat-header-cell:nth-child(3),
+table[mat-table] td.mat-cell:nth-child(3),
+table[mat-table] th.mat-header-cell:nth-child(3) {
+  width: 110px; /* adjust as needed */
+  max-width: 110px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
