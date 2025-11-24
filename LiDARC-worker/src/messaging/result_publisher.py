@@ -3,9 +3,9 @@ import uuid
 
 import pika
 
-from message_model import BaseMessage
-from connection import create_connection, create_channel
-from settings import settings
+from .message_model import BaseMessage
+from .rabbit_connect import create_connection, create_channel
+from .settings import settings
 
 class ResultPublisher:
     def __init__(self):
@@ -16,7 +16,7 @@ class ResultPublisher:
         msg = BaseMessage(
             type=msg_type,
             version="1",
-            correlation_id=str(uuid.uuid4()),
+            job_id=str(uuid.uuid4()),
             payload=payload,
         )
         self._ch.basic_publish(
