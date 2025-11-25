@@ -1,6 +1,8 @@
 import argparse
 import json
 import os
+import shutil
+import tempfile
 
 import pika
 import logging
@@ -12,9 +14,12 @@ import pandas as pd
 import numpy as np
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
+from pika.exceptions import ChannelWrongStateError, ReentrancyError, StreamLostError
+
 from schemas.precompute import schema as precompute_schema
 import util.file_handler as file_handler
 from requests import HTTPError
+import tracemalloc
 
 def handle_sigterm(signum, frame):
     logging.info("SIGTERM received")
@@ -107,46 +112,16 @@ def publish_response(ch, response_dict):
         body=json.dumps(response_dict),
         properties = pika.BasicProperties("application/json")
     )
+def mk_summary(grid_shape, df: pd.DataFrame):
+    return {
+        "nCells": int(grid_shape[0] * grid_shape[1]),
+        "maxZ": float(df["z_max"].max()),
+        "minZ": float(df["z_min"].min()),
+        "maxVegHeight": float(df["veg_height_max"].max()),
+        "minVegHeight": float(df["veg_height_min"].min())
+    }
 
-def process_req(ch, method, properties, body):
-    start_time = time.time()
-    request = json.loads(body)
-    if "jobId" not in request:
-        logging.warning("The precompute job is cancelled because there is no job id")
-        publish_response(ch, mk_error_msg(job_id="-42", error_msg="Precompute job is cancelled because job has no job id"))
-
-    job_id = request["jobId"]
-    if not validate_request(request):
-        logging.warning("The precompute job is cancelled because of a Validation Error")
-        publish_response(ch, mk_error_msg(job_id, "Precompute job is cancelled because job request is invalid"))
-        return
-
-    #Process request
-    las_file_url = request["url"]
-    grid = request["grid"]
-
-    downloaded_file_fn = ""
-    try:
-        downloaded_file_fn = file_handler.download_file(las_file_url)
-    except HTTPError as e:
-        logging.warning("Couldn't download file from: {}, error: {}".format(las_file_url, e))
-        publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, precompute job cancelled".format(las_file_url)))
-        return
-    if downloaded_file_fn == "":
-        logging.warning("File not downloaded, stopping processing the request!")
-        publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, precompute job cancelled".format(las_file_url)))
-        return
-
-    precomp_grid = calculate_grid(grid)
-    precomp_grid["veg_height_key"] = "gps_time"
-    with laspy.open(downloaded_file_fn) as f:
-        if "ndsm" in  f.header.point_format.extra_dimension_names:
-            logging.info("File to process is using ndsm for vegetational height of trees")
-            precomp_grid["veg_height_key"] = "ndsm"
-        logging.info("Processing point cloud from file: {}".format(las_file_url))
-        for points in f.chunk_iterator(1_000_000):
-            process_points(points, precomp_grid)
-
+def create_result_df(precomp_grid):
     rows, cols = np.nonzero(precomp_grid["count"])
 
     grid_width = precomp_grid["grid_width"]
@@ -154,7 +129,7 @@ def process_req(ch, method, properties, body):
     x_min = precomp_grid["x_min"]
     y_min = precomp_grid["y_min"]
 
-    df = pd.DataFrame({
+    return pd.DataFrame({
         "x0": x_min + cols * grid_width,
         "x1": x_min + (cols + 1) * grid_width,
         "y0": y_min + rows * grid_height,
@@ -165,33 +140,65 @@ def process_req(ch, method, properties, body):
         "veg_height_max": precomp_grid["veg_height_max"][rows, cols],
         "veg_height_min": precomp_grid["veg_height_min"][rows, cols]
     })
-    df.to_csv(f"pre-process-job-{job_id}-output.csv")
-    uploaded_url = file_handler.upload_file_by_type(f"pre-process-job-{job_id}-output.csv", df)
-    logging.info(f"Uploaded precompute file to: {uploaded_url}")
 
-    processing_time = int((time.time() - start_time) * 1000)
-    logging.info("Worker took {} ms to process the request".format(processing_time))
+def process_req(ch, method, properties, body):
+    start_time = time.time()
+    request = json.loads(body)
+    if "jobId" not in request:
+        logging.warning("The precompute job is cancelled because there is no job id")
+        publish_response(ch, mk_error_msg(job_id="-42", error_msg="Precompute job is cancelled because job has no job id"))
 
-    response = {
-        "jobId": job_id,
-        "status": "success",
-        "resultUrl": uploaded_url,
-        "summary": {
-            "nCells": int(precomp_grid["grid_shape"][0] * precomp_grid["grid_shape"][1]),
-            "maxZ": float(df["z_max"].max()),
-            "minZ": float(df["z_min"].min()),
-            "maxVegHeight": float(df["veg_height_max"].max()),
-            "minVegHeight": float(df["veg_height_min"].min())
+    job_id = request["jobId"]
+    if not validate_request(request):
+        logging.warning("The precompute job is cancelled because of an Validation Error ")
+        publish_response(ch, mk_error_msg(job_id, "Precompute job is cancelled because job request is invalid"))
+        return
+
+    #Process request
+    las_file_url = request["url"]
+    grid = request["grid"]
+
+    temp_dir = tempfile.mkdtemp()
+    try:
+        downloaded_file_fn = file_handler.download_file(las_file_url, dest_dir=temp_dir)
+
+        precomp_grid = calculate_grid(grid)
+        precomp_grid["veg_height_key"] = "gps_time"
+
+        with laspy.open(downloaded_file_fn) as f:
+            if "ndsm" in  f.header.point_format.extra_dimension_names:
+                logging.info("File to process is using ndsm for vegetational height of trees")
+                precomp_grid["veg_height_key"] = "ndsm"
+            logging.info("Processing point cloud from file: {}".format(las_file_url))
+            for points in f.chunk_iterator(500_000):
+                process_points(points, precomp_grid)
+                del points
+
+        df = create_result_df(precomp_grid)
+        upload_result = file_handler.upload_file_by_type(f"pre-process-job-{job_id}-output.csv", df)
+
+        processing_time = int((time.time() - start_time) * 1000)
+        logging.info("Worker took {} ms to process the request".format(processing_time))
+
+        response = {
+            "jobId": job_id,
+            "status": "success",
+            "result": upload_result,
+            "summary": mk_summary(precomp_grid["grid_shape"], df)
         }
-    }
-    publish_response(ch, response)
-
+        publish_response(ch, response)
+    #TODO: Add exceptions correctly!
+    except HTTPError as e:
+        logging.warning("Couldn't download file from: {}, error: {}".format(las_file_url, e))
+        publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, precompute job cancelled".format(las_file_url)))
+        return
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 def main():
-    connection = connect_rabbitmq()
-    channel = connection.channel()
+    channel = connect_rabbitmq().channel()
     queue_name = os.environ.get("QUEUE_NAME", "preprocessing.job")
-    channel.queue_declare(queue=queue_name, durable=True) #TODO: Think if this is best practice or not
+    channel.queue_declare(queue=queue_name, durable=True)
     def callback(ch, method, properties, body):
         process_req(ch, method, properties, body)
 
@@ -201,9 +208,13 @@ def main():
     try:
         channel.start_consuming()
     except KeyboardInterrupt:
-        logging.warning("Worker interrupted")
-    except Exception as e:
-        logging.error("Worker error: {}".format(e))
+        logging.warning("Worker interrupted by KeyboardInterrupt")
+    except ReentrancyError as e:
+        logging.error("Reentrancy error for start consuming on the channel: {}".format(e))
+    except ChannelWrongStateError as e:
+        logging.error("Channel error: {}".format(e))
+    except StreamLostError as e:
+        logging.error("Stream lost error: {}".format(e))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

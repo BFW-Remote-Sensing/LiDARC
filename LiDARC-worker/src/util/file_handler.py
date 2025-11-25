@@ -12,7 +12,6 @@ from requests.adapters import HTTPAdapter, Retry
 BUCKET_NAME = os.environ.get("BUCKET_NAME", "basebucket")
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:9000/")
 def minio_client():
-    #TODO: Read env
     endpoint_url = os.environ.get("MINIO_ENDPOINT", "minio:9000")
     access_key = os.environ.get("MINIO_ACCESS_KEY", "admin")
     secret_key = os.environ.get("MINIO_SECRET_KEY", "aseWS25LiDARC")
@@ -24,8 +23,6 @@ def minio_client():
         secret_key=secret_key,
         secure=secure,
     )
-
-#client = minio_client() #TODO: Think if this is appropriate like this, seems sketchy currently
 
 def upload_file(source_file):
     client = minio_client()
@@ -66,7 +63,10 @@ def upload_csv(destination_file, data_buf, length):
                       length=length,
                       content_type="application/csv")
     
-    return BASE_URL + destination_file
+    return {
+        "bucket": BUCKET_NAME,
+        "objectKey": destination_file,
+    }
 
 def upload_df_as_csv(destination_file, df):
     csv_bytes = df.to_csv().encode('utf-8')
@@ -119,7 +119,6 @@ def download_file(url: str, dest_dir: str = ".", chunk_size: int = 10* 1024 ) ->
     session.mount("https://", HTTPAdapter(max_retries=retries))
     session.mount("http://", HTTPAdapter(max_retries=retries))
     try:
-        # TODO: Think about already processing the file while downloading
         with requests.get(url, stream=True) as r:
             r.raise_for_status()
             with open(local_filename, 'wb') as f:
@@ -136,7 +135,7 @@ def main():
     try:
         upload_file(test_file)
     except S3Error as e:
-        logging.error("Error occurred while uploading file to Minio: ", e)
+        logging.error("Error occurred while uploading file to Minio:  {}".format(e))
 
 
 if __name__ == "__main__":

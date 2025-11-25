@@ -53,7 +53,9 @@ def test_precompute_integration(minio_client, rabbitmq_ch, load_json):
     check.equal(summary["nCells"], 100, "Number of cells is not 100 cells")
     check.equal(summary["maxZ"], 20.0, "Highest Z value is not 20.0")
     check.equal(summary["minZ"], 5.0, "Lowest Z value is not 5.0")
-    csv_obj = minio_client.get_object(bucket_name="basebucket", object_name=response['resultUrl'].split("/")[-1])
+    result = response["result"]
+    check.equal(result["bucket"], "basebucket", "Bucket is not basebucket")
+    csv_obj = minio_client.get_object(bucket_name="basebucket", object_name=result['objectKey'])
     df = pd.read_csv(csv_obj)
     expected_points = {
         (0.0, 0.0): 2,
