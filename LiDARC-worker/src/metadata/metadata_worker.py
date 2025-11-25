@@ -34,7 +34,7 @@ def connect_rabbitmq():
     while True:
         try:
             user = os.environ.get("RABBITMQ_USER", "admin")
-            password = os.environ.get("RABBITMQ_PSWD", "admin")
+            password = os.environ.get("RABBITMQ_PASSWORD", "admin")
             host = os.environ.get("RABBITMQ_HOST", "rabbitmq")
             port = os.environ.get("RABBITMQ_PORT", "5672")
             vhost = os.environ.get("RABBITMQ_VHOST", "/worker")
@@ -54,7 +54,7 @@ def connect_rabbitmq():
             time.sleep(5)
 
 def mk_error_msg(job_id: str, error_msg: str):
-    return {"jobId": job_id, "status": "error", "msg": error_msg}
+    return {"job_id": job_id, "status": "error", "msg": error_msg}
 
 def publish_response(ch, response_dict):
     ch.basic_publish(

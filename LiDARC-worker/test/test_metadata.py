@@ -1,6 +1,8 @@
+from importlib.metadata import metadata
+
 import pytest
 import laspy
-from metadata_worker import parse_coordinate_system, extract_metadata
+from src.metadata.metadata_worker import parse_coordinate_system, extract_metadata
 
 # unit tests for parse_coordinate_system
 def test_parse_coordinate_system_with_vvalid_cs_in_header(las_with_header):
