@@ -6,11 +6,13 @@ import argparse
 import signal
 import sys
 import os
+import pandas as pd
+import numpy as np
 
 
 TRIGGER_QUEUE_NAME = "worker_comparison_job"
 WORKER_RESULTS_EXCHANGE = "worker-results"
-WORKER_RESULTS_KEY_METADATA = "worker.comparison.result"
+WORKER_RESULTS_KEY_COMPARISON = "worker.comparison.result"
 
 def handle_sigterm(signum, frame):
     logging.info("SIGTERM received")
@@ -48,14 +50,68 @@ def mk_error_msg(job_id: str, error_msg: str):
 def publish_response(ch, response_dict):
     ch.basic_publish(
         exchange=WORKER_RESULTS_EXCHANGE,
-        routing_key=WORKER_RESULTS_KEY_METADATA,
+        routing_key=WORKER_RESULTS_KEY_COMPARISON,
         body=json.dumps(response_dict),
         properties=pika.BasicProperties(content_type="application/json")
     )
     logging.debug(f"Sent response to exchange: {WORKER_RESULTS_EXCHANGE}")
 
 def process_req(ch, method, props, body):
-    logging.info("Received MSG!")
+    # TODO check for message structure and content, and download corresponding files (just mocked for now)
+    logging.info("Received MSG! Downloading files...")
+    csv1 = "/data/pre-process-job-123-output.csv"
+    csv2 = "/data/pre-process-job-456-output.csv"
+    df_a = pd.read_csv(csv1)
+    df_b = pd.read_csv(csv2)
+    logging.info("Loaded CSV A with %d rows", len(df_a))
+    logging.info("Loaded CSV B with %d rows", len(df_b))
+
+    merged = df_a.merge(
+        df_b,
+        on=["x0", "x1", "y0", "y1"],
+        suffixes=("_a", "_b")
+    )
+
+    merged["delta_z"] = df_b["veg_height_max"] - df_a["veg_height_max"]
+
+    logging.info("Merged into %d matched grid cells", len(merged))
+    for _, row in merged.iterrows():
+        cell = f"[{row.x0},{row.x1}] x [{row.y0},{row.y1}]"
+        veg_a = row.veg_height_max_a
+        veg_b = row.veg_height_max_b
+        delta_z = veg_b - veg_a
+        logging.info(f"Cell {cell}: veg_height_max (A={veg_a}, B={veg_b}), delta_z={delta_z}")
+
+
+    logging.info("Calculating Statistics:")
+    # calculate basic statistics
+    mean_diff = merged["delta_z"].mean()
+    median_diff = merged["delta_z"].median()
+    std_diff = merged["delta_z"].std()
+    min_diff = merged["delta_z"].min()
+    max_diff = merged["delta_z"].max()
+    percentiles = np.percentile(merged["delta_z"], [10, 25, 50, 75, 90])
+    logging.info(f"Mean Difference: {mean_diff}")
+    logging.info(f"Median Difference: {median_diff}")
+    logging.info(f"Std Difference: {std_diff}")
+    logging.info(f"Min Difference: {min_diff}")
+    logging.info(f"Max Difference: {max_diff}")
+    logging.info(f"Percentiles [10,25,50,75,90]: {percentiles}")
+
+    logging.info("Simple Categorization::")
+    # example categorization
+    categories = pd.cut(
+        merged["delta_z"].abs(),
+        bins=[0, 2, 4, 5, np.inf],
+        labels=["almost equal", "slightly different", "different", "highly different"]
+    )
+    category_counts = categories.value_counts()
+    logging.info(f"Category counts:\n{category_counts}")
+
+    logging.info("Calculating Correlation:")
+    pearson_corr = merged["veg_height_max_a"].corr(merged["veg_height_max_b"])
+    logging.info(f"Pearson correlation between A and B: {pearson_corr}")
+
 
 
 def main():
