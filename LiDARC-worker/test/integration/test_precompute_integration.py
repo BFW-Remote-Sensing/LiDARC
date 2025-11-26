@@ -67,5 +67,14 @@ def test_precompute_integration(minio_client, rabbitmq_ch, load_json):
 
         check.equal(len(filtered_df), 1)
         actual_count = filtered_df["count"].iloc[0]
-        check.equal(actual_count, expected_count, f"Count mismatch for cell ({expected_x0}, {expected_y0}): expected {expected_count}, got {actual_count}"
-)
+        check.equal(actual_count, expected_count, f"Count mismatch for cell ({expected_x0}, {expected_y0}): expected {expected_count}, got {actual_count}")
+
+        veg_p90 = filtered_df["veg_p90"].iloc[0]
+        veg_p95 = filtered_df["veg_p95"].iloc[0]
+        print(veg_p90, veg_p95)
+        assert isinstance(veg_p90, float) and not pd.isna(veg_p90), f"veg_p90 is invalid for cell ({expected_x0}, {expected_y0})"
+        assert isinstance(veg_p95, float) and not pd.isna(veg_p95), f"veg_p95 is invalid for cell ({expected_x0}, {expected_y0})"
+
+        if expected_count > 1:
+            assert veg_p90 >= 0.0, f"veg_p90 suspiciously low for cell ({expected_x0}, {expected_y0})"
+            assert veg_p95 >= veg_p90, f"veg_p95 should be >= veg_p90 for cell ({expected_x0}, {expected_y0})"

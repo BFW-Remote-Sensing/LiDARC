@@ -77,6 +77,9 @@ def small_las_file():
     las.y = np.array([0.5, 0.8, 2.5, 9.2])
     las.z = np.array([5.0, 10.0, 20.0, 15.0])
 
+    veg_height_values = np.array([1.5, 2.5, 3.5, 4.5], dtype=np.float64)
+    las.gps_time = veg_height_values
+
     las.write(filename)
 
     return filename

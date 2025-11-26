@@ -15,11 +15,10 @@ import numpy as np
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 from pika.exceptions import ChannelWrongStateError, ReentrancyError, StreamLostError
-
+from tdigest import TDigest
 from schemas.precompute import schema as precompute_schema
 import util.file_handler as file_handler
 from requests import HTTPError
-import tracemalloc
 
 def handle_sigterm(signum, frame):
     logging.info("SIGTERM received")
@@ -63,7 +62,10 @@ def calculate_grid(grid: dict):
     z_max = np.full(grid_shape, -np.inf, dtype=np.float32)
     veg_height_min = np.full(grid_shape, np.inf, dtype=np.float32)
     veg_height_max = np.full(grid_shape, -np.inf, dtype=np.float32)
-
+    veg_height_digest = np.empty(grid_shape, dtype=object)
+    for r in range(grid_shape[0]):
+        for c in range(grid_shape[1]):
+            veg_height_digest[r,c] = TDigest()
     return {
         "grid_shape": grid_shape,
         "grid_width": grid_width,
@@ -74,7 +76,8 @@ def calculate_grid(grid: dict):
         "veg_height_max": veg_height_max,
         "count": count,
         "x_min": x_min,
-        "y_min": y_min
+        "y_min": y_min,
+        "veg_height_digest": veg_height_digest
     }
 
 def validate_request(json_req):
@@ -91,16 +94,24 @@ def process_points(points, precomp_grid):
     y = points.y
     z = np.array(points.z)
     veg_height = points[precomp_grid["veg_height_key"]]
+
     ix = ((x - precomp_grid["x_min"]) / precomp_grid["grid_width"]).astype(np.int32)
     iy = ((y - precomp_grid["y_min"]) / precomp_grid["grid_height"]).astype(np.int32)
+
     valid = (ix >= 0) & (iy >= 0) & (ix < precomp_grid["grid_shape"][1]) & (iy < precomp_grid["grid_shape"][0])
-    ix, iy, z = ix[valid], iy[valid], z[valid]
+    ix, iy, z, veg_height = ix[valid], iy[valid], z[valid], veg_height[valid]
 
     np.add.at(precomp_grid["count"], (iy, ix), 1)
     np.minimum.at(precomp_grid["z_min"], (iy, ix), z)
     np.maximum.at(precomp_grid["z_max"], (iy, ix), z)
     np.minimum.at(precomp_grid["veg_height_min"], (iy, ix), veg_height)
     np.maximum.at(precomp_grid["veg_height_max"], (iy, ix), veg_height)
+
+    n_rows, n_cols = precomp_grid["count"].shape
+
+    for r, c, vh in zip(iy, ix, veg_height):
+        if 0 <= r < n_rows and 0 <= c < n_cols:
+            precomp_grid["veg_height_digest"][r,c].update(float(vh))
 
 def mk_error_msg(job_id: str, error_msg: str):
     return {"jobId": job_id, "status": "error", "msg": error_msg}
@@ -129,6 +140,19 @@ def create_result_df(precomp_grid):
     x_min = precomp_grid["x_min"]
     y_min = precomp_grid["y_min"]
 
+    p90 = []
+    p95 = []
+    digests = precomp_grid["veg_height_digest"]
+
+    for r, c in zip(rows, cols):
+        d = digests[r, c]
+        if d.n > 0:
+            p90.append(d.percentile(90))
+            p95.append(d.percentile(95))
+        else:
+            p90.append(np.nan)
+            p95.append(np.nan)
+
     return pd.DataFrame({
         "x0": x_min + cols * grid_width,
         "x1": x_min + (cols + 1) * grid_width,
@@ -138,7 +162,9 @@ def create_result_df(precomp_grid):
         "z_max": precomp_grid["z_max"][rows, cols],
         "z_min": precomp_grid["z_min"][rows, cols],
         "veg_height_max": precomp_grid["veg_height_max"][rows, cols],
-        "veg_height_min": precomp_grid["veg_height_min"][rows, cols]
+        "veg_height_min": precomp_grid["veg_height_min"][rows, cols],
+        "veg_p90": p90,
+        "veg_p95": p95,
     })
 
 def process_req(ch, method, properties, body):
