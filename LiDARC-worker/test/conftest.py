@@ -64,7 +64,7 @@ def load_json(load_fixture):
     return _load
 
 @pytest.fixture(scope="module")
-def small_las_file():
+def very_small_las_file():
     header = laspy.LasHeader(point_format=3, version="1.4")
 
 
@@ -78,6 +78,32 @@ def small_las_file():
     las.z = np.array([5.0, 10.0, 20.0, 15.0])
 
     veg_height_values = np.array([1.5, 2.5, 3.5, 4.5], dtype=np.float64)
+    las.gps_time = veg_height_values
+
+    las.write(filename)
+
+    return filename
+
+@pytest.fixture(scope="module")
+def small_las_file():
+    header = laspy.LasHeader(point_format=3, version="1.4")
+
+    with tempfile.NamedTemporaryFile(suffix=".las", delete=False) as tmp:
+        filename = tmp.name
+
+    las = laspy.LasData(header)
+
+    las.x = np.array([0.5, 0.9, 2.0, 2.1, 2.05, 9.5, 9.6, 9.7, 0.4, 0.6, 0.55, 0.58])
+    las.y = np.array([0.5, 0.8, 2.5, 2.6, 2.55, 9.2, 9.3, 9.4, 0.45, 0.7, 0.52, 0.6])
+    las.z = np.array([5.0, 10.0, 20.0, 18.0, 19.0, 15.0, 14.5, 16.0, 4.5, 6.0, 5.5, 6.2])
+
+    veg_height_values = np.array([
+        1.5, 2.5,           # cluster near (0.5, 0.5)
+        3.5, 3.6, 3.7,      # cluster near (2.0, 2.5)
+        4.5, 4.6, 4.7,      # cluster near (9.5, 9.2)
+        1.4, 1.6, 1.55, 1.58 # cluster near (0.5, 0.6)
+    ], dtype=np.float64)
+
     las.gps_time = veg_height_values
 
     las.write(filename)

@@ -11,7 +11,7 @@ minio = MinioContainer("quay.io/minio/minio:latest")
 rabbitmq = RabbitMqContainer("rabbitmq:3.12-management")
 
 @pytest.fixture(scope="module", autouse=True)
-def minio_client(request, small_las_file):
+def minio_client(request, very_small_las_file):
     minio.start()
 
     def teardown():
@@ -24,13 +24,14 @@ def minio_client(request, small_las_file):
     client = minio.get_client()
     if not client.bucket_exists("basebucket"):
         client.make_bucket("basebucket")
+    def upload_file(file_path, object_name="small.las"):
+        client.fput_object(bucket_name="basebucket",
+                       object_name=object_name,
+                       file_path=file_path)
 
-    client.fput_object(bucket_name="basebucket",
-                      object_name="small.las",
-                      file_path=small_las_file)
-    objects = list(client.list_objects("basebucket", recursive=True))
-    assert len(objects) == 1
-    yield client
+        objects = list(client.list_objects("basebucket", recursive=True))
+        assert len(objects) > 0, "Expected atleast one object in bucket after upload"
+    yield client, upload_file
 
 @pytest.fixture(scope="module", autouse=True)
 def rabbitmq_ch(request):

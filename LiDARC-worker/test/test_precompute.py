@@ -16,7 +16,7 @@ def assert_successful_precompute(mock_publish, captured_upload, job_id="12345"):
 
     return captured_upload["df"]
 
-def test_process_req_accumulates_points_correctly_in_grid(small_las_file, tmp_path, load_json):
+def test_process_req_accumulates_points_correctly_in_grid(very_small_las_file, tmp_path, load_json):
     os.chdir(tmp_path)
 
     # Resulting grid is 1m per cell and max points are 10m -> 100cells
@@ -28,7 +28,7 @@ def test_process_req_accumulates_points_correctly_in_grid(small_las_file, tmp_pa
         captured_upload["df"] = df
         return "http://minio.local/bucket/preprocess.csv"
 
-    with patch("preprocess.preprocess_worker.file_handler.download_file", return_value=small_las_file), \
+    with patch("preprocess.preprocess_worker.file_handler.download_file", return_value=very_small_las_file), \
             patch("preprocess.preprocess_worker.file_handler.upload_file_by_type", side_effect=fake_upload_file_by_type), \
             patch("preprocess.preprocess_worker.publish_response") as mock_publish:
 
