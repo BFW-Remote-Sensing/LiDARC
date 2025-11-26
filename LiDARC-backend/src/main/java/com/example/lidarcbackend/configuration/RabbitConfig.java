@@ -18,7 +18,7 @@ public class RabbitConfig {
     // EXCHANGES
     // ============================
     public static final String WORKER_JOB_EXCHANGE = "worker-job";
-    public static final String WORKER_RESULTS_EXCHANGE = "worker-results";
+    public static final String PYTHON_WORKER_RESULTS_EXCHANGE = "worker-results";
 
 
     // ============================

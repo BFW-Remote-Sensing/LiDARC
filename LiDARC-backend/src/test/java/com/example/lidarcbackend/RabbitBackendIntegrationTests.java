@@ -47,6 +47,7 @@ public class RabbitBackendIntegrationTests {
     }
 
 
+
     @Test
     void sendMessageToTestQueueAndConsumeQueue() {
         String expected = "testMessage";
@@ -118,7 +119,7 @@ public class RabbitBackendIntegrationTests {
     void testMetadataResultQueueBinding() {
         String expected = "testMessageMetadataResult";
         rabbitTemplate.convertAndSend(
-                RabbitConfig.WORKER_RESULTS_EXCHANGE,
+                RabbitConfig.PYTHON_WORKER_RESULTS_EXCHANGE,
                 RabbitConfig.WORKER_METADATA_RESULT_ROUTING_KEY,
                 expected
         );
@@ -135,7 +136,7 @@ public class RabbitBackendIntegrationTests {
         String expected = "testMessagePreprocessingResult";
 
         rabbitTemplate.convertAndSend(
-                RabbitConfig.WORKER_RESULTS_EXCHANGE,
+                RabbitConfig.PYTHON_WORKER_RESULTS_EXCHANGE,
                 RabbitConfig.WORKER_PREPROCESSING_RESULT_ROUTING_KEY,
                 expected
         );
@@ -151,7 +152,7 @@ public class RabbitBackendIntegrationTests {
     void testComparisonResultQueueBinding() {
         String expected = "testMessageComparisonResult";
         rabbitTemplate.convertAndSend(
-                RabbitConfig.WORKER_RESULTS_EXCHANGE,
+                RabbitConfig.PYTHON_WORKER_RESULTS_EXCHANGE,
                 RabbitConfig.WORKER_COMPARISON_RESULT_ROUTING_KEY,
                 expected
         );
