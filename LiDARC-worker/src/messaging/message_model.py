@@ -8,18 +8,18 @@ from datetime import datetime, timezone
 #feel free to change this model as you wish/need
 @dataclass
 class BaseMessage:
-    type: str
-    version: str
+    type: str # could be used to identify the message, with preprocessing, etc
+    version: str # probably unnecessary, can be deleted later on
     job_id: str
     payload: Dict[str, Any]
 
     def to_json(self) -> bytes:
         return json.dumps({
             "type": self.type,
-            "version": self.version, #probably not necessary
+            "version": self.version,
             "job_id": self.job_id,
-            "payload": self.payload,
-            "timestamp": datetime.now(timezone.utc),
+            "payload": self.payload, #TODO payload bei workern abchecken
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }).encode("utf-8")
 
     @staticmethod

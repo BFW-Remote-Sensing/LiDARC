@@ -124,7 +124,7 @@ public class RabbitBackendIntegrationTests {
         );
 
         Object message = rabbitTemplate.receiveAndConvert(
-                RabbitConfig.WORKER_METADATA_RESULT_ROUTING_KEY, 1000);
+                RabbitConfig.WORKER_METADATA_RESULT_QUEUE, 1000);
 
         Assertions.assertNotNull(message);
         Assertions.assertEquals(expected, message);
@@ -133,9 +133,10 @@ public class RabbitBackendIntegrationTests {
     @Test
     void testPreprocessingResultQueueBinding() {
         String expected = "testMessagePreprocessingResult";
+
         rabbitTemplate.convertAndSend(
                 RabbitConfig.WORKER_RESULTS_EXCHANGE,
-                RabbitConfig.WORKER_PREPROCESSING_RESULT_QUEUE,
+                RabbitConfig.WORKER_PREPROCESSING_RESULT_ROUTING_KEY,
                 expected
         );
 

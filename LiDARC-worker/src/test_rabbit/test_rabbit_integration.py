@@ -1,18 +1,25 @@
 import json
 import uuid
-import time
 import pika
+
 from messaging.settings import settings
-from messaging.result_publisher import ResultPublisher
+
 # ===========================
 # Configuration for Tests
 # ===========================
 
 
-TEST_QUEUE = "test.queue"
 RESULT_EXCHANGE = settings.exchange_worker_results
-RESULT_QUEUE = "test.result"
-RESULT_ROUTING_KEY = "test.result"
+TEST_RESULT_QUEUE = "test.result"
+TEST_RESULT_RK = "test.result"
+
+METADATA_QUEUE = settings.queue_metadata_result
+COMPARISON_QUEUE = settings.queue_comparison_result
+PREPROCESSING_QUEUE = settings.queue_preprocessing_result
+
+METADATA_RK = settings.routing_metadata_result
+COMPARISON_RK = settings.routing_comparison_result
+PREPROCESSING_RK = settings.routing_preprocessing_result
 
 # ===========================
 # Tests
@@ -20,7 +27,7 @@ RESULT_ROUTING_KEY = "test.result"
 
 def test_can_connect_to_rabbit(rabbit_connection):
     """
-    Minimaltest: Connection exists and is open.
+    Minimal-test: Connection exists and is open.
     """
     assert rabbit_connection.is_open
 
@@ -58,19 +65,29 @@ def test_can_publish_and_consume_on_an_default_queue(rabbit_channel):
     assert received_payload == payload
 
 
-def test_declared_test_queue_roundtrip(rabbit_channel):
+def test_result_exchange_with_declared_test_queue_roundtrip(rabbit_channel):
     """
-    Testet eine explizit deklarierte Queue mit festem Namen.
-    So ähnlich wie deine worker.job Queues.
+    Tests routing of result exchange and test result queue with specified test routing key
     """
-    rabbit_channel.queue_declare(queue=TEST_QUEUE, durable=False, auto_delete=True)
-
+    # Declaration of result exchange and separate queues (idempotent)
+    # declare usually with definitions.json
+    rabbit_channel.exchange_declare(
+        exchange=RESULT_EXCHANGE,
+        exchange_type="direct",
+        durable=True,
+    )
+    rabbit_channel.queue_declare(queue=TEST_RESULT_QUEUE, durable=False, auto_delete=True)
+    rabbit_channel.queue_bind(
+        queue=TEST_RESULT_QUEUE,
+        exchange=RESULT_EXCHANGE,
+        routing_key=TEST_RESULT_RK,
+    )
     payload = {"job": "preprocess", "value": 42}
     body = json.dumps(payload).encode("utf-8")
 
     rabbit_channel.basic_publish(
         exchange="",
-        routing_key=TEST_QUEUE,
+        routing_key=TEST_RESULT_QUEUE,
         body=body,
         properties=pika.BasicProperties(
             content_type="application/json",
@@ -78,20 +95,60 @@ def test_declared_test_queue_roundtrip(rabbit_channel):
     )
 
     method, properties, received_body = rabbit_channel.basic_get(
-        queue=TEST_QUEUE,
+        queue=TEST_RESULT_QUEUE,
         auto_ack=True,
     )
 
     assert method is not None
     received_payload = json.loads(received_body.decode("utf-8"))
+    print(received_payload)
     assert received_payload["job"] == "preprocess"
     assert received_payload["value"] == 42
 
 
-def test_result_exchange_routing(rabbit_channel, rabbit_connection):
+def test_result_publisher_on_result_exchange_routing(result_publisher, rabbit_channel):
     """
-    Testet, ob über deinen Results-Exchange korrekt an eine Queue geroutet wird.
+    Tests implemented result publisher and routing over the result exchange
    """
+
+    #Exchange und Queue declare (idempotent)
+    # declare usually with definitions.json
+    rabbit_channel.exchange_declare(
+        exchange=RESULT_EXCHANGE,
+        exchange_type="direct",
+        durable=True,
+    )
+    rabbit_channel.queue_declare(queue=TEST_RESULT_QUEUE, durable=False, auto_delete=True)
+    rabbit_channel.queue_bind(
+        queue=TEST_RESULT_QUEUE,
+        exchange=RESULT_EXCHANGE,
+        routing_key=TEST_RESULT_RK,
+    )
+
+    payload = {"job": "test_queue", "value": 42}
+
+    result_publisher._publish(TEST_RESULT_RK, payload, "test")
+
+    method, properties, received_body = rabbit_channel.basic_get(
+        queue=TEST_RESULT_QUEUE,
+        auto_ack=True,
+    )
+
+
+    assert method is not None
+
+    received_payload = json.loads(received_body.decode("utf-8"))
+
+    assert received_payload is not None, "Keine Nachricht über den Results-Exchange erhalten"
+    assert received_payload["type"] == "test"
+    assert received_payload["payload"]["value"] == 42
+    assert received_payload["payload"]["job"] == "test_queue"
+
+def test_result_publisher_on_metadata_routing(result_publisher, rabbit_channel):
+    """
+        Tests implemented result publisher and routing over the result exchange
+        for metadata publish
+       """
 
     # Exchange und Queue declare (idempotent)
     # declare usually with definitions.json
@@ -100,44 +157,109 @@ def test_result_exchange_routing(rabbit_channel, rabbit_connection):
         exchange_type="direct",
         durable=True,
     )
-    rabbit_channel.queue_declare(queue=RESULT_QUEUE, durable=False, auto_delete=True)
+    rabbit_channel.queue_declare(queue=METADATA_QUEUE, durable=False, auto_delete=True)
     rabbit_channel.queue_bind(
-        queue=RESULT_QUEUE,
+        queue=METADATA_QUEUE,
         exchange=RESULT_EXCHANGE,
-        routing_key=RESULT_ROUTING_KEY,
+        routing_key=METADATA_RK,
     )
 
-    publisher = ResultPublisher
-    publisher._conn = rabbit_connection
-    publisher._channel =rabbit_channel
+    payload = {"job": "metadata", "value": 120}
 
-    payload = {"status": "OK"}
-    body = json.dumps(payload).encode("utf-8")
+    result_publisher.publish_metadata_result(payload)
 
-   ## publisher._publish(RESULT_ROUTING_KEY, payload, "test")
-    # Wenn du einen eigenen ResultPublisher hast, kannst du den hier statt basic_publish nutzen.
-    rabbit_channel.basic_publish(
-        exchange=RESULT_EXCHANGE,
-        routing_key=RESULT_ROUTING_KEY,
-        body=body,
-        properties=pika.BasicProperties(
-            content_type="application/json",
-        ),
+    method, properties, received_body = rabbit_channel.basic_get(
+        queue=METADATA_QUEUE,
+        auto_ack=True,
     )
 
+    assert method is not None
+
+    received_payload = json.loads(received_body.decode("utf-8"))
+
+    assert received_payload is not None, "Keine Nachricht über den Results-Exchange erhalten"
+    assert received_payload["type"] == METADATA_RK
+    assert received_payload["payload"]["value"] == 120
+    assert received_payload["payload"]["job"] == "metadata"
 
 
-    # ein bisschen pollen, weil Messages asynchron ankommen können
-    message = None
-    for _ in range(10):
-        method, properties, received_body = rabbit_channel.basic_get(
-            queue=RESULT_QUEUE,
-            auto_ack=True,
-        )
-        if method:
-            message = json.loads(received_body.decode("utf-8"))
-            break
-        time.sleep(0.1)
+def test_result_publisher_on_comparison_routing(result_publisher, rabbit_channel):
+    """
+        Tests implemented result publisher and routing over the result exchange
+        for comparison publish
+       """
 
-    assert message is not None, "Keine Nachricht über den Results-Exchange erhalten"
-    assert message["status"] == "OK"
+    # Exchange und Queue declare (idempotent)
+    # declare usually with definitions.json
+    rabbit_channel.exchange_declare(
+        exchange=RESULT_EXCHANGE,
+        exchange_type="direct",
+        durable=True,
+    )
+
+    rabbit_channel.queue_declare(queue=COMPARISON_QUEUE, durable=False, auto_delete=True)
+
+    rabbit_channel.queue_bind(
+        queue=COMPARISON_QUEUE,
+        exchange=RESULT_EXCHANGE,
+        routing_key=COMPARISON_RK,
+    )
+
+    payload = {"job": "comparison", "value": 120}
+
+    result_publisher.publish_comparison_result(payload)
+
+    method, properties, received_body = rabbit_channel.basic_get(
+        queue=COMPARISON_QUEUE,
+        auto_ack=True,
+    )
+
+    assert method is not None
+
+    received_payload = json.loads(received_body.decode("utf-8"))
+
+    assert received_payload is not None, "Keine Nachricht über den Results-Exchange erhalten"
+    assert received_payload["type"] == COMPARISON_RK
+    assert received_payload["payload"]["value"] == 120
+    assert received_payload["payload"]["job"] == "comparison"
+
+
+def test_result_publisher_on_preprocessing_routing(result_publisher, rabbit_channel):
+    """
+        Tests implemented result publisher and routing over the result exchange
+        for preprocessing publish
+       """
+
+    # Exchange und Queue declare (idempotent)
+    # declare usually with definitions.json
+    rabbit_channel.exchange_declare(
+        exchange=RESULT_EXCHANGE,
+        exchange_type="direct",
+        durable=True,
+    )
+
+    rabbit_channel.queue_declare(queue=PREPROCESSING_QUEUE, durable=False, auto_delete=True)
+
+    rabbit_channel.queue_bind(
+        queue=PREPROCESSING_QUEUE,
+        exchange=RESULT_EXCHANGE,
+        routing_key=PREPROCESSING_RK,
+    )
+
+    payload = {"job": "preprocessing", "value": 120}
+
+    result_publisher.publish_preprocessing_result(payload)
+
+    method, properties, received_body = rabbit_channel.basic_get(
+        queue=PREPROCESSING_QUEUE,
+        auto_ack=True,
+    )
+
+    assert method is not None
+
+    received_payload = json.loads(received_body.decode("utf-8"))
+
+    assert received_payload is not None, "Keine Nachricht über den Results-Exchange erhalten"
+    assert received_payload["type"] == PREPROCESSING_RK
+    assert received_payload["payload"]["value"] == 120
+    assert received_payload["payload"]["job"] == "preprocessing"

@@ -5,6 +5,7 @@ from testcontainers.rabbitmq import RabbitMqContainer
 from messaging.rabbit_connect import create_channel
 from messaging.result_publisher import ResultPublisher
 
+# NOTICE: THIS FILE CANNOT BE RENAMED, OTHERWISE TESTS FAIL
 
 # ===========================
 # Fixtures
@@ -29,7 +30,6 @@ def rabbit_channel(rabbit_connection):
 
 @pytest.fixture()
 def result_publisher(rabbit_connection, rabbit_channel):
-    publisher = ResultPublisher()
-    publisher._conn = rabbit_connection
-    publisher._ch = rabbit_channel
+    publisher = ResultPublisher(conn=rabbit_connection, ch=rabbit_channel)
     yield publisher
+    # No publisher.close() since the connection is closed in the test fixtures
