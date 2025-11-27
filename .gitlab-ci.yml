@@ -1,0 +1,22 @@
+stages:
+  - test
+
+
+preprocess_worker_test:
+  stage: test
+  image: registry.reset-inso-w.at/pub/docker/python:3.13-slim
+  cache:
+    key: "preprocess-worker-${CI_COMMIT_REF_SLUG}"
+    paths:
+      - LiDARC-worker/.venv
+  script:
+    - cd LiDARC-worker
+    - |
+      if [ ! -d ".venv" ]; then
+        python -m venv .venv
+      fi
+    - source .venv/bin/activate
+    - pip install --upgrade pip
+    - pip install -r src/preprocess/requirements.txt
+    - pip install pytest pytest_check testcontainers
+    - python -m pytest --e2e

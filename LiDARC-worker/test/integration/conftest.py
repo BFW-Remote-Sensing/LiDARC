@@ -7,8 +7,8 @@ import preprocess.preprocess_worker as preprocess
 from testcontainers.minio import MinioContainer
 from testcontainers.rabbitmq import RabbitMqContainer
 
-minio = MinioContainer("quay.io/minio/minio:latest")
-rabbitmq = RabbitMqContainer("rabbitmq:3.12-management")
+minio = MinioContainer("registry.reset.inso-w.at/pub/docker/chainguard/minio:latest")
+rabbitmq = RabbitMqContainer("rabbitmq:3.12-management") #TODO: Update with registry in reset
 
 @pytest.fixture(scope="module", autouse=True)
 def minio_client(request, very_small_las_file):
