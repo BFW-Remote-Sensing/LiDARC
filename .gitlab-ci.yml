@@ -8,8 +8,16 @@ preprocess_worker_test:
   services:
     - name: registry.reset.inso-w.at/pub/docker/chainguard/minio:latest
       alias: minio
+      command:
+        - server
+        - /data/minio
+        - --console-address
+        - :9001
     - name: rabbitmq:3.12-management
       alias: rabbitmq
+      variables:
+        RABBITMQ_DEFAULT_USER: test_user
+        RABBITMQ_DEFAULT_PASS: test_password
   variables:
     MINIO_ACCESS_KEY: minioadmin
     MINIO_SECRET_KEY: minioadmin

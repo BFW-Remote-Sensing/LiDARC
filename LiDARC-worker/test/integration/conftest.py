@@ -77,12 +77,12 @@ def rabbitmq_ch(request):
         connection = pika.BlockingConnection(
             pika.ConnectionParameters(host=host, port=port, virtual_host=vhost, credentials=credentials))
         ch = connection.channel()
-        yield ch
         ch.queue_declare(queue="preprocessing.job", durable=True)
         ch.exchange_declare(exchange=exchange_name, exchange_type="topic")
         ch.queue_bind(queue="preprocessing.job", exchange=exchange_name, routing_key="preprocessing.job") #TODO: Fix the messaging in future or make it independent of real setup
         ch.queue_declare(queue="preprocessing.result", durable=True)
         ch.queue_bind(queue="preprocessing.result", exchange=exchange_name, routing_key="job.preprocessor.create")
+        yield ch
     else:
         rabbitmq = RabbitMqContainer("rabbitmq:3.12-management")
         rabbitmq.start()

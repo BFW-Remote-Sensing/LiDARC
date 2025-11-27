@@ -167,6 +167,8 @@ def create_result_df(precomp_grid):
         "veg_p95": p95,
     })
 
+
+#TODO: LOOK at how to maybe process points better or use less resources? Any suggestions are warmly welcome
 def process_req(ch, method, properties, body):
     start_time = time.time()
     request = json.loads(body)
