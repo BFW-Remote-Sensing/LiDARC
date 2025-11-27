@@ -1,14 +1,13 @@
 stages:
   - test
 
-
 preprocess_worker_test:
   stage: test
   image: registry.reset.inso-w.at/pub/docker/python:3.13-slim
   services:
     - name: registry.reset.inso-w.at/pub/docker/chainguard/minio:latest
       alias: minio
-      command: server /data/minio/ --console-address ":9001"
+      command: server --console-address ":9001" /data/minio/
     - name: rabbitmq:3.12-management
       alias: rabbitmq
       variables:
