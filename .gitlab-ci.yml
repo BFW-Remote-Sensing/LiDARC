@@ -1,0 +1,41 @@
+stages:
+  - test
+
+preprocess_worker_test:
+  stage: test
+  image: registry.reset.inso-w.at/pub/docker/python:3.13-slim
+  services:
+    - name: registry.reset.inso-w.at/pub/docker/chainguard/minio:latest
+      alias: minio
+      command: ["server", "--console-address", ":9001", "/data/minio/"]
+    - name: rabbitmq:3.12-management
+      alias: rabbitmq
+      variables:
+        RABBITMQ_DEFAULT_USER: test_user
+        RABBITMQ_DEFAULT_PASS: test_password
+  variables:
+    MINIO_ACCESS_KEY: minioadmin
+    MINIO_SECRET_KEY: minioadmin
+    MINIO_ENDPOINT: minio:9000
+    RABBITMQ_USER: test_user
+    RABBITMQ_PASSWORD: test_password
+    RABBITMQ_HOST: rabbitmq
+    RABBITMQ_PORT: 5672
+    RABBITMQ_VHOST: /
+    EXCHANGE_NAME: worker.job
+  cache:
+    key: "preprocess-worker-${CI_COMMIT_REF_SLUG}"
+    paths:
+      - LiDARC-worker/.venv
+  script:
+    - cd LiDARC-worker
+    - |
+      if [ ! -d ".venv" ]; then
+        python -m venv .venv
+      fi
+    - source .venv/bin/activate
+    - pip install --upgrade pip
+    - apt-get update && apt-get install -y build-essential python3-dev
+    - pip install -r src/preprocess/requirements.txt
+    - pip install pytest pytest_check testcontainers
+    - python -m pytest --e2e
