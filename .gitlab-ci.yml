@@ -1,5 +1,12 @@
+
 stages:
+  - deploy
   - test
+
+check_internet:
+  script:
+    - nc -zv 193.171.117.122 22 || exit 1
+
 
 preprocess_worker_test:
   stage: test
