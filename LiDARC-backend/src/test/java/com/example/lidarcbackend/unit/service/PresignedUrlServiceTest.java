@@ -6,6 +6,7 @@ import com.example.lidarcbackend.model.DTO.Mapper.impl.UrlMapperImpl;
 import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.model.entity.Url;
 import com.example.lidarcbackend.service.files.PresignedUrlService;
+import com.example.lidarcbackend.service.files.WorkerStartService;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioAsyncClient;
 import io.minio.errors.MinioException;
@@ -19,7 +20,8 @@ import java.util.concurrent.CompletableFuture;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 //this is more or less an integration test since it uses real repositories from AbstractUnitTest
 
@@ -29,6 +31,7 @@ public class PresignedUrlServiceTest extends com.example.lidarcbackend.unit.Abst
   private MinioProperties minioProperties;
   private UrlMapperImpl urlMapper;
   private PresignedUrlService presignedUrlService;
+  private WorkerStartService workerStartService;
 
   @BeforeEach
   void setUpService() {
@@ -45,6 +48,7 @@ public class PresignedUrlServiceTest extends com.example.lidarcbackend.unit.Abst
         minioProperties,
         urlRepository,
         fileRepository,
+        workerStartService,
         urlMapper
     );
   }
