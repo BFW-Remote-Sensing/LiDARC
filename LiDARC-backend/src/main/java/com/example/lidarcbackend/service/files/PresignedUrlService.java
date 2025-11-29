@@ -18,7 +18,6 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -43,7 +42,7 @@ public class PresignedUrlService implements IPresignedUrlService {
   //private final FileDao fileDao;
   private final UrlRepository urlRepository;
   private final FileRepository fileRepository;
-  private final RabbitTemplate rabbitTemplate;
+  private final WorkerStartService workerStartService;
   private final UrlMapper urlMapper;
   //minimum added time to the current time when checking for expiry
   private final int minimumAddedTime = 20;
@@ -208,7 +207,7 @@ public class PresignedUrlService implements IPresignedUrlService {
   }
 
   private void sendFinishMessage(String presignedUploadUrl) {
-    //rabbitTemplate.convertAndSend(this.routingKey, presignedUploadUrl);
+    workerStartService.startMetadataJob(presignedUploadUrl);
   }
 
   private boolean checkExistence(FileInfoDto body) {
