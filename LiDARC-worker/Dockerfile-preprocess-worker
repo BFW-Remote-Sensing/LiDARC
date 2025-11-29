@@ -1,0 +1,11 @@
+FROM registry.reset.inso-w.at/pub/docker/python:3.13-slim
+
+COPY src/preprocess /app
+COPY src/schemas /app/schemas
+COPY src/util /app/util
+
+RUN pip install --no-cache-dir -r app/requirements.txt
+
+WORKDIR /app
+
+ENTRYPOINT ["python", "preprocess_worker.py"]
