@@ -1,4 +1,3 @@
-
 stages:
   - test
 
@@ -40,16 +39,3 @@ preprocess_worker_test:
     - pip install -r src/preprocess/requirements.txt
     - pip install pytest pytest_check testcontainers
     - python -m pytest --e2e
-    - | 
-      python -c "
-            import socket
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(5)
-            result = sock.connect_ex(('193.171.117.122', 22))
-            sock.close()
-            if result == 0:
-                print('✅ SSH port 22 OPEN on 193.171.117.122')
-            else:
-                print('❌ SSH port 22 CLOSED on 193.171.117.122')
-                exit(1)
-                  "
