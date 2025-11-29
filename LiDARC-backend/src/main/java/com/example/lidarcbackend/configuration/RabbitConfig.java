@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitConfig {
 
-    //DATA MOCK
+    //TEST EXCHANGE, QUEUE, RK
     public static final String TEST_EXCHANGE = "test-exchange";
     public static final String TEST_QUEUE = "test.queue";
     public static final String TEST_RK = "test";
@@ -49,7 +49,7 @@ public class RabbitConfig {
     // ROUTING KEYS — Results
     // (Used by Python Workers)
     // ============================
-    public static final String WORKER_METADATA_RESULT_ROUTING_KEY = "worker.metadata.result";
+    public static final String WORKER_METADATA_RESULT_ROUTING_KEY = "worker.metadata.result.start";
     public static final String WORKER_PREPROCESSING_RESULT_ROUTING_KEY = "worker.preprocessing.result";
     public static final String WORKER_COMPARISON_RESULT_ROUTING_KEY = "worker.comparison.result";
 
