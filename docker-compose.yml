@@ -8,8 +8,10 @@ services:
       - "5672:5672"   # für AMQP (Java-Client)
       - "15672:15672" # für Web UI
     environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin
+      RABBITMQ_CONFIG_FILE: rabbitmq/rabbit
+    volumes:
+      - ./rabbitmq/rabbit.conf:/rabbitmq/rabbit.conf:ro #config tells where to fetch definitions from at startup
+      - ./rabbitmq/definitions.json:/rabbitmq/definitions.json:ro #schema definitions (exchanges, queues,..)
     networks:
       - ase-network
   minio:
@@ -99,6 +101,8 @@ services:
         condition: service_completed_successfully
     ports:
       - "8080:8080"
+    environment:
+      - RABBITMQ_HOST=rabbitmq
     networks:
       - ase-network
   preprocess-worker:
