@@ -1,6 +1,6 @@
 package com.example.lidarcbackend.service.files;
 
-import com.example.lidarcbackend.configuration.RabbitProperties;
+import com.example.lidarcbackend.configuration.RabbitConfig;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
@@ -8,35 +8,33 @@ import org.springframework.stereotype.Service;
 public class WorkerStartService {
 
     private final RabbitTemplate rabbitTemplate;
-    private final RabbitProperties props;
 
-    public WorkerStartService(RabbitTemplate rabbitTemplate,
-                              RabbitProperties rabbitProperties) {
+
+    public WorkerStartService(RabbitTemplate rabbitTemplate) {
         this.rabbitTemplate = rabbitTemplate;
-        this.props = rabbitProperties;
     }
 
 
     public void startMetadataJob(String payload) {
         rabbitTemplate.convertAndSend(
-                props.getJobExchange(),                       // → worker.job
-                props.getRouting().getMetadataStart(),     // → worker.metadata.job.start
+                RabbitConfig.WORKER_JOB_EXCHANGE,                       // → worker-job
+                RabbitConfig.WORKER_METADATA_START_ROUTING_KEY,     // → worker.metadata.job.start
                 payload
         );
     }
 
     public void startPreprocessingJob(String payload) {
         rabbitTemplate.convertAndSend(
-                props.getJobExchange(),                       // immer worker.job
-                props.getRouting().getPreprocessingStart(),
+                RabbitConfig.WORKER_JOB_EXCHANGE,
+                RabbitConfig.WORKER_PREPROCESSING_START_ROUTING_KEY,
                 payload
         );
     }
 
     public void startComparisonJob(String payload) {
         rabbitTemplate.convertAndSend(
-                props.getJobExchange(),
-                props.getRouting().getComparisonStart(),
+                RabbitConfig.WORKER_JOB_EXCHANGE,
+                RabbitConfig.WORKER_COMPARISON_START_ROUTING_KEY,
                 payload
         );
     }

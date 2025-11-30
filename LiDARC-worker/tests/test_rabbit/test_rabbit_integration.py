@@ -151,7 +151,7 @@ def test_result_publisher_on_metadata_routing(result_publisher, rabbit_channel):
        """
 
     # Exchange und Queue declare (idempotent)
-    # declare usually with definitions.json
+    # declare usually with definitions.json at rabbit container startup
     rabbit_channel.exchange_declare(
         exchange=RESULT_EXCHANGE,
         exchange_type="direct",
