@@ -30,7 +30,7 @@ def consume_single_message(channel, queue):
     return body
 
 @pytest.mark.e2e
-def test_precompute_integration(minio_client, rabbitmq_ch, load_json, very_small_las_file):
+def test_precompute_integration(minio_client, rabbit_channel, load_json, very_small_las_file):
     client, upload_file = minio_client
     assert client.bucket_exists("basebucket")
     upload_file(very_small_las_file, object_name="small.las")
@@ -43,8 +43,8 @@ def test_precompute_integration(minio_client, rabbitmq_ch, load_json, very_small
 
     test_msg = load_json("valid_precompute_job_small_las_file.json")
     test_msg["url"] = presigned_url
-    publish_message(rabbitmq_ch, "worker.job", "preprocessing.job", test_msg)
-    body = consume_single_message(rabbitmq_ch, "preprocessing.result")
+    publish_message(rabbit_channel, "worker.job", "preprocessing.job", test_msg)
+    body = consume_single_message(rabbit_channel, "preprocessing.result")
     assert body is not None, "Result message of preprocess worker is None"
     response = json.loads(body)
 
@@ -83,7 +83,7 @@ def test_precompute_integration(minio_client, rabbitmq_ch, load_json, very_small
 
 
 @pytest.mark.e2e
-def test_precompute_integration_with_small_las_file(minio_client, rabbitmq_ch, load_json, small_las_file):
+def test_precompute_integration_with_small_las_file(minio_client, rabbit_channel, load_json, small_las_file):
     client, upload_file = minio_client
     assert client.bucket_exists("basebucket")
     upload_file(small_las_file, object_name="small.las")
@@ -96,8 +96,8 @@ def test_precompute_integration_with_small_las_file(minio_client, rabbitmq_ch, l
 
     test_msg = load_json("valid_precompute_job_small_las_file.json")
     test_msg["url"] = presigned_url
-    publish_message(rabbitmq_ch, "worker.job", "preprocessing.job", test_msg)
-    body = consume_single_message(rabbitmq_ch, "preprocessing.result")
+    publish_message(rabbit_channel, "worker.job", "preprocessing.job", test_msg)
+    body = consume_single_message(rabbit_channel, "preprocessing.result")
     assert body is not None, "Result message of preprocess worker is None"
     response = json.loads(body)
 

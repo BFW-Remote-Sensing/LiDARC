@@ -2,34 +2,35 @@ import json
 import uuid
 import pika
 
-from messaging.settings import settings
+from messaging.topology import topology
 
 # ===========================
 # Configuration for Tests
 # ===========================
+# 1
 
-
-RESULT_EXCHANGE = settings.exchange_worker_results
+RESULT_EXCHANGE = topology.exchange_worker_results
 TEST_RESULT_QUEUE = "test.result"
 TEST_RESULT_RK = "test.result"
 
-METADATA_QUEUE = settings.queue_metadata_result
-COMPARISON_QUEUE = settings.queue_comparison_result
-PREPROCESSING_QUEUE = settings.queue_preprocessing_result
+METADATA_QUEUE = topology.queue_metadata_result
+COMPARISON_QUEUE = topology.queue_comparison_result
+PREPROCESSING_QUEUE = topology.queue_preprocessing_result
 
-METADATA_RK = settings.routing_metadata_result
-COMPARISON_RK = settings.routing_comparison_result
-PREPROCESSING_RK = settings.routing_preprocessing_result
+METADATA_RK = topology.routing_metadata_result
+COMPARISON_RK = topology.routing_comparison_result
+PREPROCESSING_RK = topology.routing_preprocessing_result
 
 # ===========================
 # Tests
 # ===========================
 
-def test_can_connect_to_rabbit(rabbit_connection):
+def test_can_connect_to_rabbit(rabbit_channel):
     """
     Minimal-test: Connection exists and is open.
     """
-    assert rabbit_connection.is_open
+    channel = rabbit_channel
+    assert channel.is_open
 
 
 def test_can_publish_and_consume_on_an_default_queue(rabbit_channel):
@@ -139,7 +140,7 @@ def test_result_publisher_on_result_exchange_routing(result_publisher, rabbit_ch
 
     received_payload = json.loads(received_body.decode("utf-8"))
 
-    assert received_payload is not None, "Keine Nachricht über den Results-Exchange erhalten"
+    assert received_payload is not None, "No message on Results-Exchange"
     assert received_payload["type"] == "test"
     assert received_payload["payload"]["value"] == 42
     assert received_payload["payload"]["job"] == "test_queue"
@@ -177,7 +178,7 @@ def test_result_publisher_on_metadata_routing(result_publisher, rabbit_channel):
 
     received_payload = json.loads(received_body.decode("utf-8"))
 
-    assert received_payload is not None, "Keine Nachricht über den Results-Exchange erhalten"
+    assert received_payload is not None, "No message on Results-Exchange"
     assert received_payload["type"] == METADATA_RK
     assert received_payload["payload"]["value"] == 120
     assert received_payload["payload"]["job"] == "metadata"
@@ -218,7 +219,7 @@ def test_result_publisher_on_comparison_routing(result_publisher, rabbit_channel
 
     received_payload = json.loads(received_body.decode("utf-8"))
 
-    assert received_payload is not None, "Keine Nachricht über den Results-Exchange erhalten"
+    assert received_payload is not None, "No message on Results-Exchange"
     assert received_payload["type"] == COMPARISON_RK
     assert received_payload["payload"]["value"] == 120
     assert received_payload["payload"]["job"] == "comparison"
@@ -259,7 +260,7 @@ def test_result_publisher_on_preprocessing_routing(result_publisher, rabbit_chan
 
     received_payload = json.loads(received_body.decode("utf-8"))
 
-    assert received_payload is not None, "Keine Nachricht über den Results-Exchange erhalten"
+    assert received_payload is not None, "No message on Results-Exchange"
     assert received_payload["type"] == PREPROCESSING_RK
     assert received_payload["payload"]["value"] == 120
     assert received_payload["payload"]["job"] == "preprocessing"
