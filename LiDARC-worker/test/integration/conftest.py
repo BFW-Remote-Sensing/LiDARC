@@ -8,8 +8,12 @@ from testcontainers.minio import MinioContainer
 from testcontainers.rabbitmq import RabbitMqContainer
 from minio import Minio
 
+from messaging.result_publisher import ResultPublisher
+
+
 def running_in_ci_mode():
     return os.getenv("CI") == "true" or os.getenv("GITLAB_CI") == "true"
+
 
 @pytest.fixture(scope="module", autouse=True)
 def minio_client(request, very_small_las_file):
@@ -76,7 +80,7 @@ def rabbitmq_ch(request):
         ch.queue_bind(queue="preprocessing.job", exchange=exchange_name, routing_key="preprocessing.job") #TODO: Fix the messaging in future or make it independent of real setup
         ch.queue_declare(queue="preprocessing.result", durable=True)
         ch.queue_bind(queue="preprocessing.result", exchange=exchange_name, routing_key="job.preprocessor.create")
-        yield ch
+        yield ch, connection
     else:
         rabbitmq = RabbitMqContainer("rabbitmq:3.12-management")
         rabbitmq.start()
@@ -118,4 +122,16 @@ def run_preprocess_worker(rabbitmq_ch, minio_client):
     thread.start()
     yield thread
 
+@pytest.fixture(scope="function")
+def rabbit_channel(rabbitmq_ch):
+    connection, channel = rabbitmq_ch
+    yield channel
+
+
+
+@pytest.fixture()
+def result_publisher(rabbitmq_ch):
+    ch, connection = rabbitmq_ch
+    publisher = ResultPublisher(conn=connection, ch=ch)
+    yield publisher
 

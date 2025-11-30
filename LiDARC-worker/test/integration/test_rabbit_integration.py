@@ -25,11 +25,12 @@ PREPROCESSING_RK = topology.routing_preprocessing_result
 # Tests
 # ===========================
 
-def test_can_connect_to_rabbit(rabbit_connection):
+def test_can_connect_to_rabbit(rabbitmq_ch):
     """
     Minimal-test: Connection exists and is open.
     """
-    assert rabbit_connection.is_open
+    channel = rabbitmq_ch.channel
+    assert channel.is_open
 
 
 def test_can_publish_and_consume_on_an_default_queue(rabbit_channel):

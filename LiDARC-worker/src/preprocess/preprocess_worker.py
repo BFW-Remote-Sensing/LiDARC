@@ -15,7 +15,7 @@ import numpy as np
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 from pika.exceptions import ChannelWrongStateError, ReentrancyError, StreamLostError
-from tdigest import TDigest
+#from tdigest import TDigest
 from schemas.precompute import schema as precompute_schema
 import util.file_handler as file_handler
 from requests import HTTPError
@@ -33,7 +33,7 @@ def connect_rabbitmq():
             password = os.environ.get("RABBITMQ_PASSWORD", "admin")
             host = os.environ.get("RABBITMQ_HOST", "rabbitmq")
             port = int(os.environ.get("RABBITMQ_PORT", "5672"))
-            vhost = os.environ.get("RABBITMQ_VHOST", "/worker")
+            vhost = os.environ.get("RABBITMQ_VHOST", "/")
 
             credentials = pika.PlainCredentials(username=user, password=password)
             connection = pika.BlockingConnection(pika.ConnectionParameters(host=host, port=port, virtual_host=vhost, credentials=credentials))
