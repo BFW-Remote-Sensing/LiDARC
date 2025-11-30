@@ -139,7 +139,7 @@ def test_result_publisher_on_result_exchange_routing(result_publisher, rabbit_ch
 
     received_payload = json.loads(received_body.decode("utf-8"))
 
-    assert received_payload is not None, "Keine Nachricht über den Results-Exchange erhalten"
+    assert received_payload is not None, "No message on Results-Exchange"
     assert received_payload["type"] == "test"
     assert received_payload["payload"]["value"] == 42
     assert received_payload["payload"]["job"] == "test_queue"
@@ -177,7 +177,7 @@ def test_result_publisher_on_metadata_routing(result_publisher, rabbit_channel):
 
     received_payload = json.loads(received_body.decode("utf-8"))
 
-    assert received_payload is not None, "Keine Nachricht über den Results-Exchange erhalten"
+    assert received_payload is not None, "No message on Results-Exchange"
     assert received_payload["type"] == METADATA_RK
     assert received_payload["payload"]["value"] == 120
     assert received_payload["payload"]["job"] == "metadata"
@@ -218,7 +218,7 @@ def test_result_publisher_on_comparison_routing(result_publisher, rabbit_channel
 
     received_payload = json.loads(received_body.decode("utf-8"))
 
-    assert received_payload is not None, "Keine Nachricht über den Results-Exchange erhalten"
+    assert received_payload is not None, "No message on Results-Exchange"
     assert received_payload["type"] == COMPARISON_RK
     assert received_payload["payload"]["value"] == 120
     assert received_payload["payload"]["job"] == "comparison"
@@ -259,7 +259,7 @@ def test_result_publisher_on_preprocessing_routing(result_publisher, rabbit_chan
 
     received_payload = json.loads(received_body.decode("utf-8"))
 
-    assert received_payload is not None, "Keine Nachricht über den Results-Exchange erhalten"
+    assert received_payload is not None, "No message on Results-Exchange"
     assert received_payload["type"] == PREPROCESSING_RK
     assert received_payload["payload"]["value"] == 120
     assert received_payload["payload"]["job"] == "preprocessing"
