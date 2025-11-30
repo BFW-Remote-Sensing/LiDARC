@@ -20,7 +20,7 @@ import java.util.Set;
 public class MetadataService implements IMetadataService {
 
     private final FileMetadataRepository fileRepository;
-    private CoordinateSystemRepository coordinateSystemRepository;
+    private final CoordinateSystemRepository coordinateSystemRepository;
     private final Validator validator;
 
     public MetadataService(FileMetadataRepository fileRepository, CoordinateSystemRepository coordinateSystemRepository, Validator validator) {
@@ -43,16 +43,27 @@ public class MetadataService implements IMetadataService {
         }
 
         if (!status.equalsIgnoreCase("success")) {
-            log.warn("Metadata job {} failed: {}", jobId, result.get("msg"));
-            return;
+            Object payload = result.get("payload");
+            if (payload instanceof Map) {
+                Object payloadMsg = ((Map<?, ?>) payload).get("msg");
+                if (payloadMsg instanceof String errorMessage) {
+                    log.warn("Metadata job {} failed: {}", jobId, errorMessage);
+                    return;
+                }
+            }
         }
 
-        Object metadataObj = result.get("metadata");
+        Object payloadObj = result.get("payload");
+        if (!(payloadObj instanceof Map)) {
+            log.error("Invalid payload for job {}", jobId);
+            return;
+        }
+        Map<String, Object> payload = (Map<String, Object>) payloadObj;
+        Object metadataObj = payload.get("metadata");
         if (!(metadataObj instanceof Map)) {
             log.error("Invalid metadata object for job {}", jobId);
             return;
         }
-
         Map<String, Object> metadata = (Map<String, Object>) metadataObj;
 
         FileMetadata fileMetadata = parseMetadata(metadata);
