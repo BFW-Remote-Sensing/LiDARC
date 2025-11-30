@@ -45,7 +45,7 @@ public class BucketApiController implements BucketApi {
   ) {
     String accept = request.getHeader("Accept");
     if (accept != null && accept.contains("application/json")) {
-      Optional<FileInfoDto> file = presignedUrlService.fetchFileInfo(body.getFileName());
+      Optional<FileInfoDto> file = presignedUrlService.fetchFileInfo(body.getFileName(), body.getOriginalFileName());
       return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
@@ -59,7 +59,7 @@ public class BucketApiController implements BucketApi {
       @RequestBody FileInfoDto body) {
     String accept = request.getHeader("Accept");
     if (accept != null && accept.contains("application/json")) {
-      Optional<FileInfoDto> file = presignedUrlService.fetchUploadUrl(body.getFileName());
+      Optional<FileInfoDto> file = presignedUrlService.fetchUploadUrl(body.getFileName(), body.getOriginalFileName());
       return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK))
           .orElseGet(() -> new ResponseEntity<FileInfoDto>(new FileInfoDto(), HttpStatus.CONFLICT));
     }

@@ -61,7 +61,7 @@ export class UploadComponent {
     for (const f of newFiles) {
       const exists = this.files.some((e) => e.file.name === f.name && e.file.type === f.type);
       if (!exists) {
-        const actualFile: UploadFile = { file: f, progress: 0, status: 'idle' };
+        const actualFile: UploadFile = { file: f, hash: '', progress: 0, status: 'idle' };
         this.files.push(actualFile);
         changedFiles.push(actualFile);
         changed = true;
@@ -79,7 +79,7 @@ export class UploadComponent {
     fileUpload.status = 'uploading';
     this.cdr.detectChanges(); //need to detect Changes for some reason
     return this.uploadService
-      .uploadFileUsingPresign(fileUpload.file)
+      .uploadFileUsingPresign(fileUpload.file, fileUpload)
       .pipe(debounceTime(50))
       .subscribe({
         next: (event) => {
@@ -107,7 +107,7 @@ export class UploadComponent {
                   this.cdr.detectChanges(); //need to detect Changes for some reason
                   this.fileToSubscriptionMap.delete(fileUpload);
 
-                  this.uploadService.onComplete?.(fileUpload.file).subscribe({
+                  this.uploadService.onComplete?.(fileUpload.file, fileUpload.hash).subscribe({
                     next: (res) => {
                       console.log(
                         'notified backend of completed upload for file ' + fileUpload.file.name

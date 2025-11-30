@@ -20,6 +20,9 @@ public class FileInfoDto {
   @FileNameValid
   private String fileName;
 
+  @JsonProperty("originalFileName")
+  private String originalFileName;
+
   @JsonProperty("presignedURL")
   private String presignedURL;
 
@@ -37,6 +40,7 @@ public class FileInfoDto {
     this.presignedURL = null;
     this.uploaded = file.getUploaded();
     this.urlExpiresAt = null;
+    this.originalFileName = file.getOriginalFilename();
   }
 
   FileInfoDto(String fileName) {
@@ -61,5 +65,15 @@ public class FileInfoDto {
     this.uploaded = uploaded;
     this.urlExpiresAt = urlExpiresAt;
   }
+
+
+  FileInfoDto(String fileName, String originalFileName, String presignedURL, Boolean uploaded, Instant urlExpiresAt) {
+    this.fileName = fileName;
+    this.presignedURL = presignedURL;
+    this.uploaded = uploaded;
+    this.urlExpiresAt = urlExpiresAt;
+    this.originalFileName = originalFileName;
+  }
+
 }
 

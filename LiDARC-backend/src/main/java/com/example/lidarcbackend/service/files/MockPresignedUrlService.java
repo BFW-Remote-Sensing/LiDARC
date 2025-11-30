@@ -146,7 +146,7 @@ public class MockPresignedUrlService implements IPresignedUrlService {
 
 
   @Override
-  public Optional<FileInfoDto> fetchFileInfo(String fileName) {
+  public Optional<FileInfoDto> fetchFileInfo(String fileName, String originalFileName) {
     baseFileLock.readLock().lock();
     try {
       if (baseFile != null) {
@@ -159,7 +159,7 @@ public class MockPresignedUrlService implements IPresignedUrlService {
   }
 
   @Override
-  public Optional<FileInfoDto> fetchUploadUrl(String fileName) {
+  public Optional<FileInfoDto> fetchUploadUrl(String fileName, String originalFileName) {
 
     GetPresignedObjectUrlArgs presignedObjectUrlArgs = GetPresignedObjectUrlArgs.builder()
         .method(Method.PUT)

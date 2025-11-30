@@ -64,7 +64,7 @@ public class PresignedUrlServiceTest extends com.example.lidarcbackend.unit.Abst
     assertThat(fileRepository.findFileByFilenameAndUploaded(fileName, true)).isEmpty();
 
     // act
-    Optional<FileInfoDto> result = presignedUrlService.fetchUploadUrl(fileName);
+    Optional<FileInfoDto> result = presignedUrlService.fetchUploadUrl(fileName, "");
     assertThat(result).isPresent();
     assertThat(result.get().getPresignedURL()).isEqualTo("http://upload-url");
   }
@@ -79,7 +79,7 @@ public class PresignedUrlServiceTest extends com.example.lidarcbackend.unit.Abst
     fileRepository.save(f);
 
     // act
-    Optional<FileInfoDto> result = presignedUrlService.fetchUploadUrl(fileName);
+    Optional<FileInfoDto> result = presignedUrlService.fetchUploadUrl(fileName, "");
 
     // assert
     assertThat(result).isEmpty();
@@ -98,7 +98,7 @@ public class PresignedUrlServiceTest extends com.example.lidarcbackend.unit.Abst
     when(minioClient.bucketExists(any())).thenReturn(CompletableFuture.completedFuture(true));
 
     // act
-    Optional<FileInfoDto> result = presignedUrlService.fetchFileInfo(fileName);
+    Optional<FileInfoDto> result = presignedUrlService.fetchFileInfo(fileName, "");
 
     // assert
     assertThat(result).isPresent();

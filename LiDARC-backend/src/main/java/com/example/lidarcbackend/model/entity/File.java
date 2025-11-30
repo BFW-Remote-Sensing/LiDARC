@@ -1,11 +1,5 @@
 package com.example.lidarcbackend.model.entity;
 
-import java.time.Instant;
-import java.util.LinkedHashSet;
-import java.util.Set;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -20,6 +14,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
+import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "files")
@@ -34,6 +35,9 @@ public class File {
 
   @Column(nullable = false, unique = true)
   private String filename;
+
+  @Column(nullable = false, name = "original_filename")
+  private String originalFilename;
 
   @Column(name = "creation_year")
   private Short creationYear;

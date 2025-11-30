@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS files (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     filename TEXT NOT NULL UNIQUE,
+    original_filename TEXT,
     creation_year SMALLINT CHECK (creation_year BETWEEN 1900 AND 9999),
     size_bytes BIGINT,
     min_x DOUBLE PRECISION,

@@ -87,8 +87,8 @@ public class BucketApiEndpointTests {
     when(urlRepository.save(any(Url.class))).thenReturn(sampleUrl);
 
     // stub presigned service if controller calls it
-    when(presignedUrlService.fetchFileInfo(anyString())).thenReturn(Optional.of(new FileInfoDto()));
-    when(presignedUrlService.fetchUploadUrl(anyString())).thenReturn(java.util.Optional.of(new com.example.lidarcbackend.model.DTO.FileInfoDto()));
+    when(presignedUrlService.fetchFileInfo(anyString(), anyString())).thenReturn(Optional.of(new FileInfoDto()));
+    when(presignedUrlService.fetchUploadUrl(anyString(), anyString())).thenReturn(java.util.Optional.of(new com.example.lidarcbackend.model.DTO.FileInfoDto()));
     when(presignedUrlService.uploadFinished(any(com.example.lidarcbackend.model.DTO.FileInfoDto.class))).thenReturn(
         java.util.Optional.of(new com.example.lidarcbackend.model.DTO.FileInfoDto()));
   }
