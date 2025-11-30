@@ -1,8 +1,9 @@
 CREATE TABLE IF NOT EXISTS files (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     filename TEXT NOT NULL UNIQUE,
+    original_filename TEXT,
     creation_year SMALLINT CHECK (creation_year BETWEEN 1900 AND 9999),
-    size_bytes BIGINT NOT NULL,
+    size_bytes BIGINT,
     min_x DOUBLE PRECISION,
     min_y DOUBLE PRECISION,
     min_z DOUBLE PRECISION,
@@ -11,7 +12,7 @@ CREATE TABLE IF NOT EXISTS files (
     max_y DOUBLE PRECISION,
     max_z DOUBLE PRECISION,
     max_gpstime DOUBLE PRECISION,
-    coordinate_system INTEGER NOT NULL,
+    coordinate_system INTEGER,
     las_version VARCHAR(32),
     capture_software VARCHAR(128),
     uploaded BOOLEAN DEFAULT FALSE,
@@ -22,9 +23,10 @@ CREATE TABLE IF NOT EXISTS files (
 CREATE TABLE IF NOT EXISTS urls (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     file_id INTEGER NOT NULL,
-    s3_bucket TEXT NOT NULL DEFAULT 'basebucket',
+    s3_bucket TEXT DEFAULT 'basebucket',
     s3_url TEXT NOT NULL,
     presigned BOOLEAN DEFAULT TRUE,
+    method VARCHAR(10) NOT NULL CHECK (method in ('GET', 'PUT')),
     expires_at TIMESTAMP,
     created_at TIMESTAMP
 );

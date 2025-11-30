@@ -1,7 +1,7 @@
 package com.example.lidarcbackend.service.files;
 
 import com.example.lidarcbackend.configuration.MinioProperties;
-import com.example.lidarcbackend.model.FileInfo;
+import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import io.minio.BucketExistsArgs;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
@@ -12,8 +12,10 @@ import io.minio.UploadObjectArgs;
 import io.minio.errors.MinioException;
 import io.minio.http.Method;
 import jakarta.annotation.PostConstruct;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.ErrorResponseException;
@@ -25,11 +27,12 @@ import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @Service
+@Profile("development")
 @RequiredArgsConstructor
 @Slf4j
 public class MockPresignedUrlService implements IPresignedUrlService {
 
-  private static FileInfo baseFile;
+  private static FileInfoDto baseFile;
   private final MinioClient minioClient;
   private final MinioProperties minioProperties;
   // Use a read/write lock to allow concurrent reads of the cached baseFile and safe refresh updates
@@ -59,7 +62,8 @@ public class MockPresignedUrlService implements IPresignedUrlService {
 
   // Refresh the cached baseFile periodically so presigned URL doesn't expire.
   // Uses the scheduled thread pool from Spring.
-  @Scheduled(fixedDelayString = "${minio.defaultRefresh:10}") //default 10 min, always needs to be less than the url validity
+  @Scheduled(fixedDelayString = "${minio.defaultRefresh:10}")
+  //default 10 min, always needs to be less than the url validity
   public void refreshBaseFile() {
     // Try to refresh and recover silently on errors so scheduler keeps running
     try {
@@ -67,7 +71,7 @@ public class MockPresignedUrlService implements IPresignedUrlService {
         log.warn("Bucket '{}' does not exist during scheduled refresh", minioProperties.getBucket());
         return;
       }
-      FileInfo refreshed = getBaseFile();
+      FileInfoDto refreshed = getBaseFile();
       if (refreshed != null) {
         baseFileLock.writeLock().lock();
         try {
@@ -90,7 +94,7 @@ public class MockPresignedUrlService implements IPresignedUrlService {
    * @throws GeneralSecurityException
    * @throws IOException
    */
-   private boolean uploadBaseFile() throws MinioException, GeneralSecurityException, IOException {
+  private boolean uploadBaseFile() throws MinioException, GeneralSecurityException, IOException {
     try {
       UploadObjectArgs uploadObjectArgs = UploadObjectArgs.builder()
           .bucket(minioProperties.getBucket())
@@ -108,7 +112,7 @@ public class MockPresignedUrlService implements IPresignedUrlService {
   }
 
 
-  private FileInfo getBaseFile() throws MinioException, GeneralSecurityException, IOException {
+  private FileInfoDto getBaseFile() throws MinioException, GeneralSecurityException, IOException {
     GetPresignedObjectUrlArgs presignedObjectUrlArgs = GetPresignedObjectUrlArgs.builder()
         .method(Method.GET)
         .bucket(minioProperties.getBucket())
@@ -117,7 +121,7 @@ public class MockPresignedUrlService implements IPresignedUrlService {
         .build();
 
     String url = minioClient.getPresignedObjectUrl(presignedObjectUrlArgs);
-    return FileInfo.builder().fileName(minioProperties.getBaseObject()).presignedURL(url).build();
+    return FileInfoDto.builder().fileName(minioProperties.getBaseObject()).presignedURL(url).build();
   }
 
 
@@ -142,7 +146,7 @@ public class MockPresignedUrlService implements IPresignedUrlService {
 
 
   @Override
-  public Optional<FileInfo> fetchFileInfo(String fileName) {
+  public Optional<FileInfoDto> fetchFileInfo(String fileName, String originalFileName) {
     baseFileLock.readLock().lock();
     try {
       if (baseFile != null) {
@@ -155,12 +159,34 @@ public class MockPresignedUrlService implements IPresignedUrlService {
   }
 
   @Override
-  public FileInfo createOrRefreshPresignedUrl(FileInfo request) {
-    baseFileLock.readLock().lock();
+  public Optional<FileInfoDto> fetchUploadUrl(String fileName, String originalFileName) {
+
+    GetPresignedObjectUrlArgs presignedObjectUrlArgs = GetPresignedObjectUrlArgs.builder()
+        .method(Method.PUT)
+        .bucket(minioProperties.getBucket())
+        .object(fileName)
+        .expiry(minioProperties.getDefaultExpiryTime())
+        .build();
+
+    if (presignedObjectUrlArgs == null) {
+      return Optional.empty();
+    }
+    return getUrl(presignedObjectUrlArgs, fileName);
+  }
+
+  @Override
+  public Optional<FileInfoDto> uploadFinished(@NonNull FileInfoDto fileInfoDto) {
+    return Optional.of(fileInfoDto);
+  }
+
+
+  private Optional<FileInfoDto> getUrl(GetPresignedObjectUrlArgs presignedObjectUrlArgs, String fileName) {
     try {
-      return baseFile;
-    } finally {
-      baseFileLock.readLock().unlock();
+      String url = minioClient.getPresignedObjectUrl(presignedObjectUrlArgs);
+      return Optional.of(FileInfoDto.builder().fileName(minioProperties.getBaseObject()).presignedURL(url).build());
+    } catch (MinioException | GeneralSecurityException | IOException e) {
+      log.info("Could not fetch presigned {} URL for file: {}", presignedObjectUrlArgs.method().toString(), fileName, e);
+      return Optional.empty();
     }
   }
 
