@@ -9,4 +9,6 @@ import com.example.lidarcbackend.model.entity.File;
 public interface FileRepository extends JpaRepository<File, Long> {
 
   Optional<File> findFileByFilenameAndUploaded(String filename, Boolean uploaded);
+
+  Optional<File> findFileByOriginalFilename(String originalFilename);
 }

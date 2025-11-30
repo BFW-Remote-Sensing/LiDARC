@@ -10,6 +10,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,6 +22,7 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -39,8 +43,11 @@ public class File {
   @Column(name = "original_filename")
   private String originalFilename;
 
-  @Column(name = "creation_year")
-  private Short creationYear;
+  @Min(value = 1900, message = "capture_year must be >= 1900")
+  @Max(value = 9999, message = "capture_year must be <= 9999")
+  @Column(name = "capture_year")
+  private Short captureYear;
+
   @Column(name = "size_bytes")
   private Long sizeBytes;
   @Column(name = "min_x")
@@ -50,16 +57,16 @@ public class File {
   private Double minY;
   @Column(name = "min_z")
   private Double minZ;
-  @Column(name = "min_gpstime")
-  private Double minGPSTime;
+
   @Column(name = "max_x")
   private Double maxX;
   @Column(name = "max_y")
   private Double maxY;
   @Column(name = "max_z")
   private Double maxZ;
-  @Column(name = "max_gpstime")
-  private Double maxGPSTime;
+
+  @Column(name = "system_identifier")
+  private String systemIdentifier;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "coordinate_system")
@@ -71,7 +78,10 @@ public class File {
   private String captureSoftware;
   @Column(name = "uploaded")
   private Boolean uploaded;
-
+  @Column(name = "file_creation_date")
+  private LocalDate fileCreationDate;
+  @Column(name = "point_count")
+  private Long pointCount;
   @Column(name = "uploaded_at", updatable = false)
   @CreationTimestamp //TODO change this to the actual upload time when implementing uploadFinished
   private Instant uploaded_at;

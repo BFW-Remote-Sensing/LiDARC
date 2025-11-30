@@ -1,6 +1,6 @@
 package com.example.lidarcbackend.repository;
 
-import com.example.lidarcbackend.model.CoordinateSystem;
+import com.example.lidarcbackend.model.entity.CoordinateSystem;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

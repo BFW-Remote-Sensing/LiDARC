@@ -1,9 +1,11 @@
 package com.example.lidarcbackend.service.files;
 
-import com.example.lidarcbackend.model.CoordinateSystem;
+import com.example.lidarcbackend.model.entity.CoordinateSystem;
 import com.example.lidarcbackend.model.FileMetadata;
+import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.repository.CoordinateSystemRepository;
 import com.example.lidarcbackend.repository.FileMetadataRepository;
+import com.example.lidarcbackend.repository.FileRepository;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
@@ -19,11 +21,11 @@ import java.util.Set;
 @Slf4j
 public class MetadataService implements IMetadataService {
 
-    private final FileMetadataRepository fileRepository;
+    private final FileRepository fileRepository;
     private final CoordinateSystemRepository coordinateSystemRepository;
     private final Validator validator;
 
-    public MetadataService(FileMetadataRepository fileRepository, CoordinateSystemRepository coordinateSystemRepository, Validator validator) {
+    public MetadataService(FileRepository fileRepository, CoordinateSystemRepository coordinateSystemRepository, Validator validator) {
         this.fileRepository = fileRepository;
         this.coordinateSystemRepository = coordinateSystemRepository;
         this.validator = validator;
@@ -66,16 +68,16 @@ public class MetadataService implements IMetadataService {
         }
         Map<String, Object> metadata = (Map<String, Object>) metadataObj;
 
-        FileMetadata fileMetadata = parseMetadata(metadata);
-        if (fileMetadata == null) {
+        File file = parseMetadata(metadata);
+        if (file == null) {
             log.error("Invalid metadata object for job {}", jobId);
         } else {
-            fileRepository.save(fileMetadata);
-            log.info("Saved FileMetadata for file: {}", fileMetadata.getFilename());
+            fileRepository.save(file);
+            log.info("Saved FileMetadata for file: {}", file.getFilename());
         }
     }
 
-    private FileMetadata parseMetadata(Map<String, Object> metadata) {
+    private File parseMetadata(Map<String, Object> metadata) {
         String csString = (String) metadata.get("coordinate_system");
         CoordinateSystem cs = null;
         if(csString != null && !csString.isEmpty()) {
@@ -94,51 +96,49 @@ public class MetadataService implements IMetadataService {
             }
         }
 
-        FileMetadata fileMetadata = new FileMetadata();
+        File file = new File();
         //text
-        fileMetadata.setFilename((String) metadata.get("filename"));
-        fileMetadata.setLasVersion((String) metadata.get("las_version"));
-        fileMetadata.setCaptureSoftware((String) metadata.get("capture_software"));
-        fileMetadata.setSystemIdentifier((String) metadata.get("system_identifier"));
+        file.setFilename((String) metadata.get("filename"));
+        file.setLasVersion((String) metadata.get("las_version"));
+        file.setCaptureSoftware((String) metadata.get("capture_software"));
+        file.setSystemIdentifier((String) metadata.get("system_identifier"));
 
         //numeric
-        fileMetadata.setCaptureYear(castToShort(metadata.get("capture_year")));
-        fileMetadata.setSizeBytes(castToLong(metadata.get("size_bytes")));
-        fileMetadata.setMinX(castToDouble(metadata.get("min_x")));
-        fileMetadata.setMinY(castToDouble(metadata.get("min_y")));
-        fileMetadata.setMinZ(castToDouble(metadata.get("min_z")));
-        fileMetadata.setMaxX(castToDouble(metadata.get("max_x")));
-        fileMetadata.setMaxY(castToDouble(metadata.get("max_y")));
-        fileMetadata.setMaxZ(castToDouble(metadata.get("max_z")));
-        fileMetadata.setPointCount(castToLong(metadata.get("point_count")));
+        file.setCaptureYear(castToShort(metadata.get("capture_year")));
+        file.setSizeBytes(castToLong(metadata.get("size_bytes")));
+        file.setMinX(castToDouble(metadata.get("min_x")));
+        file.setMinY(castToDouble(metadata.get("min_y")));
+        file.setMinZ(castToDouble(metadata.get("min_z")));
+        file.setMaxX(castToDouble(metadata.get("max_x")));
+        file.setMaxY(castToDouble(metadata.get("max_y")));
+        file.setMaxZ(castToDouble(metadata.get("max_z")));
+        file.setPointCount(castToLong(metadata.get("point_count")));
 
         //date
-        fileMetadata.setFileCreationDate(castToLocalDate(metadata.get("file_creation_date")));
+        file.setFileCreationDate(castToLocalDate(metadata.get("file_creation_date")));
 
         //coordinate system
         if (cs != null) {
-            fileMetadata.setCoordinateSystem(cs.getId().intValue());
+            file.setCoordinateSystem(cs);
         } else {
-            fileMetadata.setCoordinateSystem(null);
+            file.setCoordinateSystem(null);
         }
 
-        // uploaded flags
-        fileMetadata.setUploaded(true);
-        fileMetadata.setUploadedAt(LocalDateTime.now());
 
-        Set<ConstraintViolation<FileMetadata>> violations = validator.validate(fileMetadata);
+
+        Set<ConstraintViolation<File>> violations = validator.validate(file);
         if(!violations.isEmpty()) {
-            for (ConstraintViolation<FileMetadata> v : violations) {
+            for (ConstraintViolation<File> v : violations) {
                 log.error("Validation error on {}: {}", v.getPropertyPath(), v.getMessage());
             }
             return null;
         }
 
-        if (fileRepository.findByFilename(fileMetadata.getFilename()).isPresent()) {
-            log.warn("Duplicate filename detected, skipping save: {}", fileMetadata.getFilename());
+        if (fileRepository.findFileByOriginalFilename(file.getFilename()).isPresent()) {
+            log.warn("Duplicate original filename detected, skipping save: {}", file.getFilename());
             return null;
         }
-        return fileMetadata;
+        return file;
     }
 
     private Double castToDouble(Object obj) {
