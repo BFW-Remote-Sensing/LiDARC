@@ -1,0 +1,84 @@
+:host {
+  display: block;
+  padding: 16px;
+}
+
+/* Center the card and make it responsive */
+mat-card {
+  width: 100%;
+  max-width: 900px; /* card won't grow beyond this */
+  margin: 0 auto; /* center horizontally */
+  box-sizing: border-box;
+}
+
+/* Keep content readable on small screens */
+.upload {
+  display: block;
+}
+
+/* Allow table to scroll horizontally on very small screens */
+mat-card-content {
+  overflow-x: auto;
+}
+
+/* Controls spacing */
+.controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+@media (max-width: 520px) {
+  :host {
+    padding: 10px;
+  }
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.text-spinner {
+  font-size: 1em; /* matches the surrounding text */
+  line-height: 1; /* nicer vertical alignment */
+  display: inline-flex; /* aligns inline with text */
+  align-items: center;
+}
+
+/* Make table use fixed layout so column widths are respected */
+table[mat-table] {
+  width: 100%;
+  table-layout: fixed;
+}
+
+/* Column sizing by position (matches columnsToDisplay order) */
+/* 1: filename column - fixed width and allow wrapping */
+table[mat-table] th.mat-header-cell:nth-child(1),
+table[mat-table] td.mat-cell:nth-child(1) {
+  width: 320px; /* adjust as needed */
+  max-width: 320px;
+  white-space: normal; /* allow wrapping */
+  overflow-wrap: anywhere;
+}
+
+/* 2: status column - fixed narrow width */
+table[mat-table] th.mat-header-cell:nth-child(2),
+table[mat-table] td.mat-cell:nth-child(2),
+table[mat-table] th.mat-header-cell:nth-child(2) {
+  width: 110px; /* adjust as needed */
+  max-width: 110px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 3: actions column - fixed narrow width */
+table[mat-table] th.mat-header-cell:nth-child(3),
+table[mat-table] td.mat-cell:nth-child(3),
+table[mat-table] th.mat-header-cell:nth-child(3) {
+  width: 110px; /* adjust as needed */
+  max-width: 110px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

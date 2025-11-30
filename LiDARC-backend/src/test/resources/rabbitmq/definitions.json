@@ -1,0 +1,184 @@
+{
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "users": [
+    {
+      "name": "admin",
+      "password": "admin",
+      "tags": "administrator"
+    },
+    {
+      "name": "testuser",
+      "password": "testpass",
+      "tags": "administrator"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "admin",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "testuser",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "worker-job",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "worker-results",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "test-exchange",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "worker.metadata.job",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "worker.preprocessing.job",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "worker.comparison.job",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "worker.metadata.result",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "worker.preprocessing.result",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "worker.comparison.result",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "test.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+
+  ],
+  "bindings": [
+    {
+      "source": "worker-job",
+      "vhost": "/",
+      "destination": "worker.metadata.job",
+      "destination_type": "queue",
+      "routing_key": "worker.metadata.job.start",
+      "arguments": {}
+    },
+    {
+      "source": "worker-job",
+      "vhost": "/",
+      "destination": "worker.preprocessing.job",
+      "destination_type": "queue",
+      "routing_key": "worker.preprocessing.job.start",
+      "arguments": {}
+    },
+    {
+      "source": "worker-job",
+      "vhost": "/",
+      "destination": "worker.comparison.job",
+      "destination_type": "queue",
+      "routing_key": "worker.comparison.job.start",
+      "arguments": {}
+    },
+    {
+      "source": "worker-results",
+      "vhost": "/",
+      "destination": "worker.metadata.result",
+      "destination_type": "queue",
+      "routing_key": "worker.metadata.result",
+      "arguments": {}
+    },
+    {
+      "source": "worker-results",
+      "vhost": "/",
+      "destination": "worker.preprocessing.result",
+      "destination_type": "queue",
+      "routing_key": "worker.preprocessing.result",
+      "arguments": {}
+    },
+    {
+      "source": "worker-results",
+      "vhost": "/",
+      "destination": "worker.comparison.result",
+      "destination_type": "queue",
+      "routing_key": "worker.comparison.result",
+      "arguments": {}
+    },
+    {
+      "source": "test-exchange",
+      "vhost": "/",
+      "destination": "test.queue",
+      "destination_type": "queue",
+      "routing_key": "test",
+      "arguments": {}
+    },
+    {
+      "source": "worker-results",
+      "vhost": "/",
+      "destination": "test.queue",
+      "destination_type": "queue",
+      "routing_key": "test",
+      "arguments": {}
+    }
+  ],
+  "policies": [],
+  "parameters": []
+}

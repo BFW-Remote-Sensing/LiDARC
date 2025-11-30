@@ -1,11 +1,11 @@
 package com.example.lidarcbackend.model;
 
 import java.util.Objects;
+import org.springframework.validation.annotation.Validated;
+import com.example.lidarcbackend.configuration.NotUndefined;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
-import org.springframework.validation.annotation.Validated;
-import com.example.lidarcbackend.configuration.NotUndefined;
 
 
 /**
@@ -13,7 +13,7 @@ import com.example.lidarcbackend.configuration.NotUndefined;
  */
 @Validated
 @NotUndefined
-public class Error   {
+public class Error {
   @JsonProperty("code")
 
   private String code = null;
@@ -23,7 +23,7 @@ public class Error   {
   private String message = null;
 
 
-  public Error code(String code) { 
+  public Error code(String code) {
 
     this.code = code;
     return this;
@@ -31,24 +31,24 @@ public class Error   {
 
   /**
    * Get code
+   *
    * @return code
    **/
-  
+
   @Schema(required = true, description = "")
-  
+
   @NotNull
-  public String getCode() {  
+  public String getCode() {
     return code;
   }
 
 
-
-  public void setCode(String code) { 
+  public void setCode(String code) {
 
     this.code = code;
   }
 
-  public Error message(String message) { 
+  public Error message(String message) {
 
     this.message = message;
     return this;
@@ -56,19 +56,19 @@ public class Error   {
 
   /**
    * Get message
+   *
    * @return message
    **/
-  
+
   @Schema(required = true, description = "")
-  
+
   @NotNull
-  public String getMessage() {  
+  public String getMessage() {
     return message;
   }
 
 
-
-  public void setMessage(String message) { 
+  public void setMessage(String message) {
 
     this.message = message;
   }
@@ -93,13 +93,12 @@ public class Error   {
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append("class Error {\n");
-    
-    sb.append("    code: ").append(toIndentedString(code)).append("\n");
-    sb.append("    message: ").append(toIndentedString(message)).append("\n");
-    sb.append("}");
-    return sb.toString();
+
+    String sb = "class Error {\n" +
+        "    code: " + toIndentedString(code) + "\n" +
+        "    message: " + toIndentedString(message) + "\n" +
+        "}";
+    return sb;
   }
 
   /**

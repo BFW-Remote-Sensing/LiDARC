@@ -1,0 +1,12 @@
+{
+  "url": "http://example.com/test.las",
+  "grid": {
+    "xMin": 0.0,
+    "xMax": 100.0,
+    "yMin": 0.0,
+    "yMax": 100.0,
+    "x": 1.0,
+    "y": 1.0
+  },
+  "jobId": "12345"
+}
