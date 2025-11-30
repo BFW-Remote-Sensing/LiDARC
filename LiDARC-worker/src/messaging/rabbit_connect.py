@@ -1,12 +1,12 @@
 import pika
-from .settings import settings
+from .topology import topology
 
 def create_connection() -> pika.BlockingConnection:
-    creds = pika.PlainCredentials(settings.username, settings.password)
+    creds = pika.PlainCredentials(topology.username, topology.password)
     params = pika.ConnectionParameters(
-        host=settings.host,
-        port=settings.port,
-        virtual_host=settings.vhost,
+        host=topology.host,
+        port=topology.port,
+        virtual_host=topology.vhost,
         credentials=creds,
         heartbeat=30,
         blocked_connection_timeout=300,

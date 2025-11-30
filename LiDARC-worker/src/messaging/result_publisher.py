@@ -4,7 +4,7 @@ import pika
 
 from .message_model import BaseMessage
 from .rabbit_connect import create_connection, create_channel
-from .settings import settings
+from .topology import topology
 
 class ResultPublisher:
     def __init__(self, conn=None, ch=None):
@@ -22,7 +22,7 @@ class ResultPublisher:
             payload=payload,
         )
         self._ch.basic_publish(
-            exchange=settings.exchange_worker_results,
+            exchange=topology.exchange_worker_results,
             routing_key=routing_key,
             body=msg.to_json(),
             properties=pika.BasicProperties(
@@ -32,13 +32,13 @@ class ResultPublisher:
         )
 
     def publish_preprocessing_result(self, payload: dict):
-        self._publish(settings.routing_preprocessing_result, payload, settings.routing_preprocessing_result)
+        self._publish(topology.routing_preprocessing_result, payload, topology.routing_preprocessing_result)
 
     def publish_comparison_result(self, payload: dict):
-        self._publish(settings.routing_comparison_result, payload, settings.routing_comparison_result)
+        self._publish(topology.routing_comparison_result, payload, topology.routing_comparison_result)
 
     def publish_metadata_result(self, payload: dict):
-        self._publish(settings.routing_metadata_result, payload, settings.routing_metadata_result)
+        self._publish(topology.routing_metadata_result, payload, topology.routing_metadata_result)
 
     def close(self):
         # if connection is done externally, connection is not closed here

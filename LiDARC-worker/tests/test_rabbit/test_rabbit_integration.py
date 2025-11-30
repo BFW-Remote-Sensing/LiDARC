@@ -2,24 +2,24 @@ import json
 import uuid
 import pika
 
-from messaging.settings import settings
+from messaging.topology import topology
 
 # ===========================
 # Configuration for Tests
 # ===========================
 
 
-RESULT_EXCHANGE = settings.exchange_worker_results
+RESULT_EXCHANGE = topology.exchange_worker_results
 TEST_RESULT_QUEUE = "test.result"
 TEST_RESULT_RK = "test.result"
 
-METADATA_QUEUE = settings.queue_metadata_result
-COMPARISON_QUEUE = settings.queue_comparison_result
-PREPROCESSING_QUEUE = settings.queue_preprocessing_result
+METADATA_QUEUE = topology.queue_metadata_result
+COMPARISON_QUEUE = topology.queue_comparison_result
+PREPROCESSING_QUEUE = topology.queue_preprocessing_result
 
-METADATA_RK = settings.routing_metadata_result
-COMPARISON_RK = settings.routing_comparison_result
-PREPROCESSING_RK = settings.routing_preprocessing_result
+METADATA_RK = topology.routing_metadata_result
+COMPARISON_RK = topology.routing_comparison_result
+PREPROCESSING_RK = topology.routing_preprocessing_result
 
 # ===========================
 # Tests
