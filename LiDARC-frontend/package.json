@@ -22,14 +22,18 @@
   },
   "private": true,
   "dependencies": {
+    "@angular/animations": "^20.3.10",
+    "@angular/cdk": "^20.2.13",
     "@angular/common": "^20.3.0",
     "@angular/compiler": "^20.3.0",
     "@angular/core": "^20.3.0",
     "@angular/forms": "^20.3.0",
+    "@angular/material": "^20.2.13",
     "@angular/platform-browser": "^20.3.0",
     "@angular/router": "^20.3.0",
     "echarts": "^6.0.0",
     "ngx-echarts": "^20.0.2",
+    "ngx-toastr": "^19.1.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

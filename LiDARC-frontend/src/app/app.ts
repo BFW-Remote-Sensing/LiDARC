@@ -3,17 +3,15 @@ import { RouterOutlet } from '@angular/router';
 import {Heatmap} from './features/heatmap/heatmap';
 
 
+import { MatButtonModule } from '@angular/material/button';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Heatmap],
+  imports: [RouterOutlet, MatButtonModule,Heatmap],
   templateUrl: './app.html',
   styleUrl: './app.scss',
-
 })
 
 export class App {
-
   protected readonly title = signal('LiDARC-frontend');
-
 }

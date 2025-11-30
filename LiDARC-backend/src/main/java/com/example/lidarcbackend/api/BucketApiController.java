@@ -1,7 +1,7 @@
 package com.example.lidarcbackend.api;
 
-import com.example.lidarcbackend.model.FileInfo;
-import com.example.lidarcbackend.service.files.MockPresignedUrlService;
+import com.example.lidarcbackend.model.DTO.FileInfoDto;
+import com.example.lidarcbackend.service.files.IPresignedUrlService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -12,50 +12,78 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
 import java.util.Optional;
 
 @RestController
 @Slf4j
 public class BucketApiController implements BucketApi {
 
-
   private final ObjectMapper objectMapper;
 
   private final HttpServletRequest request;
 
-  private final MockPresignedUrlService mockPresignedUrlService;
+  @Autowired
+  private final IPresignedUrlService presignedUrlService;
 
   @Autowired
-  public BucketApiController(ObjectMapper objectMapper, HttpServletRequest request, MockPresignedUrlService mockPresignedUrlService) {
+  public BucketApiController(ObjectMapper objectMapper, HttpServletRequest request, IPresignedUrlService presignedUrlService) {
     this.objectMapper = objectMapper;
     this.request = request;
-    this.mockPresignedUrlService = mockPresignedUrlService;
+    this.presignedUrlService = presignedUrlService;
   }
 
-  public ResponseEntity<FileInfo> fetchFile(
+
+  public ResponseEntity<FileInfoDto> fetchFile(
       @Parameter(in = ParameterIn.DEFAULT, description = "Fetch a presigned url for a specific file name from the bucket.", required = true, schema = @Schema())
       @Valid
-      @RequestBody FileInfo body
+      @RequestBody FileInfoDto body
   ) {
     String accept = request.getHeader("Accept");
     if (accept != null && accept.contains("application/json")) {
-      try {
-        FileInfo example =
-            objectMapper.readValue(
-                "{\n  \"fileName\" : \"graz2021_block6_060_065_elv.laz\",\n  \"presignedURL\" : \"presignedURL\",\n  \"uploaded\" : false\n}", FileInfo.class);
-        Optional<FileInfo> file = mockPresignedUrlService.fetchFileInfo(example.getFileName());
-        return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
-      } catch (IOException e) {
-        log.error("Couldn't serialize response for content type application/json", e);
-        return new ResponseEntity<FileInfo>(HttpStatus.INTERNAL_SERVER_ERROR);
-      }
+      Optional<FileInfoDto> file = presignedUrlService.fetchFileInfo(body.getFileName(), body.getOriginalFileName());
+      return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
-    return new ResponseEntity<FileInfo>(HttpStatus.NOT_IMPLEMENTED);
+    return new ResponseEntity<FileInfoDto>(HttpStatus.NOT_IMPLEMENTED);
   }
 
+  @Override
+  public ResponseEntity<FileInfoDto> fetchURLForUpload(
+      @Parameter(in = ParameterIn.DEFAULT, description = "Fetch a presigned url for a specific file name from the bucket.", required = true, schema = @Schema())
+      @Valid
+      @RequestBody FileInfoDto body) {
+    String accept = request.getHeader("Accept");
+    if (accept != null && accept.contains("application/json")) {
+      Optional<FileInfoDto> file = presignedUrlService.fetchUploadUrl(body.getFileName(), body.getOriginalFileName());
+      return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK))
+          .orElseGet(() -> new ResponseEntity<FileInfoDto>(new FileInfoDto(), HttpStatus.CONFLICT));
+    }
+
+    return new ResponseEntity<FileInfoDto>(HttpStatus.NOT_IMPLEMENTED);
+  }
+
+  @Override
+  public ResponseEntity<FileInfoDto> uploadFinished(
+      @Parameter(in = ParameterIn.DEFAULT, description = "Signalizes that the upload of a file has finished, changes relevant metadata for that file.", required = true, schema = @Schema())
+      @RequestBody FileInfoDto body
+  ) {
+    String accept = request.getHeader("Accept");
+    if (accept != null && accept.contains("application/json")) {
+      Optional<FileInfoDto> file = presignedUrlService.uploadFinished(body);
+      return file.map(fileInfo -> new ResponseEntity<>(fileInfo, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(new FileInfoDto(), HttpStatus.NOT_FOUND));
+    }
+
+    return new ResponseEntity<FileInfoDto>(HttpStatus.NOT_IMPLEMENTED);
+  }
+
+
+  @ResponseStatus(HttpStatus.NOT_FOUND)
+  @ExceptionHandler
+  public void handleException(IllegalArgumentException ex) {
+  }
 }
