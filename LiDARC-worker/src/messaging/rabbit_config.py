@@ -33,5 +33,5 @@ class RabbitMQConfig:
 
 
 
-#exported with topology --> use "topology.*"
-topology = RabbitMQConfig()
+#exported topology --> use "rabbitConfig.*"
+rabbitConfig = RabbitMQConfig()

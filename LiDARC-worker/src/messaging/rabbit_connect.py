@@ -1,12 +1,12 @@
 import pika
-from .topology import topology
+from .rabbit_config import rabbitConfig
 
 def create_connection() -> pika.BlockingConnection:
-    creds = pika.PlainCredentials(topology.username, topology.password)
+    creds = pika.PlainCredentials(rabbitConfig.username, rabbitConfig.password)
     params = pika.ConnectionParameters(
-        host=topology.host,
-        port=topology.port,
-        virtual_host=topology.vhost,
+        host=rabbitConfig.host,
+        port=rabbitConfig.port,
+        virtual_host=rabbitConfig.vhost,
         credentials=creds,
         heartbeat=30,
         blocked_connection_timeout=300,
