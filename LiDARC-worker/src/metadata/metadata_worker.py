@@ -18,10 +18,12 @@ from schemas.metadata import schema as metadata_schema
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 
+from src.messaging.message_model import BaseMessage
+from src.messaging.rabbit_connect import create_connection, create_channel
+from src.messaging.result_publisher import ResultPublisher
+from src.messaging.topology import topology
 
-TRIGGER_QUEUE_NAME = "worker_metadata_job"
-WORKER_RESULTS_EXCHANGE = "worker-results"
-WORKER_RESULTS_KEY_METADATA = "worker.metadata.result"
+publisher = ResultPublisher()
 
 def handle_sigterm(signum, frame):
     logging.info("SIGTERM received")
@@ -54,16 +56,28 @@ def connect_rabbitmq():
             time.sleep(5)
 
 def mk_error_msg(job_id: str, error_msg: str):
-    return {"job_id": job_id, "status": "error", "msg": error_msg}
-
-def publish_response(ch, response_dict):
-    ch.basic_publish(
-        exchange=WORKER_RESULTS_EXCHANGE,
-        routing_key=WORKER_RESULTS_KEY_METADATA,
-        body=json.dumps(response_dict),
-        properties=pika.BasicProperties(content_type="application/json")
+    return BaseMessage(
+        type = "metadata",
+        version = "1",
+        job_id = job_id,
+        status = "error",
+        payload={
+            "msg": error_msg
+        }
     )
-    logging.debug(f"Sent response to exchange: {WORKER_RESULTS_EXCHANGE}")
+
+def mk_success_msg(job_id: str, metadata: dict):
+    return BaseMessage(
+        type = "metadata",
+        version = "1",
+        job_id = job_id,
+        status = "success",
+        payload=metadata
+    )
+
+def publish_response(msg: BaseMessage):
+    publisher.publish_metadata_result(msg)
+    logging.debug(f"Sent response to exchange: {topology.exchange_worker_results}")
 
 def validate_request(json_req):
     try:
@@ -137,18 +151,18 @@ def extract_metadata(file_path: str) -> dict:
 
 def process_req(ch, method, properties, body):
     start_time = time.time()
-    job_id = -42
+    job_id = ""
     try:
         req = json.loads(body)
         if not req["jobId"]:
             logging.warning("The metadata job is cancelled because there is no job id")
-            publish_response(ch, mk_error_msg(job_id="-42", error_msg="Metadata job is cancelled because job has no job id"))
+            publish_response(mk_error_msg(job_id="", error_msg="Metadata job is cancelled because job has no job id"))
 
         job_id = req["jobId"]
 
         if not validate_request(req):
             logging.warning("The metadata job is cancelled because of a Validation Error")
-            publish_response(ch, mk_error_msg(job_id, "Metadata job is cancelled because job request is invalid"))
+            publish_response(mk_error_msg(job_id, "Metadata job is cancelled because job request is invalid"))
             return
 
         las_file_url = req["url"]
@@ -159,42 +173,36 @@ def process_req(ch, method, properties, body):
             local_file = file_handler.download_file(las_file_url)
         except HTTPError as e:
             logging.warning("Couldn't download file from: {}, error: {}".format(las_file_url, e))
-            publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, metadata job cancelled".format(las_file_url)))
+            publish_response(mk_error_msg(job_id, "Couldn't download file from: {}, metadata job cancelled".format(las_file_url)))
             return
         if local_file == "":
             logging.warning("File not downloaded, stopping processing the request!")
-            publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, metadata job cancelled".format(las_file_url)))
+            publish_response(mk_error_msg(job_id, "Couldn't download file from: {}, metadata job cancelled".format(las_file_url)))
             return
 
         metadata = extract_metadata(local_file)
 
         if metadata == {}:
             logging.error(f"Metadata extraction failed for {las_file_url}.")
-            publish_response(ch, mk_error_msg(job_id, "Couldn't extract metadata from file from: {}, metadata job cancelled".format(las_file_url)))
+            publish_response(mk_error_msg(job_id, "Couldn't extract metadata from file from: {}, metadata job cancelled".format(las_file_url)))
             return
 
-        response = {
-            "job_id": job_id,
-            "status":"success",
-            "metadata": metadata
-        }
-
-        publish_response(ch, response)
+        publish_response(mk_success_msg(job_id, metadata))
         os.remove(local_file)
     except Exception as e:
         logging.error(f"Failed to process message: {e}")
-        publish_response(ch, mk_error_msg(job_id, "An unexpected error occured, metadata job cancelled"))
+        publish_response(mk_error_msg(job_id, "An unexpected error occured, metadata job cancelled"))
     finally:
         processing_time = int((time.time() - start_time) * 1000)
         logging.info(f"Worker took {processing_time} ms to process the message.")
 
 
 def main():
-    connection = connect_rabbitmq()
-    channel = connection.channel()
+    connection = create_connection()
+    channel = create_channel(connection)
 
-    channel.basic_consume(queue=TRIGGER_QUEUE_NAME, on_message_callback=process_req, auto_ack=True)
-    logging.info(f"Connected to RabbitMQ Listening on queue '{TRIGGER_QUEUE_NAME}'")
+    channel.basic_consume(queue=topology.queue_metadata_job, on_message_callback=process_req, auto_ack=True)
+    logging.info(f"Connected to RabbitMQ Listening on queue '{topology.queue_metadata_job}'")
     try:
         channel.start_consuming()
     except KeyboardInterrupt:
