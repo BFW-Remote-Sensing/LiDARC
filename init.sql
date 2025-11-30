@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS files (
     filename TEXT NOT NULL UNIQUE,
     capture_year SMALLINT CHECK (capture_year BETWEEN 1900 AND 9999),
     size_bytes BIGINT NOT NULL,
+    original_filename TEXT,
     min_x DOUBLE PRECISION,
     min_y DOUBLE PRECISION,
     min_z DOUBLE PRECISION,
@@ -23,9 +24,10 @@ CREATE TABLE IF NOT EXISTS files (
 CREATE TABLE IF NOT EXISTS urls (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     file_id INTEGER NOT NULL,
-    s3_bucket TEXT NOT NULL DEFAULT 'basebucket',
+    s3_bucket TEXT DEFAULT 'basebucket',
     s3_url TEXT NOT NULL,
     presigned BOOLEAN DEFAULT TRUE,
+    method VARCHAR(10) NOT NULL CHECK (method in ('GET', 'PUT')),
     expires_at TIMESTAMP,
     created_at TIMESTAMP
 );

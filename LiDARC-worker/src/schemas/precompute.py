@@ -2,7 +2,7 @@ schema = {
     "type": "object",
     "required": ["jobId", "url", "grid"],
     "properties": {
-        "job_id": {
+        "jobId": {
             "type": "string",
             "minLength": 1
         },
@@ -11,12 +11,12 @@ schema = {
         },
         "grid": {
             "type": "object",
-            "required": ["x_min", "x_max", "y_min", "y_max", "x", "y"],
+            "required": ["xMin", "xMax", "yMin", "yMax", "x", "y"],
             "properties": {
-                "x_min": { "type": "number" },
-                "x_max": { "type": "number" },
-                "y_min": { "type": "number" },
-                "y_max": { "type": "number" },
+                "xMin": { "type": "number" },
+                "xMax": { "type": "number" },
+                "yMin": { "type": "number" },
+                "yMax": { "type": "number" },
                 "x": { "type": "integer", "minimum": 1 },
                 "y": { "type": "integer", "minimum": 1 },
                 "offset": { "type": "number" }
