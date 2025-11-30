@@ -16,7 +16,7 @@ from messaging.rabbit_connect import create_rabbit_con_and_return_channel
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 from pika.exceptions import ChannelWrongStateError, ReentrancyError, StreamLostError
-#from tdigest import TDigest
+from tdigest import TDigest
 from schemas.precompute import schema as precompute_schema
 import util.file_handler as file_handler
 from requests import HTTPError
@@ -56,9 +56,9 @@ def calculate_grid(grid: dict):
     veg_height_min = np.full(grid_shape, np.inf, dtype=np.float32)
     veg_height_max = np.full(grid_shape, -np.inf, dtype=np.float32)
     veg_height_digest = np.empty(grid_shape, dtype=object)
-   # for r in range(grid_shape[0]):
-    #    for c in range(grid_shape[1]):
-     #       veg_height_digest[r,c] = TDigest()
+    for r in range(grid_shape[0]):
+        for c in range(grid_shape[1]):
+            veg_height_digest[r,c] = TDigest()
     return {
         "grid_shape": grid_shape,
         "grid_width": grid_width,
