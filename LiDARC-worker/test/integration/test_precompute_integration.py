@@ -7,6 +7,12 @@ import pytest
 import pytest_check as check
 import pandas as pd
 import preprocess.preprocess_worker as preprocess_worker
+from messaging.rabbit_config import rabbitConfig
+
+WORKER_EXCHANGE = rabbitConfig.exchange_worker_job
+PREPROCESSING_JOB_QUEUE = rabbitConfig.queue_preprocessing_job
+PREPROCESSING_JOB_RK = rabbitConfig.routing_preprocessing_start
+
 
 def publish_message(channel, exchange, routing_key, message_dict):
     channel.basic_publish(
@@ -30,7 +36,7 @@ def consume_single_message(channel, queue):
     return body
 
 @pytest.mark.e2e
-def test_precompute_integration(minio_client, rabbit_channel, load_json, very_small_las_file):
+def test_precompute_integration(minio_client, rabbitmq_ch, load_json, very_small_las_file):
     client, upload_file = minio_client
     assert client.bucket_exists("basebucket")
     upload_file(very_small_las_file, object_name="small.las")
@@ -43,8 +49,8 @@ def test_precompute_integration(minio_client, rabbit_channel, load_json, very_sm
 
     test_msg = load_json("valid_precompute_job_small_las_file.json")
     test_msg["url"] = presigned_url
-    publish_message(rabbit_channel, "worker.job", "preprocessing.job", test_msg)
-    body = consume_single_message(rabbit_channel, "preprocessing.result")
+    publish_message(rabbitmq_ch, WORKER_EXCHANGE, PREPROCESSING_JOB_RK, test_msg)
+    body = consume_single_message(rabbitmq_ch, PREPROCESSING_JOB_QUEUE)
     assert body is not None, "Result message of preprocess worker is None"
     response = json.loads(body)
 
@@ -83,7 +89,7 @@ def test_precompute_integration(minio_client, rabbit_channel, load_json, very_sm
 
 
 @pytest.mark.e2e
-def test_precompute_integration_with_small_las_file(minio_client, rabbit_channel, load_json, small_las_file):
+def test_precompute_integration_with_small_las_file(minio_client, rabbitmq_ch, load_json, small_las_file):
     client, upload_file = minio_client
     assert client.bucket_exists("basebucket")
     upload_file(small_las_file, object_name="small.las")
@@ -96,8 +102,8 @@ def test_precompute_integration_with_small_las_file(minio_client, rabbit_channel
 
     test_msg = load_json("valid_precompute_job_small_las_file.json")
     test_msg["url"] = presigned_url
-    publish_message(rabbit_channel, "worker.job", "preprocessing.job", test_msg)
-    body = consume_single_message(rabbit_channel, "preprocessing.result")
+    publish_message(rabbitmq_ch, WORKER_EXCHANGE, PREPROCESSING_JOB_RK, test_msg)
+    body = consume_single_message(rabbitmq_ch, PREPROCESSING_JOB_QUEUE)
     assert body is not None, "Result message of preprocess worker is None"
     response = json.loads(body)
 

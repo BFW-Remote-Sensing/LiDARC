@@ -3,16 +3,17 @@ import uuid
 import pika
 
 from .message_model import BaseMessage
-from .rabbit_connect import create_connection, create_channel
+from .rabbit_connect import create_rabbit_con_and_return_channel
 from .rabbit_config import rabbitConfig
 
 class ResultPublisher:
-    def __init__(self, conn=None, ch=None):
-        # check if connection comes from outside --> testcases
-        self._external_conn = conn is not None or ch is not None
-
-        self._conn = conn or create_connection()
-        self._ch = ch or create_channel(self._conn)
+    def __init__(self, ch=None):
+        # check if external connection exist --> testcases
+        # Kein externes Objekt übergeben → selber alles erstellen
+        if ch is None:
+            self._ch = create_rabbit_con_and_return_channel()
+        else:
+            self._ch = ch
 
     def _publish(self, routing_key: str, payload: dict, msg_type: str):
         msg = BaseMessage(

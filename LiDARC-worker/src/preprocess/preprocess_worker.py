@@ -12,10 +12,11 @@ import sys
 import signal
 import pandas as pd
 import numpy as np
+from messaging.rabbit_connect import create_rabbit_con_and_return_channel
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 from pika.exceptions import ChannelWrongStateError, ReentrancyError, StreamLostError
-from tdigest import TDigest
+#from tdigest import TDigest
 from schemas.precompute import schema as precompute_schema
 import util.file_handler as file_handler
 from requests import HTTPError
@@ -29,15 +30,7 @@ signal.signal(signal.SIGTERM, handle_sigterm)
 def connect_rabbitmq():
     while True:
         try:
-            user = os.environ.get("RABBITMQ_USER", "admin")
-            password = os.environ.get("RABBITMQ_PASSWORD", "admin")
-            host = os.environ.get("RABBITMQ_HOST", "rabbitmq")
-            port = int(os.environ.get("RABBITMQ_PORT", "5672"))
-            vhost = os.environ.get("RABBITMQ_VHOST", "/")
-
-            credentials = pika.PlainCredentials(username=user, password=password)
-            connection = pika.BlockingConnection(pika.ConnectionParameters(host=host, port=port, virtual_host=vhost, credentials=credentials))
-            return connection
+            return create_rabbit_con_and_return_channel()
         except Exception as e:
             logging.error("RabbitMQ connection failed, Retrying in 5s... Error: {}".format(e))
             time.sleep(5)
@@ -63,9 +56,9 @@ def calculate_grid(grid: dict):
     veg_height_min = np.full(grid_shape, np.inf, dtype=np.float32)
     veg_height_max = np.full(grid_shape, -np.inf, dtype=np.float32)
     veg_height_digest = np.empty(grid_shape, dtype=object)
-    for r in range(grid_shape[0]):
-        for c in range(grid_shape[1]):
-            veg_height_digest[r,c] = TDigest()
+   # for r in range(grid_shape[0]):
+    #    for c in range(grid_shape[1]):
+     #       veg_height_digest[r,c] = TDigest()
     return {
         "grid_shape": grid_shape,
         "grid_width": grid_width,
@@ -224,7 +217,7 @@ def process_req(ch, method, properties, body):
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 def main():
-    channel = connect_rabbitmq().channel()
+    channel = connect_rabbitmq()
     queue_name = os.environ.get("QUEUE_NAME", "preprocessing.job")
     channel.queue_declare(queue=queue_name, durable=True)
     def callback(ch, method, properties, body):
