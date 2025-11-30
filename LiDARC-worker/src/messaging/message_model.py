@@ -9,14 +9,14 @@ from datetime import datetime, timezone
 @dataclass
 class BaseMessage:
     type: str # could be used to identify the message, with preprocessing, etc
-    version: str # probably unnecessary, can be deleted later on
+    status: str # probably unnecessary, can be deleted later on
     job_id: str
     payload: Dict[str, Any]
 
     def to_json(self) -> bytes:
         return json.dumps({
             "type": self.type,
-            "version": self.version,
+            "status": self.status,
             "job_id": self.job_id,
             "payload": self.payload, #TODO payload bei workern abchecken
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -27,7 +27,16 @@ class BaseMessage:
         data = json.loads(body.decode("utf-8"))
         return BaseMessage(
             type=data.get("type", "unknown"),
-            version=data.get("version", "1"),
+            status=data.get("status", "unknown"),
             job_id=data.get("job_id", str(uuid.uuid4())),
             payload=data.get("payload", {}),
         )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "type": self.type,
+            "status": self.status,
+            "job_id": self.job_id,
+            "payload": self.payload,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }

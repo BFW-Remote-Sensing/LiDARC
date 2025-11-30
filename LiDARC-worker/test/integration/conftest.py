@@ -4,10 +4,9 @@ from multiprocessing.pool import job_counter
 
 import pytest
 import pika
-from numpy.lib.recfunctions import join_by
 
 import preprocess.preprocess_worker as preprocess
-from messaging.rabbit_config import rabbitConfig
+from messaging.rabbit_config import get_rabbitmq_config
 from testcontainers.minio import MinioContainer
 from testcontainers.rabbitmq import RabbitMqContainer
 from minio import Minio
@@ -15,10 +14,10 @@ from minio import Minio
 from messaging.rabbit_connect import create_rabbit_con_and_return_channel
 from messaging.result_publisher import ResultPublisher
 
+rabbitConfig = get_rabbitmq_config()
 
 def running_in_ci_mode():
     return os.getenv("CI") == "true" or os.getenv("GITLAB_CI") == "true"
-
 
 @pytest.fixture(scope="module", autouse=True)
 def minio_client(request, very_small_las_file):
@@ -95,28 +94,16 @@ def rabbitmq_ch(request):
         rabbit_test_declarations(ch)
         yield ch
 
-@pytest.fixture(scope="function", autouse=True)
-def setup_bucket():
-    pass
-    #client = minio.get_client()
-    #if not client.bucket_exists("basebucket"):
-    #    return
-    #TODO: Teardown if needed??
-
 @pytest.fixture
 def run_preprocess_worker(rabbitmq_ch, minio_client):
     thread = threading.Thread(target=preprocess.main(), daemon=True)
     thread.start()
     yield thread
 
-
-
 @pytest.fixture()
 def result_publisher(rabbitmq_ch):
     publisher = ResultPublisher(ch=rabbitmq_ch)
     yield publisher
-
-
 
 def rabbit_test_declarations(ch):
     job_exchange_name = rabbitConfig.exchange_worker_job

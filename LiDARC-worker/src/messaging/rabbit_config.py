@@ -4,12 +4,12 @@ from dataclasses import dataclass
 @dataclass
 class RabbitMQConfig:
     #if env variable is set, the env var would be returned, otherwise the second (default) value
-    host: str = os.getenv("RABBITMQ_HOST", "localhost")
-    port: int = int(os.getenv("RABBITMQ_PORT", "5672"))
-    username: str = os.getenv("RABBITMQ_USER", "admin")
-    password: str = os.getenv("RABBITMQ_PASS", "admin")
-    vhost: str = os.getenv("RABBITMQ_VHOST", "/")
-    prefetch_count: int = int(os.getenv("RABBITMQ_PREFETCH", "0"))
+    host: str = None
+    port: int = None
+    username: str = None
+    password: str = None
+    vhost: str = None
+    prefetch_count: int = None
 
     # Topologie-names (have to be correspondent to definitions.json)
     #
@@ -34,7 +34,22 @@ class RabbitMQConfig:
     routing_comparison_result: str = "worker.comparison.result"
     routing_metadata_result: str = "worker.metadata.result"
 
+    def __post_init__(self):
+        if self.host is None:
+            self.host = os.getenv("RABBITMQ_HOST", "localhost")
+        if self.port is None:
+            self.port = int(os.getenv("RABBITMQ_PORT", "5672"))
+        if self.username is None:
+            self.username = os.getenv("RABBITMQ_USER", "admin")
+        if self.password is None:
+            self.password = os.getenv("RABBITMQ_PASSWORD", "admin")
+        if self.vhost is None:
+            self.vhost = os.getenv("RABBITMQ_VHOST", "/")
+        if self.prefetch_count is None:
+            self.prefetch_count = int(os.getenv("RABBITMQ_PREFETCH", "0"))
 
+def get_rabbitmq_config():
+    return RabbitMQConfig()
 
 #exported topology --> use "rabbitConfig.*"
-rabbitConfig = RabbitMQConfig()
+#rabbitConfig = RabbitMQConfig()

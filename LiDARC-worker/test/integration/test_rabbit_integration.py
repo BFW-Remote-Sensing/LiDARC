@@ -2,7 +2,8 @@ import json
 import uuid
 import pika
 
-from messaging.rabbit_config import rabbitConfig
+from messaging.rabbit_config import get_rabbitmq_config
+rabbitConfig = get_rabbitmq_config()
 
 # ===========================
 # Configuration for Tests
