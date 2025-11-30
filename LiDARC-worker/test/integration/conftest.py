@@ -9,13 +9,7 @@ from testcontainers.rabbitmq import RabbitMqContainer
 from minio import Minio
 
 def running_in_ci_mode():
-    # Real GitLab CI
-    if os.getenv("GITLAB_CI") is not None:
-        return True
-    # gitlab-ci-local OR environments without docker.sock
-    if not os.path.exists("/var/run/docker.sock"):
-        return True
-    return False
+    return os.getenv("CI") == "true" or os.getenv("GITLAB_CI") == "true"
 
 @pytest.fixture(scope="module", autouse=True)
 def minio_client(request, very_small_las_file):
