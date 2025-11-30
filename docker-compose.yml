@@ -90,7 +90,6 @@ services:
       - "8081:8081"
     networks:
       - ase-network
-
   backend:
     build:
       context: ./LiDARC-backend
@@ -109,16 +108,13 @@ services:
     image: preprocess-lidarc-worker
     build:
       context: ./LiDARC-worker
-      dockerfile: Dockerfile
+      dockerfile: LiDARC-worker/Dockerfile-preprocess-worker
     container_name: preprocess-worker
     depends_on:
       minio:
         condition: service_started
         restart: true
       rabbitmq:
-        condition: service_started
-        restart: true
-      postgres:
         condition: service_started
         restart: true
     networks:
