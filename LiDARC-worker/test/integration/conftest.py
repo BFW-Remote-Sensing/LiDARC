@@ -7,7 +7,6 @@ import preprocess.preprocess_worker as preprocess
 from testcontainers.minio import MinioContainer
 from testcontainers.rabbitmq import RabbitMqContainer
 from minio import Minio
-
 from messaging.result_publisher import ResultPublisher
 
 
@@ -106,7 +105,7 @@ def rabbitmq_ch(request):
         ch.queue_bind(queue="preprocessing.job", exchange="worker.job", routing_key="preprocessing.job") #TODO: Fix the messaging in future or make it independent of real setup
         ch.queue_declare(queue="preprocessing.result", durable=True)
         ch.queue_bind(queue="preprocessing.result", exchange="worker.job", routing_key="job.preprocessor.create")
-        yield ch
+        yield ch, connection
 
 @pytest.fixture(scope="function", autouse=True)
 def setup_bucket():
@@ -124,9 +123,8 @@ def run_preprocess_worker(rabbitmq_ch, minio_client):
 
 @pytest.fixture(scope="function")
 def rabbit_channel(rabbitmq_ch):
-    connection, channel = rabbitmq_ch
-    yield channel
-
+    ch, connection = rabbitmq_ch
+    yield ch
 
 
 @pytest.fixture()
@@ -134,4 +132,3 @@ def result_publisher(rabbitmq_ch):
     ch, connection = rabbitmq_ch
     publisher = ResultPublisher(conn=connection, ch=ch)
     yield publisher
-
