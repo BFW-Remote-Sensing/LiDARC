@@ -36,7 +36,7 @@ public class File {
   @Column(nullable = false, unique = true)
   private String filename;
 
-  @Column(nullable = false, name = "original_filename")
+  @Column(name = "original_filename")
   private String originalFilename;
 
   @Column(name = "creation_year")
