@@ -6,6 +6,7 @@ import pytest
 import pika
 
 import preprocess.preprocess_worker as preprocess
+import metadata.metadata_worker as metadata
 from messaging.rabbit_config import get_rabbitmq_config
 from testcontainers.minio import MinioContainer
 from testcontainers.rabbitmq import RabbitMqContainer
@@ -100,6 +101,12 @@ def run_preprocess_worker(rabbitmq_ch, minio_client):
     thread.start()
     yield thread
 
+@pytest.fixture
+def run_metadata_worker(rabbitmq_metadata_ch, minio_client):
+    thread = threading.Thread(target=metadata.main(), daemon=True)
+    thread.start()
+    yield thread
+
 @pytest.fixture()
 def result_publisher(rabbitmq_ch):
     publisher = ResultPublisher(ch=rabbitmq_ch)
@@ -116,3 +123,12 @@ def rabbit_test_declarations(ch):
     ch.queue_declare(queue=rabbitConfig.queue_preprocessing_result, durable=True)
     ch.queue_bind(queue=rabbitConfig.queue_preprocessing_result, exchange=result_exchange_name,
                   routing_key=rabbitConfig.routing_preprocessing_result)
+
+    ch.queue_declare(queue=rabbitConfig.queue_metadata_job, durable=True)
+    ch.queue_bind(queue=rabbitConfig.queue_metadata_job, exchange=job_exchange_name,
+                  routing_key=rabbitConfig.routing_metadata_start)
+
+    ch.queue_declare(queue=rabbitConfig.queue_metadata_result, durable=True)
+    ch.queue_bind(queue=rabbitConfig.queue_metadata_result, exchange=result_exchange_name,
+                  routing_key=rabbitConfig.routing_metadata_result)
+

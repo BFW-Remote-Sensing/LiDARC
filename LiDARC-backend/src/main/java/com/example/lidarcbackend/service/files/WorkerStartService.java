@@ -1,6 +1,7 @@
 package com.example.lidarcbackend.service.files;
 
 import com.example.lidarcbackend.configuration.RabbitConfig;
+import com.example.lidarcbackend.model.DTO.StartMetadataJobDto;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
@@ -15,11 +16,11 @@ public class WorkerStartService {
     }
 
 
-    public void startMetadataJob(String payload) {
+    public void startMetadataJob(StartMetadataJobDto startMetadataJobDto) {
         rabbitTemplate.convertAndSend(
                 RabbitConfig.WORKER_JOB_EXCHANGE,                       // → worker-job
                 RabbitConfig.WORKER_METADATA_START_ROUTING_KEY,     // → worker.metadata.job.start
-                payload
+                startMetadataJobDto
         );
     }
 

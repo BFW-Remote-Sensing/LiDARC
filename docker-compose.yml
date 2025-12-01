@@ -103,7 +103,7 @@ services:
       - RABBITMQ_HOST=rabbitmq
     networks:
       - ase-network
-preprocess-worker:
+  preprocess-worker:
     image: preprocess-lidarc-worker
     build:
       context: ./LiDARC-worker
@@ -118,7 +118,26 @@ preprocess-worker:
         restart: true
     networks:
       - ase-network
-      
+
+  metadata-worker:
+    image: metadata-lidarc-worker
+    build:
+      context: ./LiDARC-worker
+      dockerfile: Dockerfile-metadata-worker
+    container_name: metadata-worker
+    depends_on:
+      minio:
+        condition: service_started
+        restart: true
+      rabbitmq:
+        condition: service_started
+        restart: true
+      postgres:
+        condition: service_started
+        restart: true
+    networks:
+      - ase-network
+
 networks:
   ase-network:
     driver: bridge

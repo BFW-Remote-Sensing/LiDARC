@@ -4,8 +4,16 @@ import com.example.lidarcbackend.configuration.RabbitConfig;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+
 @Component
 public class WorkerResultListener {
+
+    private final IMetadataService metadataService;
+
+    public WorkerResultListener(IMetadataService metadataService) {
+        this.metadataService = metadataService;
+    }
 
     //TODO
     // set Input Parameter for every method
@@ -21,8 +29,8 @@ public class WorkerResultListener {
     }
 
     @RabbitListener(queues = RabbitConfig.WORKER_METADATA_RESULT_QUEUE)
-    public void handleMetadataResult(String message) {
-        // ...
+    public void handleMetadataResult(Map<String, Object> result) {
+        metadataService.processMetadata(result);
     }
 
 }

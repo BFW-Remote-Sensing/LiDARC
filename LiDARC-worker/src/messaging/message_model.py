@@ -11,13 +11,14 @@ class BaseMessage:
     type: str # could be used to identify the message, with preprocessing, etc
     status: str # probably unnecessary, can be deleted later on
     job_id: str
+    status: str
     payload: Dict[str, Any]
 
     def to_json(self) -> bytes:
         return json.dumps({
             "type": self.type,
-            "status": self.status,
             "job_id": self.job_id,
+            "status": self.status,
             "payload": self.payload, #TODO payload bei workern abchecken
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }).encode("utf-8")
