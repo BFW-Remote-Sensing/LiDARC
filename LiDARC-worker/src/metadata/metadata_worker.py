@@ -43,7 +43,6 @@ def connect_rabbitmq():
 def mk_error_msg(job_id: str, error_msg: str):
     return BaseMessage(
         type = "metadata",
-        version = "1",
         job_id = job_id,
         status = "error",
         payload={
@@ -54,10 +53,9 @@ def mk_error_msg(job_id: str, error_msg: str):
 def mk_success_msg(job_id: str, metadata: dict):
     return BaseMessage(
         type = "metadata",
-        version = "1",
         job_id = job_id,
         status = "success",
-        payload=metadata
+        payload={"metadata":metadata}
     )
 
 def publish_response(ch, msg: BaseMessage):
@@ -111,7 +109,6 @@ def extract_metadata(file_path: str) -> dict:
 
         with laspy.open(file_path) as las:
             header = las.header
-
             metadata = {
                 "filename": filename,
                 "capture_year": capture_year,
@@ -171,6 +168,7 @@ def process_req(ch, method, properties, body):
         if metadata == {}:
             logging.error(f"Metadata extraction failed for {las_file_url}.")
             publish_response(ch, mk_error_msg(job_id, "Couldn't extract metadata from file from: {}, metadata job cancelled".format(las_file_url)))
+            os.remove(local_file)
             return
 
         publish_response(ch, mk_success_msg(job_id, metadata))
