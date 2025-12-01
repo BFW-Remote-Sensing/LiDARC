@@ -36,7 +36,7 @@ class RabbitMQConfig:
 
     def __post_init__(self):
         if self.host is None:
-            self.host = os.getenv("RABBITMQ_HOST", "localhost")
+            self.host = os.getenv("RABBITMQ_HOST", "rabbitmq")
         if self.port is None:
             self.port = int(os.getenv("RABBITMQ_PORT", "5672"))
         if self.username is None:

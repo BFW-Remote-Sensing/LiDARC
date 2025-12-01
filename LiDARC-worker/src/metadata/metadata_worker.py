@@ -19,11 +19,11 @@ from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 
 from messaging.message_model import BaseMessage
-from messaging.rabbit_connect import create_connection, create_channel
+from messaging.rabbit_connect import create_rabbit_con_and_return_channel
 from messaging.result_publisher import ResultPublisher
-from messaging.topology import topology
+from messaging.rabbit_config import get_rabbitmq_config
 
-publisher = ResultPublisher()
+rabbitConfig = get_rabbitmq_config()
 
 def handle_sigterm(signum, frame):
     logging.info("SIGTERM received")
@@ -35,22 +35,7 @@ def connect_rabbitmq():
     logging.info(f"Connecting to RabbitMQ...")
     while True:
         try:
-            user = os.environ.get("RABBITMQ_USER", "admin")
-            password = os.environ.get("RABBITMQ_PASSWORD", "admin")
-            host = os.environ.get("RABBITMQ_HOST", "rabbitmq")
-            port = os.environ.get("RABBITMQ_PORT", "5672")
-            vhost = os.environ.get("RABBITMQ_VHOST", "/worker")
-
-            credentials = pika.PlainCredentials(username=user, password=password)
-            connection = pika.BlockingConnection(
-                pika.ConnectionParameters(
-                    host=host,
-                    port=port,
-                    virtual_host=vhost,
-                    credentials=credentials
-                )
-            )
-            return connection
+            return create_rabbit_con_and_return_channel()
         except Exception as e:
             logging.error("RabbitMQ connection failed, Retrying in 5s... Error: {}".format(e))
             time.sleep(5)
@@ -75,9 +60,10 @@ def mk_success_msg(job_id: str, metadata: dict):
         payload=metadata
     )
 
-def publish_response(msg: BaseMessage):
+def publish_response(ch, msg: BaseMessage):
+    publisher = ResultPublisher(ch)
     publisher.publish_metadata_result(msg)
-    logging.debug(f"Sent response to exchange: {topology.exchange_worker_results}")
+    logging.debug(f"Sent response to exchange: {rabbitConfig.exchange_worker_results}")
 
 def validate_request(json_req):
     try:
@@ -156,13 +142,13 @@ def process_req(ch, method, properties, body):
         req = json.loads(body)
         if not req["jobId"]:
             logging.warning("The metadata job is cancelled because there is no job id")
-            publish_response(mk_error_msg(job_id="", error_msg="Metadata job is cancelled because job has no job id"))
+            publish_response(ch, mk_error_msg(job_id="", error_msg="Metadata job is cancelled because job has no job id"))
 
         job_id = req["jobId"]
 
         if not validate_request(req):
             logging.warning("The metadata job is cancelled because of a Validation Error")
-            publish_response(mk_error_msg(job_id, "Metadata job is cancelled because job request is invalid"))
+            publish_response(ch, mk_error_msg(job_id, "Metadata job is cancelled because job request is invalid"))
             return
 
         las_file_url = req["url"]
@@ -173,36 +159,35 @@ def process_req(ch, method, properties, body):
             local_file = file_handler.download_file(las_file_url)
         except HTTPError as e:
             logging.warning("Couldn't download file from: {}, error: {}".format(las_file_url, e))
-            publish_response(mk_error_msg(job_id, "Couldn't download file from: {}, metadata job cancelled".format(las_file_url)))
+            publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, metadata job cancelled".format(las_file_url)))
             return
         if local_file == "":
             logging.warning("File not downloaded, stopping processing the request!")
-            publish_response(mk_error_msg(job_id, "Couldn't download file from: {}, metadata job cancelled".format(las_file_url)))
+            publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, metadata job cancelled".format(las_file_url)))
             return
 
         metadata = extract_metadata(local_file)
 
         if metadata == {}:
             logging.error(f"Metadata extraction failed for {las_file_url}.")
-            publish_response(mk_error_msg(job_id, "Couldn't extract metadata from file from: {}, metadata job cancelled".format(las_file_url)))
+            publish_response(ch, mk_error_msg(job_id, "Couldn't extract metadata from file from: {}, metadata job cancelled".format(las_file_url)))
             return
 
-        publish_response(mk_success_msg(job_id, metadata))
+        publish_response(ch, mk_success_msg(job_id, metadata))
         os.remove(local_file)
     except Exception as e:
         logging.error(f"Failed to process message: {e}")
-        publish_response(mk_error_msg(job_id, "An unexpected error occured, metadata job cancelled"))
+        publish_response(ch, mk_error_msg(job_id, "An unexpected error occured, metadata job cancelled"))
     finally:
         processing_time = int((time.time() - start_time) * 1000)
         logging.info(f"Worker took {processing_time} ms to process the message.")
 
 
 def main():
-    connection = create_connection()
-    channel = create_channel(connection)
+    channel = connect_rabbitmq()
 
-    channel.basic_consume(queue=topology.queue_metadata_job, on_message_callback=process_req, auto_ack=True)
-    logging.info(f"Connected to RabbitMQ Listening on queue '{topology.queue_metadata_job}'")
+    channel.basic_consume(queue=rabbitConfig.queue_metadata_job, on_message_callback=process_req, auto_ack=True)
+    logging.info(f"Connected to RabbitMQ Listening on queue '{rabbitConfig.queue_metadata_job}'")
     try:
         channel.start_consuming()
     except KeyboardInterrupt:

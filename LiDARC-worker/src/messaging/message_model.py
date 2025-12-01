@@ -17,7 +17,6 @@ class BaseMessage:
     def to_json(self) -> bytes:
         return json.dumps({
             "type": self.type,
-            "status": self.status,
             "job_id": self.job_id,
             "status": self.status,
             "payload": self.payload, #TODO payload bei workern abchecken
@@ -31,7 +30,6 @@ class BaseMessage:
             type=data.get("type", "unknown"),
             status=data.get("status", "unknown"),
             job_id=data.get("job_id", str(uuid.uuid4())),
-            status=data.get("status", "unknown"),
             payload=data.get("payload", {}),
         )
 
