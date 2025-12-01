@@ -81,8 +81,7 @@ public class MetadataService implements IMetadataService {
     }
 
     private File parseMetadata(Map<String, Object> metadata) {
-
-        Optional<File> old = fileRepository.findFileByOriginalFilename(metadata.get("filename").toString());
+        Optional<File> old = fileRepository.findFileByFilename(metadata.get("filename").toString());
         if (old.isEmpty()) {
             log.warn("Original file not found in database, skipping save: {}", metadata.get("filename"));
             return null;
