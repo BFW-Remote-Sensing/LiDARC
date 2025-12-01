@@ -78,7 +78,8 @@ def test_metadata_worker_integration_valid_request(minio_client, rabbitmq_ch, la
 
 @pytest.mark.e2e
 def test_metadata_worker_integration_invalid_url(minio_client, rabbitmq_ch, las_with_header_module_scope):
-    assert minio_client.bucket_exists("basebucket")
+    client, upload_file = minio_client
+    assert client.bucket_exists("basebucket")
 
     def run_worker():
         metadata_worker.main()
@@ -94,7 +95,7 @@ def test_metadata_worker_integration_invalid_url(minio_client, rabbitmq_ch, las_
         rabbitmq_ch,
         WORKER_EXCHANGE,
         METADATA_JOB_RK,
-        message_dict=test_job
+        test_job
     )
 
     body = consume_single_message(
