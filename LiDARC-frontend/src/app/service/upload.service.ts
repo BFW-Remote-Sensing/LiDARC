@@ -34,6 +34,7 @@ export class UploadService {
   }
 
   uploadToPresignedUrl(file: File, url: string, method = 'PUT'): Observable<HttpEvent<any>> {
+
     return new Observable(observer => {
       const reader = new FileReader();
 
@@ -67,7 +68,6 @@ export class UploadService {
     formData.append('file', file);
 
   }
-
 
   onComplete?(file: File, hash: string) {
     // callback to signal to backend that upload is complete
