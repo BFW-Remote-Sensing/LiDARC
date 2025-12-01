@@ -14,12 +14,14 @@ const headers = new HttpHeaders({
   providedIn: 'root',
 })
 export class UploadService {
-  constructor(private httpClient: HttpClient, private globals: Globals) {}
+  constructor(
+    private httpClient: HttpClient,
+    private globals: Globals,
+  ) {}
 
   // Ask your backend for a presigned URL (adapt endpoint/payload)
   getPresignedUploadUrl(file: File, hash: string): Observable<FileInfo> {
     console.log('sending presign request for file ' + file.name);
-
     const payload: FileInfo = {
       fileName: hash + '_' + file.name,
       originalFileName: file.name,
@@ -36,10 +38,13 @@ export class UploadService {
     const headers = new HttpHeaders({ 'Content-Type': 'multipart/form-data' });
     var formData = new FormData();
     formData.append('file', file);
+    console.log('Uploading to presigned URL: ' + url);
+    const parsed = new URL(url);
+    const proxiedUrl = `http://localhost:8081/minio-upload${parsed.pathname}${parsed.search}`;
 
     // use HttpClient.request so we can pass a dynamic method
     console.log('uploading file ' + file.name + ' to ' + url + ' with ' + headers);
-    return this.httpClient.put(url, formData, {
+    return this.httpClient.put(proxiedUrl, formData, {
       //headers: headers,
       reportProgress: true,
       observe: 'events',
