@@ -18,10 +18,10 @@ from schemas.metadata import schema as metadata_schema
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 
-from src.messaging.message_model import BaseMessage
-from src.messaging.rabbit_connect import create_connection, create_channel
-from src.messaging.result_publisher import ResultPublisher
-from src.messaging.topology import topology
+from messaging.message_model import BaseMessage
+from messaging.rabbit_connect import create_connection, create_channel
+from messaging.result_publisher import ResultPublisher
+from messaging.topology import topology
 
 publisher = ResultPublisher()
 

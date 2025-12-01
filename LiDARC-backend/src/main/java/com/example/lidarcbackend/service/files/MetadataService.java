@@ -6,6 +6,7 @@ import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.repository.CoordinateSystemRepository;
 import com.example.lidarcbackend.repository.FileMetadataRepository;
 import com.example.lidarcbackend.repository.FileRepository;
+import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -33,6 +35,7 @@ public class MetadataService implements IMetadataService {
 
 
     @Override
+    @Transactional
     public void processMetadata(Map<String, Object> result) {
         log.info("Processing Metadata result...");
 
@@ -78,6 +81,14 @@ public class MetadataService implements IMetadataService {
     }
 
     private File parseMetadata(Map<String, Object> metadata) {
+
+        Optional<File> old = fileRepository.findFileByOriginalFilename(metadata.get("filename").toString());
+        if (old.isEmpty()) {
+            log.warn("Original file not found in database, skipping save: {}", metadata.get("filename"));
+            return null;
+        }
+        File file = old.get();
+
         String csString = (String) metadata.get("coordinate_system");
         CoordinateSystem cs = null;
         if(csString != null && !csString.isEmpty()) {
@@ -95,10 +106,7 @@ public class MetadataService implements IMetadataService {
 
             }
         }
-
-        File file = new File();
         //text
-        file.setFilename((String) metadata.get("filename"));
         file.setLasVersion((String) metadata.get("las_version"));
         file.setCaptureSoftware((String) metadata.get("capture_software"));
         file.setSystemIdentifier((String) metadata.get("system_identifier"));
@@ -134,10 +142,6 @@ public class MetadataService implements IMetadataService {
             return null;
         }
 
-        if (fileRepository.findFileByOriginalFilename(file.getFilename()).isPresent()) {
-            log.warn("Duplicate original filename detected, skipping save: {}", file.getFilename());
-            return null;
-        }
         return file;
     }
 
