@@ -33,24 +33,41 @@ export class UploadService {
     );
   }
 
-  // Perform the upload to the presigned URL; returns raw HttpEvent stream so caller can track progress
   uploadToPresignedUrl(file: File, url: string, method = 'PUT'): Observable<HttpEvent<any>> {
-    const headers = new HttpHeaders({ 'Content-Type': 'multipart/form-data' });
-    var formData = new FormData();
-    formData.append('file', file);
-    console.log('Uploading to presigned URL: ' + url);
-    const parsed = new URL(url);
-    const proxiedUrl = `http://localhost:8081/minio-upload${parsed.pathname}${parsed.search}`;
+    return new Observable(observer => {
+      const reader = new FileReader();
 
-    // use HttpClient.request so we can pass a dynamic method
-    console.log('uploading file ' + file.name + ' to ' + url + ' with ' + headers);
-    return this.httpClient.put(proxiedUrl, formData, {
-      //headers: headers,
-      reportProgress: true,
-      observe: 'events',
-      withCredentials: false,
+      reader.onload = () => {
+        const parsed = new URL(url);
+        const proxiedUrl = `http://localhost:8081/minio-upload${parsed.pathname}${parsed.search}`;
+
+        console.log('Uploading to presigned URL:', proxiedUrl);
+
+        this.httpClient.request(method, proxiedUrl, {
+          body: reader.result,        // file content AFTER load finishes
+          reportProgress: true,
+          observe: 'events',
+          withCredentials: false
+        })
+          .subscribe({
+            next: e => observer.next(e),
+            error: err => observer.error(err),
+            complete: () => observer.complete()
+          });
+      };
+
+      reader.onerror = err => observer.error(err);
+
+      // Start reading the file (async)
+      reader.readAsArrayBuffer(file);  // better than readAsText for uploads
     });
   }
+
+  addFileToFormData = (formData: FormData, file: File) => {
+    formData.append('file', file);
+
+  }
+
 
   onComplete?(file: File, hash: string) {
     // callback to signal to backend that upload is complete
