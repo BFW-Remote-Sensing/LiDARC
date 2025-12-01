@@ -12,7 +12,7 @@ def test_base_message_to_json_contains_all_fields():
 
     msg = BaseMessage(
         type="test",
-        version="1",
+        status="success",
         job_id=str(uuid.uuid4()),
         payload=payload,
     )
@@ -21,7 +21,7 @@ def test_base_message_to_json_contains_all_fields():
     data = json.loads(as_json)
 
     assert data["type"] == "test"
-    assert data["version"] == "1"
+    assert data["status"] == "success"
     assert data["payload"] == payload
     assert "job_id" in data
     assert "timestamp" in data
@@ -30,7 +30,7 @@ def test_base_message_to_json_contains_all_fields():
 def test_base_message_timestamp_is_iso_datetime():
     msg = BaseMessage(
         type="test",
-        version="1",
+        status="success",
         job_id=str(uuid.uuid4()),
         payload={"foo": "bar"},
     )
@@ -46,7 +46,7 @@ def test_base_message_timestamp_is_iso_datetime():
 def test_base_message_job_id_is_valid_uuid():
     msg = BaseMessage(
         type="test",
-        version="1",
+        status="success",
         job_id=str(uuid.uuid4()),
         payload={"job": "metadata"}
     )

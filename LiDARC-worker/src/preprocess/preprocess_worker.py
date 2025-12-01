@@ -12,6 +12,10 @@ import sys
 import signal
 import pandas as pd
 import numpy as np
+from messaging.rabbit_connect import create_rabbit_con_and_return_channel
+from messaging.rabbit_config import get_rabbitmq_config
+from messaging.result_publisher import ResultPublisher
+from messaging.message_model import BaseMessage
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 from pika.exceptions import ChannelWrongStateError, ReentrancyError, StreamLostError
@@ -19,6 +23,8 @@ from tdigest import TDigest
 from schemas.precompute import schema as precompute_schema
 import util.file_handler as file_handler
 from requests import HTTPError
+
+rabbitConfig = get_rabbitmq_config()
 
 def handle_sigterm(signum, frame):
     logging.info("SIGTERM received")
@@ -29,15 +35,7 @@ signal.signal(signal.SIGTERM, handle_sigterm)
 def connect_rabbitmq():
     while True:
         try:
-            user = os.environ.get("RABBITMQ_USER", "admin")
-            password = os.environ.get("RABBITMQ_PASSWORD", "admin")
-            host = os.environ.get("RABBITMQ_HOST", "rabbitmq")
-            port = int(os.environ.get("RABBITMQ_PORT", "5672"))
-            vhost = os.environ.get("RABBITMQ_VHOST", "/")
-
-            credentials = pika.PlainCredentials(username=user, password=password)
-            connection = pika.BlockingConnection(pika.ConnectionParameters(host=host, port=port, virtual_host=vhost, credentials=credentials))
-            return connection
+            return create_rabbit_con_and_return_channel()
         except Exception as e:
             logging.error("RabbitMQ connection failed, Retrying in 5s... Error: {}".format(e))
             time.sleep(5)
@@ -113,16 +111,9 @@ def process_points(points, precomp_grid):
         if 0 <= r < n_rows and 0 <= c < n_cols:
             precomp_grid["veg_height_digest"][r,c].update(float(vh))
 
-def mk_error_msg(job_id: str, error_msg: str):
-    return {"jobId": job_id, "status": "error", "msg": error_msg}
+def mk_error_msg(error_msg: str):
+    return {"msg": error_msg}
 
-def publish_response(ch, response_dict):
-    ch.basic_publish(
-        exchange=os.environ.get("EXCHANGE_NAME", "worker.job"),
-        routing_key="job.preprocessor.create",
-        body=json.dumps(response_dict),
-        properties = pika.BasicProperties("application/json")
-    )
 def mk_summary(grid_shape, df: pd.DataFrame):
     return {
         "nCells": int(grid_shape[0] * grid_shape[1]),
@@ -170,16 +161,27 @@ def create_result_df(precomp_grid):
 
 #TODO: LOOK at how to maybe process points better or use less resources? Any suggestions are warmly welcome
 def process_req(ch, method, properties, body):
+    publisher = ResultPublisher(ch)
     start_time = time.time()
     request = json.loads(body)
     if "jobId" not in request:
         logging.warning("The precompute job is cancelled because there is no job id")
-        publish_response(ch, mk_error_msg(job_id="-42", error_msg="Precompute job is cancelled because job has no job id"))
-
+        publisher.publish_preprocessing_result(BaseMessage(type="preprocessing",
+                                                           status="error",
+                                                           job_id="",
+                                                           payload=mk_error_msg(error_msg="Precompute job is cancelled because job has no job id")))
     job_id = request["jobId"]
-    if not validate_request(request):
+
+    #TODO: create validation correctly
+    valid = True
+    if ("payload" in request and not validate_request(request["payload"])) or not validate_request(request):
+       valid = False
+    if not valid:
         logging.warning("The precompute job is cancelled because of an Validation Error ")
-        publish_response(ch, mk_error_msg(job_id, "Precompute job is cancelled because job request is invalid"))
+        publisher.publish_preprocessing_result(BaseMessage(type="preprocessing",
+                                                           status="error",
+                                                           job_id=job_id,
+                                                           payload=mk_error_msg(error_msg="Precompute job is cancelled because job request is invalid")))
         return
 
     #Process request
@@ -208,29 +210,31 @@ def process_req(ch, method, properties, body):
         processing_time = int((time.time() - start_time) * 1000)
         logging.info("Worker took {} ms to process the request".format(processing_time))
 
-        response = {
-            "jobId": job_id,
-            "status": "success",
-            "result": upload_result,
-            "summary": mk_summary(precomp_grid["grid_shape"], df)
-        }
-        publish_response(ch, response)
+        response = BaseMessage(type="preprocessing",
+                               job_id=job_id,
+                               status="success",
+                               payload={
+                                   "result":upload_result,
+                                   "summary": mk_summary(precomp_grid["grid_shape"], df)
+                               })
+        publisher.publish_preprocessing_result(response)
     #TODO: Add exceptions correctly!
     except HTTPError as e:
         logging.warning("Couldn't download file from: {}, error: {}".format(las_file_url, e))
-        publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, precompute job cancelled".format(las_file_url)))
+        publisher.publish_preprocessing_result(BaseMessage(type="preprocessing",
+                                                           status="error",
+                                                           job_id=job_id,
+                                                           payload=mk_error_msg(error_msg="Couldn't download file from: {}, precompute job cancelled".format(las_file_url))))
         return
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 def main():
-    channel = connect_rabbitmq().channel()
-    queue_name = os.environ.get("QUEUE_NAME", "preprocessing.job")
-    channel.queue_declare(queue=queue_name, durable=True)
+    channel = connect_rabbitmq()
     def callback(ch, method, properties, body):
         process_req(ch, method, properties, body)
 
-    channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
+    channel.basic_consume(queue=rabbitConfig.queue_preprocessing_job, on_message_callback=callback, auto_ack=True)
 
     logging.info("Waiting for messages")
     try:
