@@ -6,6 +6,13 @@ import pytest
 from http import HTTPMethod
 import src.metadata.metadata_worker as metadata_worker
 import threading
+from messaging.rabbit_config import get_rabbitmq_config
+
+rabbitConfig = get_rabbitmq_config()
+WORKER_EXCHANGE = rabbitConfig.exchange_worker_job
+METADATA_JOB_QUEUE = rabbitConfig.queue_metadata_job
+METADATA_RESULT_QUEUE = rabbitConfig.queue_metadata_result
+METADATA_JOB_RK = rabbitConfig.routing_metadata_start
 
 def publish_message(channel, exchange, routing_key, message_dict):
     channel.basic_publish(
@@ -31,8 +38,11 @@ def consume_single_message(channel, queue):
 
 @pytest.mark.e2e
 def test_metadata_worker_integration_valid_request(minio_client, rabbitmq_ch, las_with_header_module_scope):
-    assert minio_client.bucket_exists("basebucket")
-    presigned_url = minio_client.get_presigned_url(
+    client, upload_file = minio_client
+    assert client.bucket_exists("basebucket")
+    las_file_path = las_with_header_module_scope()
+    upload_file(las_file_path, object_name="metadata_test.las")
+    presigned_url = client.get_presigned_url(
         method=HTTPMethod.GET,
         bucket_name="basebucket",
         object_name="metadata_test.las"
@@ -50,14 +60,14 @@ def test_metadata_worker_integration_valid_request(minio_client, rabbitmq_ch, la
     }
     publish_message(
         rabbitmq_ch,
-        exchange="worker-job",
-        routing_key="worker.metadata.job.start",
-        message_dict=test_job
+        WORKER_EXCHANGE,
+        METADATA_JOB_RK,
+        test_job
     )
 
     body = consume_single_message(
         rabbitmq_ch,
-        queue="worker_metadata_result"
+        METADATA_RESULT_QUEUE
     )
     assert body is not None, "Metadata worker did not publish any result"
 
@@ -82,14 +92,14 @@ def test_metadata_worker_integration_invalid_url(minio_client, rabbitmq_ch, las_
     }
     publish_message(
         rabbitmq_ch,
-        exchange="worker-job",
-        routing_key="worker.metadata.job.start",
+        WORKER_EXCHANGE,
+        METADATA_JOB_RK,
         message_dict=test_job
     )
 
     body = consume_single_message(
         rabbitmq_ch,
-        queue="worker_metadata_result"
+        METADATA_RESULT_QUEUE
     )
     assert body is not None, "Metadata worker did not publish any result"
 

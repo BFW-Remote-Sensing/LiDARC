@@ -123,3 +123,12 @@ def rabbit_test_declarations(ch):
     ch.queue_declare(queue=rabbitConfig.queue_preprocessing_result, durable=True)
     ch.queue_bind(queue=rabbitConfig.queue_preprocessing_result, exchange=result_exchange_name,
                   routing_key=rabbitConfig.routing_preprocessing_result)
+
+    ch.queue_declare(queue=rabbitConfig.queue_metadata_job, durable=True)
+    ch.queue_bind(queue=rabbitConfig.queue_metadata_job, exchange=job_exchange_name,
+                  routing_key=rabbitConfig.routing_metadata_start)
+
+    ch.queue_declare(queue=rabbitConfig.queue_metadata_result, durable=True)
+    ch.queue_bind(queue=rabbitConfig.queue_metadata_result, exchange=result_exchange_name,
+                  routing_key=rabbitConfig.routing_metadata_result)
+
