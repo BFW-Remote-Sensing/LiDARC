@@ -8,6 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
+
 export class App {
   protected readonly title = signal('LiDARC-frontend');
 }
