@@ -16,7 +16,7 @@ import {LegacyGridContainLabel} from 'echarts/features';
 import {TitleComponent} from 'echarts/components'
 import {DataZoomComponent} from 'echarts/components'
 import {share} from 'rxjs';
-import {EChartsType} from 'echarts';
+import {ECharts, EChartsType} from 'echarts';
 
 echarts.use([TitleComponent, DataZoomComponent, LegacyGridContainLabel, TooltipComponent, VisualMapComponent, BarChart, GridComponent, CanvasRenderer, HeatmapChart]);
 
@@ -25,7 +25,7 @@ echarts.use([TitleComponent, DataZoomComponent, LegacyGridContainLabel, TooltipC
   selector: 'app-heatmap',
   standalone: true,
   imports: [
-    NgxEchartsDirective, CommonModule
+     CommonModule
   ],
   templateUrl: './heatmap.html',
   styleUrl: './heatmap.scss',
@@ -42,8 +42,8 @@ export class Heatmap implements OnInit, AfterViewInit {
   chartElement1!: HTMLElement | null;
   chartElement2!: HTMLElement | null;
 
-  rows = 400;
-  cols = 400;
+  rows = 100;
+  cols = 100;
 
 
   ngOnInit(): void {
@@ -54,35 +54,27 @@ export class Heatmap implements OnInit, AfterViewInit {
     this.chartElement1 = document.getElementById('chart1');
     this.chartElement2 = document.getElementById('chart2');
 
-    this.optionsLeft = this.createHeatmapOptionsWithoutDataset(dataLeft, "SetA", true);
-    this.optionsRight = this.createHeatmapOptionsWithoutDataset(dataRight, "SetB", false);
+    if (this.chartElement1 === null || this.chartElement2 === null) {
+      alert("chart not found!");
+    }
+
+    this.optionsLeft = this.createHeatmapOptionsWithoutDataset(dataLeft,"SetA", true);
+    this.optionsRight = this.createHeatmapOptionsWithoutDataset( dataRight,"SetB", false);
 
 
     const chart1 = echarts.init(this.chartElement1);
-    echarts.init(this.chartElement1);
-    chart1.showLoading('default', {
-      text: 'Lade Vegetation...',
-    });
+    chart1.setOption(this.optionsLeft);
+    //chart1.showLoading();
 
     const chart2 = echarts.init(this.chartElement2);
-    echarts.init(this.chartElement2);
-    chart2.showLoading('default', {
-      text: 'Lade Vegetation...',
-    });
+    chart2.setOption(this.optionsRight);
 
-
-
-    chart1.hideLoading();
-    chart2.hideLoading();
+    this.setHighlightBorderOnMouseover(chart1, chart2);
   }
 
 
   private createHeatmapOptionsWithoutDataset(data: number[][], title: string, showVisualMap: boolean): EChartsCoreOption {
-    const rows = this.rows;
-    const cols = this.cols;
-
-
-    return {
+     return {
       title: {
         top: 0,
         text: title
@@ -93,37 +85,38 @@ export class Heatmap implements OnInit, AfterViewInit {
           const [x, y, value] = params.value;
           return `x: ${x}, y: ${y}<br/>Höhe: ${value.toFixed(2)} m`;
         },
-      },
-      grid: {
-        height: '75%',
-        top: 70,
-      },
-      xAxis: {
-        type: 'category',
-        data: Array.from({length: cols}, (_, i) => i.toString()),
-        splitArea: {show: false},
-      },
-      yAxis: {
-        type: 'category',
-        data: Array.from({length: rows}, (_, i) => i.toString()),
-        splitArea: {show: false},
-      }, dataZoom: [
-        // Slider unten für X-Achse
-        {
-          type: 'slider',
-          xAxisIndex: 0,
-          bottom: 0,
-          filterMode: 'none', // Daten nicht rausfiltern, nur Ansicht beschneiden
+        grid: {
+          height: '75%',
+          top: 70,
         },
-        // Slider rechts für Y-Achse
-        {
-          type: 'slider',
-          yAxisIndex: 0,
-          orient: 'vertical',
-          right: 0,
-          filterMode: 'none',
-        },
-      ],
+      },xAxis: {
+         type: 'category',
+         data: Array.from({length: this.cols}, (_, i) => i.toString()),
+         splitArea: {show: false},
+       },
+       yAxis: {
+         type: 'category',
+         data: Array.from({length: this.rows}, (_, i) => i.toString()),
+         splitArea: {show: false},
+       },
+       dataZoom: [
+         // Slider unten für X-Achse
+         {
+           type: 'slider',
+           xAxisIndex: 0,
+           bottom: 0,
+           filterMode: 'none', // Daten nicht rausfiltern, nur Ansicht beschneiden
+         },
+         // Slider rechts für Y-Achse
+         {
+           type: 'slider',
+           yAxisIndex: 0,
+           orient: 'vertical',
+           right: 0,
+           filterMode: 'none',
+         },
+       ],
+
       visualMap: {
         min: 0,
         max: 30,
@@ -135,25 +128,23 @@ export class Heatmap implements OnInit, AfterViewInit {
           color: ['#e5f5e0', '#a6dba0', '#5aae61', '#1b7837', '#00441b'],
         },
         show: showVisualMap
-      },
-      series: [
-        {
-          type: 'heatmap',
-          data,
-          emphasis: {
-            itemStyle: {
-              borderColor: '#ff000',
-              borderWidth: 2,
-            },
-          },
-        },
-      ]
+      }, series: [
+         {
+           type: 'heatmap',
+           data,
+           emphasis: {
+             itemStyle: {
+               borderColor: '#ff000',
+               borderWidth: 2,
+             },
+           },
+         },
+       ]
     };
   }
 
   ngAfterViewInit(): void {
     this.connectHeatmaps();
-    this.checkIfLoadingNecessary();
   }
 
   private checkIfLoadingNecessary(): void {
@@ -196,13 +187,50 @@ export class Heatmap implements OnInit, AfterViewInit {
     return result;
   }
 
-  private changeDataSetVolume(): number[][] {
-    const result: number[][] = [];
-    return result;
+  private setHighlightBorderOnMouseover(chart1: echarts.ECharts, chart2: echarts.ECharts) {
+    chart1.on('mouseover', (params: any) => {
+      if (params.seriesType !== 'heatmap') return;
+
+      chart1.dispatchAction({
+        type: 'highlight',
+        seriesIndex: params.seriesIndex ?? 0,
+        dataIndex: params.dataIndex,
+      });
+    });
+
+    chart1.on('mouseout', (params: any) => {
+      if (params.seriesType !== 'heatmap') return;
+
+      chart1.dispatchAction({
+        type: 'downplay',
+        seriesIndex: params.seriesIndex ?? 0,
+        dataIndex: params.dataIndex,
+      });
+    });
+
+
+    chart2.on('mouseover', (params: any) => {
+      if (params.seriesType !== 'heatmap') return;
+
+      chart1.dispatchAction({
+        type: 'highlight',
+        seriesIndex: params.seriesIndex ?? 0,
+        dataIndex: params.dataIndex,
+      });
+    });
+
+    chart2.on('mouseout', (params: any) => {
+      if (params.seriesType !== 'heatmap') return;
+
+      chart1.dispatchAction({
+        type: 'downplay',
+        seriesIndex: params.seriesIndex ?? 0,
+        dataIndex: params.dataIndex,
+      });
+    });
+
   }
 
-  private setOptionsWithLoadedData(chart: EChartsType): void {
 
-  }
 
 }
