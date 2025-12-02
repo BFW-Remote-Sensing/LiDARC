@@ -1,6 +1,12 @@
 .heatmap-chart {
-  width: 75%;
   height: 400px; /* oder 800px, je nach Geschmack */
 }
 
+.heatmap-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  //gap: 1rem;
+  height: 500px;
+}
 

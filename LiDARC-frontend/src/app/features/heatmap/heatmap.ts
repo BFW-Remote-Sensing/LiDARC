@@ -13,8 +13,12 @@ import {BarChart, HeatmapChart} from 'echarts/charts';
 import {GridComponent} from 'echarts/components';
 import {CanvasRenderer} from 'echarts/renderers';
 import {LegacyGridContainLabel} from 'echarts/features';
+import {TitleComponent} from 'echarts/components'
+import {DataZoomComponent} from 'echarts/components'
+import {share} from 'rxjs';
+import {EChartsType} from 'echarts';
 
-echarts.use([LegacyGridContainLabel, TooltipComponent, VisualMapComponent, BarChart, GridComponent, CanvasRenderer, HeatmapChart]);
+echarts.use([TitleComponent, DataZoomComponent, LegacyGridContainLabel, TooltipComponent, VisualMapComponent, BarChart, GridComponent, CanvasRenderer, HeatmapChart]);
 
 
 @Component({
@@ -33,29 +37,55 @@ echarts.use([LegacyGridContainLabel, TooltipComponent, VisualMapComponent, BarCh
 export class Heatmap implements OnInit, AfterViewInit {
   optionsLeft!: EChartsCoreOption;
   optionsRight!: EChartsCoreOption;
+  optionsSeries!: EChartsCoreOption;
+
+  chartElement1!: HTMLElement | null;
+  chartElement2!: HTMLElement | null;
 
   rows = 400;
   cols = 400;
+
 
   ngOnInit(): void {
     //later we will fetch real data and insert it into the options
     const dataLeft = this.generateVegetationData(this.rows, this.cols);
     const dataRight = this.generateVegetationData(this.rows, this.cols);
 
-    this.optionsLeft = this.createHeatmapOptions(dataLeft, 'Set A');
-    this.optionsRight = this.createHeatmapOptions(dataRight, 'Set B');
+    this.chartElement1 = document.getElementById('chart1');
+    this.chartElement2 = document.getElementById('chart2');
+
+    this.optionsLeft = this.createHeatmapOptionsWithoutDataset(dataLeft, "SetA", true);
+    this.optionsRight = this.createHeatmapOptionsWithoutDataset(dataRight, "SetB", false);
+
+
+    const chart1 = echarts.init(this.chartElement1);
+    echarts.init(this.chartElement1);
+    chart1.showLoading('default', {
+      text: 'Lade Vegetation...',
+    });
+
+    const chart2 = echarts.init(this.chartElement2);
+    echarts.init(this.chartElement2);
+    chart2.showLoading('default', {
+      text: 'Lade Vegetation...',
+    });
+
+
+
+    chart1.hideLoading();
+    chart2.hideLoading();
   }
 
 
-  private createHeatmapOptions(data: number[][], title: string): EChartsCoreOption {
+  private createHeatmapOptionsWithoutDataset(data: number[][], title: string, showVisualMap: boolean): EChartsCoreOption {
     const rows = this.rows;
     const cols = this.cols;
 
 
     return {
       title: {
-        text: title,
-        left: 'center',
+        top: 0,
+        text: title
       },
       tooltip: {
         position: 'top',
@@ -66,7 +96,7 @@ export class Heatmap implements OnInit, AfterViewInit {
       },
       grid: {
         height: '75%',
-        top: 40,
+        top: 70,
       },
       xAxis: {
         type: 'category',
@@ -77,17 +107,34 @@ export class Heatmap implements OnInit, AfterViewInit {
         type: 'category',
         data: Array.from({length: rows}, (_, i) => i.toString()),
         splitArea: {show: false},
-      },
+      }, dataZoom: [
+        // Slider unten für X-Achse
+        {
+          type: 'slider',
+          xAxisIndex: 0,
+          bottom: 0,
+          filterMode: 'none', // Daten nicht rausfiltern, nur Ansicht beschneiden
+        },
+        // Slider rechts für Y-Achse
+        {
+          type: 'slider',
+          yAxisIndex: 0,
+          orient: 'vertical',
+          right: 0,
+          filterMode: 'none',
+        },
+      ],
       visualMap: {
         min: 0,
         max: 30,
         calculable: true,
         orient: 'vertical',
         left: 0,
-        top: 'middle',
+        top: "middle",
         inRange: {
           color: ['#e5f5e0', '#a6dba0', '#5aae61', '#1b7837', '#00441b'],
-        }
+        },
+        show: showVisualMap
       },
       series: [
         {
@@ -95,32 +142,36 @@ export class Heatmap implements OnInit, AfterViewInit {
           data,
           emphasis: {
             itemStyle: {
-              borderColor: '#333',
-              borderWidth: 1,
+              borderColor: '#ff000',
+              borderWidth: 2,
             },
           },
         },
-      ],
+      ]
     };
   }
 
   ngAfterViewInit(): void {
     this.connectHeatmaps();
+    this.checkIfLoadingNecessary();
+  }
+
+  private checkIfLoadingNecessary(): void {
+
   }
 
   private connectHeatmaps() {
     setTimeout(() => {
-      const chartElement1 = document.getElementById('chart1');
-      const chartElement2 = document.getElementById('chart2');
+
       //ensure dom is present
-      if (!chartElement1 || !chartElement2) {
+      if (!this.chartElement1 || !this.chartElement2) {
         console.error('Chart DOM elements not found');
         return;
       }
 
 
-      const chart1 = getInstanceByDom(chartElement1);
-      const chart2 = getInstanceByDom(chartElement2);
+      const chart1 = getInstanceByDom(this.chartElement1);
+      const chart2 = getInstanceByDom(this.chartElement2);
 
       //check for null values
       if (!chart1 || !chart2) {
@@ -133,7 +184,8 @@ export class Heatmap implements OnInit, AfterViewInit {
     });
   }
 
-  private generateVegetationData(rows: number, cols: number): number[][] {
+  private generateVegetationData(rows: number, cols: number):
+    number[][] {
     const result: number[][] = [];
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
@@ -142,6 +194,15 @@ export class Heatmap implements OnInit, AfterViewInit {
       }
     }
     return result;
+  }
+
+  private changeDataSetVolume(): number[][] {
+    const result: number[][] = [];
+    return result;
+  }
+
+  private setOptionsWithLoadedData(chart: EChartsType): void {
+
   }
 
 }
