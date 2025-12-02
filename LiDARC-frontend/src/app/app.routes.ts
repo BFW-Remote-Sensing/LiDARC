@@ -1,11 +1,9 @@
 import { Routes } from '@angular/router';
 import {Heatmap} from './features/heatmap/heatmap';
+import { UploadComponent } from './components/upload/upload.component';
 
 export const routes: Routes = [
-  { path: 'viewer', component: Heatmap },
+
+  { path: 'heatmap', component: Heatmap },
+  {path: 'upload', component: UploadComponent},
 ];
-
-
-
-import { UploadComponent } from './components/upload/upload.component';
-export const routes: Routes = [{ path: 'upload', component: UploadComponent }];
