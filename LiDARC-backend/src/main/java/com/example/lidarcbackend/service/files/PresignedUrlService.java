@@ -3,6 +3,7 @@ package com.example.lidarcbackend.service.files;
 import com.example.lidarcbackend.configuration.MinioProperties;
 import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import com.example.lidarcbackend.model.DTO.Mapper.UrlMapper;
+import com.example.lidarcbackend.model.DTO.StartMetadataJobDto;
 import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.model.entity.Url;
 import com.example.lidarcbackend.repository.FileRepository;
@@ -203,13 +204,16 @@ public class PresignedUrlService implements IPresignedUrlService {
     dto.setUploaded(true);
     dto.setPresignedURL(fileInfoOpt.get().getPresignedURL());
     dto.setUrlExpiresAt(expiresAt);
-    sendFinishMessage(dto.getPresignedURL());
+
+    //TODO change to real jobId when job status management is implemented
+    sendFinishMessage("1234", dto.getPresignedURL());
 
     return Optional.of(dto);
   }
 
-  private void sendFinishMessage(String presignedUploadUrl) {
-    workerStartService.startMetadataJob(presignedUploadUrl);
+  private void sendFinishMessage(String jobId, String presignedUploadUrl) {
+      StartMetadataJobDto startMetadataJobDto = new StartMetadataJobDto(jobId, presignedUploadUrl);
+      workerStartService.startMetadataJob(startMetadataJobDto);
   }
 
   private boolean checkExistence(FileInfoDto body) {

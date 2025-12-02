@@ -1,15 +1,19 @@
 from unittest.mock import patch
 import pytest
 import pytest_check as check
+
+from messaging.message_model import BaseMessage
 from preprocess.preprocess_worker import process_req, calculate_grid, mk_error_msg
 import json
 import os
 
 def assert_successful_precompute(mock_publish, captured_upload, job_id="12345"):
     mock_publish.assert_called_once()
-    published_response = mock_publish.call_args[0][1]
-    check.equal(published_response["status"], "success", "Response status was not success")
-    check.equal(published_response["jobId"], "12345", "JobId mismatch")
+    args, kwargs = mock_publish.call_args
+    msg = args[0]
+    msg = msg.to_dict()
+    check.equal(msg["status"], "success", "Response status was not success")
+    check.equal(msg["job_id"], "12345", "JobId mismatch")
 
     expected_filename = f"pre-process-job-{job_id}-output.csv"
     check.equal(captured_upload["filename"], expected_filename, "Filename mismatch")
@@ -30,7 +34,10 @@ def test_process_req_accumulates_points_correctly_in_grid(very_small_las_file, t
 
     with patch("preprocess.preprocess_worker.file_handler.download_file", return_value=very_small_las_file), \
             patch("preprocess.preprocess_worker.file_handler.upload_file_by_type", side_effect=fake_upload_file_by_type), \
-            patch("preprocess.preprocess_worker.publish_response") as mock_publish:
+            patch("preprocess.preprocess_worker.ResultPublisher") as MockPublisher:
+
+        mock_instance = MockPublisher.return_value
+        mock_publish = mock_instance.publish_preprocessing_result
 
         process_req(None, None, None, json.dumps(request))
 
@@ -86,7 +93,10 @@ def test_precompute_generates_grid_with_all_points(generated_las_file, tmp_path,
 
     with patch("preprocess.preprocess_worker.file_handler.download_file", return_value=generated_las_file[0]), \
             patch("preprocess.preprocess_worker.file_handler.upload_file_by_type", side_effect=fake_upload_file_by_type), \
-            patch("preprocess.preprocess_worker.publish_response") as mock_publish:
+            patch("preprocess.preprocess_worker.ResultPublisher") as MockPublisher:
+
+        mock_instance = MockPublisher.return_value
+        mock_publish = mock_instance.publish_preprocessing_result
 
         process_req(None, None, None, json.dumps(request))
 
@@ -97,11 +107,18 @@ def test_precompute_generates_grid_with_all_points(generated_las_file, tmp_path,
 def test_invalid_job_msg_returns_error_msg(load_json):
     invalid_job_msg = load_json("invalid_precompute_job.json")
     job_id = invalid_job_msg["jobId"]
-    with patch("preprocess.preprocess_worker.publish_response") as mock_publish:
+    with patch("preprocess.preprocess_worker.ResultPublisher") as MockPublisher:
+        mock_instance = MockPublisher.return_value
+        mock_publish = mock_instance.publish_preprocessing_result
+
         process_req(None, None, None, json.dumps(invalid_job_msg))
-        assert mock_publish.call_count == 1
 
-        expected_msg = mk_error_msg(
-            job_id, "Precompute job is cancelled because job request is invalid") #TODO: This expected message might change later which could lead to failed test
+        mock_publish.assert_called_once()
 
-        mock_publish.assert_called_once_with(None, expected_msg)
+        expected_msg = mk_error_msg("Precompute job is cancelled because job request is invalid") #TODO: This expected message might change later which could lead to failed test
+
+        args, kwargs = mock_publish.call_args
+        msg = args[0]
+
+        assert isinstance(msg, BaseMessage)
+        assert msg.payload == expected_msg

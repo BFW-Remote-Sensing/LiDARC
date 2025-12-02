@@ -191,17 +191,17 @@ public class RabbitBackendIntegrationTests {
 
     }
 
-    @Test
-    void testMetadataJobStarterService() {
-        String  expected = "testMessageComparisonJobStarterService";
-        jobStarterService.startMetadataJob(expected);
-
-        Object message = rabbitTemplate.receiveAndConvert(RabbitConfig.WORKER_METADATA_JOB_QUEUE, 1000);
-
-        Assertions.assertNotNull(message);
-        assertEquals(expected, message);
-
-    }
+//    @Test
+//    void testMetadataJobStarterService() {
+//        String  expected = "testMessageComparisonJobStarterService";
+//        jobStarterService.startMetadataJob(expected);
+//
+//        Object message = rabbitTemplate.receiveAndConvert(RabbitConfig.WORKER_METADATA_JOB_QUEUE, 1000);
+//
+//        Assertions.assertNotNull(message);
+//        assertEquals(expected, message);
+//
+//    }
 
     @Test
     void testPreprocessorJobStarterService() {

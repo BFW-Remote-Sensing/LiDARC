@@ -1,20 +1,21 @@
 CREATE TABLE IF NOT EXISTS files (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     filename TEXT NOT NULL UNIQUE,
-    original_filename TEXT,
-    creation_year SMALLINT CHECK (creation_year BETWEEN 1900 AND 9999),
+    capture_year SMALLINT CHECK (capture_year BETWEEN 1900 AND 9999),
     size_bytes BIGINT,
+    original_filename TEXT,
     min_x DOUBLE PRECISION,
     min_y DOUBLE PRECISION,
     min_z DOUBLE PRECISION,
-    min_gpstime DOUBLE PRECISION,
     max_x DOUBLE PRECISION,
     max_y DOUBLE PRECISION,
     max_z DOUBLE PRECISION,
-    max_gpstime DOUBLE PRECISION,
     coordinate_system INTEGER,
+    system_identifier TEXT,
     las_version VARCHAR(32),
     capture_software VARCHAR(128),
+    point_count BIGINT,
+    file_creation_date DATE,
     uploaded BOOLEAN DEFAULT FALSE,
     uploaded_at TIMESTAMP
 );
@@ -35,9 +36,10 @@ CREATE TABLE IF NOT EXISTS urls (
 
 CREATE TABLE IF NOT EXISTS coordinate_system (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    coordinate_system VARCHAR(50) NOT NULL CHECK (coordinate_system IN ('WGS84','31256','LOCAL','UNKNOWN')),
-    coordinate_system_prefix VARCHAR(50) NOT NULL CHECK (coordinate_system_prefix IN ('EPSG', 'LOCAL'))
+    authority VARCHAR(50) NOT NULL,
+    code VARCHAR(50)
 );
+
 
 
 ALTER TABLE files 

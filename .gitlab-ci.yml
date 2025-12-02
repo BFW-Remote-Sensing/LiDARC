@@ -1,6 +1,13 @@
 stages:
   - test
 
+my_job:
+  stage: test
+  tags:
+    - customrunner
+  script:
+    - echo "Running only on the runner with tag 'myrunner'"
+
 preprocess_worker_test:
   stage: test
   image: registry.reset.inso-w.at/pub/docker/python:3.13-slim

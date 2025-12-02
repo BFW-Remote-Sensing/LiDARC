@@ -5,7 +5,7 @@ services:
     image: rabbitmq:3.12-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"   # für AMQP (Java-Client)
+      - "5672:5672" # für AMQP (Java-Client)
       - "15672:15672" # für Web UI
     environment:
       RABBITMQ_CONFIG_FILE: rabbitmq/rabbit
@@ -15,28 +15,27 @@ services:
     networks:
       - ase-network
   minio:
-      image: quay.io/minio/minio:latest
-      container_name: minio
-      restart: unless-stopped
-      ports:
-        - "9000:9000"   # API port
-        - "9001:9001"   # Console port
-      environment:
-        MINIO_ROOT_USER: admin
-        MINIO_ROOT_PASSWORD: aseWS25LiDARC
-      volumes:
-        - ./data:/data
-        #minio_data:/data
-      command: server /data --console-address ":9001"
-      networks:
-        - ase-network
-      healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
-        interval: 5s
-        timeout: 3s
-        retries: 5
-        start_period: 5s
-
+    image: quay.io/minio/minio:latest
+    container_name: minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000" # API port
+      - "9001:9001" # Console port
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: aseWS25LiDARC
+    volumes:
+      - ./data:/data
+      #minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - ase-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   redis:
     image: redis:latest
@@ -48,7 +47,7 @@ services:
     restart: unless-stopped
     networks:
       - ase-network
-      
+
   minio-mc:
     image: quay.io/minio/mc:latest
     container_name: minio_initializer
@@ -63,7 +62,6 @@ services:
     networks:
       - ase-network
     restart: on-failure
-    
 
   postgres:
     image: postgres:16
@@ -101,6 +99,7 @@ services:
     ports:
       - "8080:8080"
     environment:
+      - POSTGRES_HOST=postgres
       - RABBITMQ_HOST=rabbitmq
     networks:
       - ase-network
@@ -120,11 +119,29 @@ services:
     networks:
       - ase-network
 
+  metadata-worker:
+    image: metadata-lidarc-worker
+    build:
+      context: ./LiDARC-worker
+      dockerfile: Dockerfile-metadata-worker
+    container_name: metadata-worker
+    depends_on:
+      minio:
+        condition: service_started
+        restart: true
+      rabbitmq:
+        condition: service_started
+        restart: true
+      postgres:
+        condition: service_started
+        restart: true
+    networks:
+      - ase-network
+
 networks:
   ase-network:
     driver: bridge
-
 #possible volume on host
-#volumes: 
-#  minio_data: 
+#volumes:
+#  minio_data:
 #  - ./data:/data

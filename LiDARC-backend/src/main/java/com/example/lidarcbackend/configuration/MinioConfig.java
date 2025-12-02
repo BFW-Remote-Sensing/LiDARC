@@ -1,10 +1,10 @@
 // java
 package com.example.lidarcbackend.configuration;
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import io.minio.MinioAsyncClient;
 import io.minio.MinioClient;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class MinioConfig {
@@ -21,7 +21,7 @@ public class MinioConfig {
   @Bean
   public MinioAsyncClient minioAsyncClient(MinioProperties props) {
     return MinioAsyncClient.builder()
-        .endpoint("localhost", 9000, false)
+        .endpoint(props.getEndpoint(), props.getPort(), false)
         .credentials(props.getUsername(), props.getPassword())
         .build();
   }

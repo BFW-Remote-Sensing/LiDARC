@@ -14,12 +14,14 @@ const headers = new HttpHeaders({
   providedIn: 'root',
 })
 export class UploadService {
-  constructor(private httpClient: HttpClient, private globals: Globals) {}
+  constructor(
+    private httpClient: HttpClient,
+    private globals: Globals,
+  ) {}
 
   // Ask your backend for a presigned URL (adapt endpoint/payload)
   getPresignedUploadUrl(file: File, hash: string): Observable<FileInfo> {
     console.log('sending presign request for file ' + file.name);
-
     const payload: FileInfo = {
       fileName: hash + '_' + file.name,
       originalFileName: file.name,
@@ -31,20 +33,40 @@ export class UploadService {
     );
   }
 
-  // Perform the upload to the presigned URL; returns raw HttpEvent stream so caller can track progress
   uploadToPresignedUrl(file: File, url: string, method = 'PUT'): Observable<HttpEvent<any>> {
-    const headers = new HttpHeaders({ 'Content-Type': 'multipart/form-data' });
-    var formData = new FormData();
+
+    return new Observable(observer => {
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        const parsed = new URL(url);
+        const proxiedUrl = `http://localhost:8081/minio-upload${parsed.pathname}${parsed.search}`;
+
+        console.log('Uploading to presigned URL:', proxiedUrl);
+
+        this.httpClient.request(method, proxiedUrl, {
+          body: reader.result,        // file content AFTER load finishes
+          reportProgress: true,
+          observe: 'events',
+          withCredentials: false
+        })
+          .subscribe({
+            next: e => observer.next(e),
+            error: err => observer.error(err),
+            complete: () => observer.complete()
+          });
+      };
+
+      reader.onerror = err => observer.error(err);
+
+      // Start reading the file (async)
+      reader.readAsArrayBuffer(file);  // better than readAsText for uploads
+    });
+  }
+
+  addFileToFormData = (formData: FormData, file: File) => {
     formData.append('file', file);
 
-    // use HttpClient.request so we can pass a dynamic method
-    console.log('uploading file ' + file.name + ' to ' + url + ' with ' + headers);
-    return this.httpClient.put(url, formData, {
-      //headers: headers,
-      reportProgress: true,
-      observe: 'events',
-      withCredentials: false,
-    });
   }
 
   onComplete?(file: File, hash: string) {

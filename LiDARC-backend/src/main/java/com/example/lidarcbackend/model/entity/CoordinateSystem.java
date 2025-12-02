@@ -6,6 +6,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,13 +16,15 @@ import lombok.Setter;
 @Setter
 @Table(name = "coordinate_system")
 public class CoordinateSystem {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @NotBlank(message = "Authority is required")
+    @Size(max = 50)
+    private String authority;
 
-  @Column(name="coordinate_system")
-  private String name;
-  @Column(name="coordinate_system_prefix")
-  private String prefix;
+    @Size(max = 50)
+    private String code;
+
 }
