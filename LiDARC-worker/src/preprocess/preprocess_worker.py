@@ -1,10 +1,7 @@
 import argparse
 import json
-import os
 import shutil
 import tempfile
-
-import pika
 import logging
 import time
 import laspy
@@ -19,10 +16,10 @@ from messaging.message_model import BaseMessage
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 from pika.exceptions import ChannelWrongStateError, ReentrancyError, StreamLostError
-from tdigest import TDigest
 from schemas.precompute import schema as precompute_schema
 import util.file_handler as file_handler
 from requests import HTTPError
+from fastdigest import TDigest
 
 rabbitConfig = get_rabbitmq_config()
 
@@ -61,6 +58,7 @@ def calculate_grid(grid: dict):
     veg_height_min = np.full(grid_shape, np.inf, dtype=np.float32)
     veg_height_max = np.full(grid_shape, -np.inf, dtype=np.float32)
     veg_height_digest = np.empty(grid_shape, dtype=object)
+
     for r in range(grid_shape[0]):
         for c in range(grid_shape[1]):
             veg_height_digest[r,c] = TDigest()
@@ -106,10 +104,19 @@ def process_points(points, precomp_grid):
     np.maximum.at(precomp_grid["veg_height_max"], (iy, ix), veg_height)
 
     n_rows, n_cols = precomp_grid["count"].shape
+    cell_index = iy * n_cols + ix
+    order = np.argsort(cell_index)
+    cell_index_sorted = cell_index[order]
+    veg_sorted = veg_height[order]
+    change = np.r_[True, cell_index_sorted[1:] != cell_index_sorted[:-1]]
+    groups = np.where(change)[0]
 
-    for r, c, vh in zip(iy, ix, veg_height):
-        if 0 <= r < n_rows and 0 <= c < n_cols:
-            precomp_grid["veg_height_digest"][r,c].update(float(vh))
+    for start, end in zip(groups, np.r_[groups[1:], len(cell_index_sorted)]):
+        idx = cell_index_sorted[start]
+        r = idx // n_cols
+        c = idx % n_cols
+        values = veg_sorted[start:end]
+        precomp_grid["veg_height_digest"][r,c].batch_update(values)
 
 def mk_error_msg(error_msg: str):
     return {"msg": error_msg}
@@ -131,13 +138,12 @@ def create_result_df(precomp_grid):
     x_min = precomp_grid["x_min"]
     y_min = precomp_grid["y_min"]
 
+    digests = precomp_grid["veg_height_digest"]
     p90 = []
     p95 = []
-    digests = precomp_grid["veg_height_digest"]
-
     for r, c in zip(rows, cols):
         d = digests[r, c]
-        if d.n > 0:
+        if precomp_grid["count"][r,c] > 0:
             p90.append(d.percentile(90))
             p95.append(d.percentile(95))
         else:

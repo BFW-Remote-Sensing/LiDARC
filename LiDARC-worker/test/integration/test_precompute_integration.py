@@ -143,9 +143,9 @@ def test_precompute_integration_with_small_las_file(minio_client, rabbitmq_ch, l
     }
 
     expected_percentiles = {
-        (0.0, 0.0): {"p90_min": 1.55, "p90_max": 2.5, "p95_min": 1.58, "p95_max": 2.5},
-        (2.0, 2.0): {"p90_min": 3.6, "p90_max": 3.7, "p95_min": 3.7, "p95_max": 3.7},
-        (9.0, 9.0): {"p90_min": 4.6, "p90_max": 4.7, "p95_min": 4.7, "p95_max": 4.7},
+        (0.0, 0.0): {"p90_min": 1.8, "p90_max": 2.1, "p95_min": 1.9, "p95_max": 2.3},
+        (2.0, 2.0): {"p90_min": 3.55, "p90_max": 3.75, "p95_min": 3.6, "p95_max": 3.75},
+        (9.0, 9.0): {"p90_min": 4.55, "p90_max": 4.75, "p95_min": 4.6, "p95_max": 4.75},
     }
     for (expected_x0, expected_y0), expected_count in expected_points.items():
         filtered_df = df[(df["x0"] == expected_x0)& (df["y0"] == expected_y0)]
