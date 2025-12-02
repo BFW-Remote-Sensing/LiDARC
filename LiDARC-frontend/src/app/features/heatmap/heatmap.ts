@@ -1,6 +1,6 @@
 import {AfterViewInit, Component, OnInit} from '@angular/core';
 import {CommonModule} from '@angular/common';
-import {NgxEchartsDirective, provideEchartsCore} from 'ngx-echarts';
+import {provideEchartsCore} from 'ngx-echarts';
 import {EChartsCoreOption} from 'echarts/core';
 import {TooltipComponent, VisualMapComponent} from 'echarts/components';
 import {getInstanceByDom, connect} from 'echarts/core';
@@ -15,8 +15,6 @@ import {CanvasRenderer} from 'echarts/renderers';
 import {LegacyGridContainLabel} from 'echarts/features';
 import {TitleComponent} from 'echarts/components'
 import {DataZoomComponent} from 'echarts/components'
-import {share} from 'rxjs';
-import {ECharts, EChartsType} from 'echarts';
 
 echarts.use([TitleComponent, DataZoomComponent, LegacyGridContainLabel, TooltipComponent, VisualMapComponent, BarChart, GridComponent, CanvasRenderer, HeatmapChart]);
 
@@ -147,9 +145,7 @@ export class Heatmap implements OnInit, AfterViewInit {
     this.connectHeatmaps();
   }
 
-  private checkIfLoadingNecessary(): void {
 
-  }
 
   private connectHeatmaps() {
     setTimeout(() => {

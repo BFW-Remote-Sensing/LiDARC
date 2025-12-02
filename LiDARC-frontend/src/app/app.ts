@@ -1,6 +1,5 @@
 import { Component, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import {Heatmap} from './features/heatmap/heatmap';
 import { MatButtonModule } from '@angular/material/button';
 
 @Component({
