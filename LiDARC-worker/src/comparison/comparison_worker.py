@@ -8,11 +8,15 @@ import sys
 import os
 import pandas as pd
 import numpy as np
+from schemas.comparison import schema as comparison_schema
+from jsonschema.exceptions import ValidationError
+from jsonschema.validators import validate
+from messaging.message_model import BaseMessage
+from messaging.rabbit_connect import create_rabbit_con_and_return_channel
+from messaging.result_publisher import ResultPublisher
+from messaging.rabbit_config import get_rabbitmq_config
 
-
-TRIGGER_QUEUE_NAME = "worker_comparison_job"
-WORKER_RESULTS_EXCHANGE = "worker-results"
-WORKER_RESULTS_KEY_COMPARISON = "worker.comparison.result"
+rabbitConfig = get_rabbitmq_config()
 
 def handle_sigterm(signum, frame):
     logging.info("SIGTERM received")
@@ -24,39 +28,64 @@ def connect_rabbitmq():
     logging.info(f"Connecting to RabbitMQ...")
     while True:
         try:
-            user = os.environ.get("RABBITMQ_USER", "admin")
-            password = os.environ.get("RABBITMQ_PSWD", "admin")
-            host = os.environ.get("RABBITMQ_HOST", "rabbitmq")
-            port = os.environ.get("RABBITMQ_PORT", "5672")
-            vhost = os.environ.get("RABBITMQ_VHOST", "/worker")
-
-            credentials = pika.PlainCredentials(username=user, password=password)
-            connection = pika.BlockingConnection(
-                pika.ConnectionParameters(
-                    host=host,
-                    port=port,
-                    virtual_host=vhost,
-                    credentials=credentials
-                )
-            )
-            return connection
+            return create_rabbit_con_and_return_channel()
         except Exception as e:
             logging.error("RabbitMQ connection failed, Retrying in 5s... Error: {}".format(e))
             time.sleep(5)
 
 def mk_error_msg(job_id: str, error_msg: str):
-    return {"jobId": job_id, "status": "error", "msg": error_msg}
-
-def publish_response(ch, response_dict):
-    ch.basic_publish(
-        exchange=WORKER_RESULTS_EXCHANGE,
-        routing_key=WORKER_RESULTS_KEY_COMPARISON,
-        body=json.dumps(response_dict),
-        properties=pika.BasicProperties(content_type="application/json")
+    return BaseMessage(
+        type = "comparison",
+        job_id = job_id,
+        status = "error",
+        payload={
+            "msg": error_msg
+        }
     )
-    logging.debug(f"Sent response to exchange: {WORKER_RESULTS_EXCHANGE}")
+
+def mk_success_msg(job_id: str, comparison_result: dict):
+    return BaseMessage(
+        type = "comparison",
+        job_id = job_id,
+        status = "success",
+        payload={"result":comparison_result}
+    )
+
+def publish_response(ch, msg: BaseMessage):
+    publisher = ResultPublisher(ch)
+    publisher.publish_comparison_result(msg)
+    logging.debug(f"Sent response to exchange: {rabbitConfig.exchange_worker_results}")
+
+def validate_request(json_req):
+    try:
+        validate(instance=json_req, schema=comparison_schema)
+        return True
+    except ValidationError as e:
+        logging.warning(f"The comparison job request is invalid")
+        return False
 
 def process_req(ch, method, props, body):
+    start_time = time.time()
+    job_id = ""
+    try:
+        req = json.loads(body)
+        if not req["jobId"]:
+            logging.warning("The comparison job is cancelled because there is no job id")
+            publish_response(ch, mk_error_msg(job_id="", error_msg="Comparison job is cancelled because job has no job id"))
+
+        job_id = req["jobId"]
+        if not validate_request(req):
+            logging.warning("The comparison job is cancelled because of a Validation Error")
+            publish_response(ch, mk_error_msg(job_id, "Comparison job is cancelled because job request is invalid"))
+            return
+    except Exception as e:
+        logging.error(f"Failed to process message: {e}")
+        publish_response(ch, mk_error_msg(job_id, "An unexpected error occured, comparison job cancelled"))
+    finally:
+        processing_time = int((time.time() - start_time) * 1000)
+        logging.info(f"Worker took {processing_time} ms to process the message.")
+
+
     # TODO check for message structure and content, and download corresponding files (just mocked for now)
     logging.info("Received MSG! Downloading files...")
     csv1 = "/data/pre-process-job-123-output.csv"
@@ -115,11 +144,10 @@ def process_req(ch, method, props, body):
 
 
 def main():
-    connection = connect_rabbitmq()
-    channel = connection.channel()
+    channel = connect_rabbitmq()
 
-    channel.basic_consume(queue=TRIGGER_QUEUE_NAME, on_message_callback=process_req, auto_ack=True)
-    logging.info(f"Connected to RabbitMQ Listening on queue '{TRIGGER_QUEUE_NAME}'")
+    channel.basic_consume(queue=rabbitConfig.queue_comparison_job, on_message_callback=process_req, auto_ack=True)
+    logging.info(f"Connected to RabbitMQ Listening on queue '{rabbitConfig.queue_comparison_job}'")
     try:
         channel.start_consuming()
     except KeyboardInterrupt:
