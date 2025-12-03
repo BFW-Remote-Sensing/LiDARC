@@ -68,57 +68,11 @@ def validate_request(json_req):
         logging.warning(f"The comparison job request is invalid")
         return False
 
-def process_req(ch, method, props, body):
-    start_time = time.time()
-    job_id = ""
-    try:
-        req = json.loads(body)
-        if not req["jobId"]:
-            logging.warning("The comparison job is cancelled because there is no job id")
-            publish_response(ch, mk_error_msg(job_id="", error_msg="Comparison job is cancelled because job has no job id"))
-
-        job_id = req["jobId"]
-        if not validate_request(req):
-            logging.warning("The comparison job is cancelled because of a Validation Error")
-            publish_response(ch, mk_error_msg(job_id, "Comparison job is cancelled because job request is invalid"))
-            return
-
-        files_local = []
-        for file_info in req["files"]:
-            file_url = file_info["url"]
-            file_name = file_info["originalFilename"]
-
-            try:
-                local_file = file_handler.download_file(file_url)
-            except HTTPError as e:
-                logging.warning("Couldn't download file from: {}, error: {}".format(file_url, e))
-                publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, comparison job cancelled".format(file_url)))
-                return
-            if local_file == "":
-                logging.warning("File not downloaded, stopping processing the request!")
-                publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, comparison job cancelled".format(file_url)))
-                return
-            files_local.append({
-                "originalFilename": file_name,
-                "path": local_file
-            })
-
-            for f in files_local:
-                os.remove(f["path"])
-
-
-    except Exception as e:
-        logging.error(f"Failed to process message: {e}")
-        publish_response(ch, mk_error_msg(job_id, "An unexpected error occured, comparison job cancelled"))
-    finally:
-        processing_time = int((time.time() - start_time) * 1000)
-        logging.info(f"Worker took {processing_time} ms to process the message.")
-
-
+def compare_files() -> dict:
     # TODO check for message structure and content, and download corresponding files (just mocked for now)
     logging.info("Received MSG! Downloading files...")
-    csv1 = "/data/pre-process-job-123-output.csv"
-    csv2 = "/data/pre-process-job-456-output.csv"
+    csv1 = "/data/pre-process-job-1010-output.csv"
+    csv2 = "/data/pre-process-job-1015-output.csv"
     df_a = pd.read_csv(csv1)
     df_b = pd.read_csv(csv2)
     logging.info("Loaded CSV A with %d rows", len(df_a))
@@ -139,7 +93,6 @@ def process_req(ch, method, props, body):
         veg_b = row.veg_height_max_b
         delta_z = veg_b - veg_a
         logging.info(f"Cell {cell}: veg_height_max (A={veg_a}, B={veg_b}), delta_z={delta_z}")
-
 
     logging.info("Calculating Statistics:")
     # calculate basic statistics
@@ -169,6 +122,56 @@ def process_req(ch, method, props, body):
     logging.info("Calculating Correlation:")
     pearson_corr = merged["veg_height_max_a"].corr(merged["veg_height_max_b"])
     logging.info(f"Pearson correlation between A and B: {pearson_corr}")
+
+    return {}
+
+
+def process_req(ch, method, props, body):
+    start_time = time.time()
+    job_id = ""
+    try:
+        req = json.loads(body)
+        if not req["jobId"]:
+            logging.warning("The comparison job is cancelled because there is no job id")
+            publish_response(ch, mk_error_msg(job_id="", error_msg="Comparison job is cancelled because job has no job id"))
+
+        job_id = req["jobId"]
+        if not validate_request(req):
+            logging.warning("The comparison job is cancelled because of a Validation Error")
+            publish_response(ch, mk_error_msg(job_id, "Comparison job is cancelled because job request is invalid"))
+            return
+
+        # files_local = []
+        # for file_info in req["files"]:
+        #     file_url = file_info["url"]
+        #     file_name = file_info["originalFilename"]
+        #
+        #     try:
+        #         local_file = file_handler.download_file(file_url)
+        #     except HTTPError as e:
+        #         logging.warning("Couldn't download file from: {}, error: {}".format(file_url, e))
+        #         publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, comparison job cancelled".format(file_url)))
+        #         return
+        #     if local_file == "":
+        #         logging.warning("File not downloaded, stopping processing the request!")
+        #         publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, comparison job cancelled".format(file_url)))
+        #         return
+        #     files_local.append({
+        #         "originalFilename": file_name,
+        #         "path": local_file
+        #     })
+        #
+        #
+        # for f in files_local:
+        #     os.remove(f["path"])
+
+
+    except Exception as e:
+        logging.error(f"Failed to process message: {e}")
+        publish_response(ch, mk_error_msg(job_id, "An unexpected error occured, comparison job cancelled"))
+    finally:
+        processing_time = int((time.time() - start_time) * 1000)
+        logging.info(f"Worker took {processing_time} ms to process the message.")
 
 
 
