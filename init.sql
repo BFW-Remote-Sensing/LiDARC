@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS files (
     capture_software VARCHAR(128),
     point_count BIGINT,
     file_creation_date DATE,
+    status VARCHAR(32) NOT NULL DEFAULT 'UPLOADED' CHECK (status in ('UPLOADED', 'PROCESSING', 'PROCESSED', 'FAILED')),
     uploaded BOOLEAN DEFAULT FALSE,
     uploaded_at TIMESTAMP
 );

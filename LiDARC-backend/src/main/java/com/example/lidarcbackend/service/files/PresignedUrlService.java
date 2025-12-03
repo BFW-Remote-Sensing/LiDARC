@@ -196,7 +196,7 @@ public class PresignedUrlService implements IPresignedUrlService {
     }
 
     file.setUploaded(true);
-    file.setUploaded_at(Instant.now());
+    file.setUploadedAt(Instant.now());
     file = fileRepository.save(file);
     FileInfoDto dto = new FileInfoDto(file);
     urlRepository.deleteByFileIdAndMethod(file.getId(), Method.PUT);

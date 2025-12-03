@@ -1,10 +1,10 @@
 package com.example.lidarcbackend.service.files;
 
+import com.example.lidarcbackend.api.metadata.MetadataMapper;
+import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import com.example.lidarcbackend.model.entity.CoordinateSystem;
-import com.example.lidarcbackend.model.FileMetadata;
 import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.repository.CoordinateSystemRepository;
-import com.example.lidarcbackend.repository.FileMetadataRepository;
 import com.example.lidarcbackend.repository.FileRepository;
 import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolation;
@@ -18,6 +18,14 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+
 
 @Service
 @Slf4j
@@ -26,12 +34,39 @@ public class MetadataService implements IMetadataService {
     private final FileRepository fileRepository;
     private final CoordinateSystemRepository coordinateSystemRepository;
     private final Validator validator;
+    private final MetadataMapper mapper;
 
-    public MetadataService(FileRepository fileRepository, CoordinateSystemRepository coordinateSystemRepository, Validator validator) {
+    public MetadataService(FileRepository fileRepository, CoordinateSystemRepository coordinateSystemRepository, Validator validator, MetadataMapper mapper) {
         this.fileRepository = fileRepository;
         this.coordinateSystemRepository = coordinateSystemRepository;
         this.validator = validator;
+        this.mapper = mapper;
     }
+
+    public Page<FileMetadataDTO> getPagedMetadata(Pageable pageable) {
+        return fileRepository.findAll(pageable)
+                .map(mapper::toDto);
+    }
+
+    public List<FileMetadataDTO> getAllMetadata() {
+        return fileRepository.findAll(Sort.by(Sort.Direction.DESC, "uploadedAt")).stream()
+                .map(mapper::toDto)
+                .toList();
+    }
+
+    public File saveMetadata(File metadata) {
+        return fileRepository.save(metadata);
+    }
+
+    @Transactional
+    @Override
+    public void deleteMetadataById(Long id) {
+        if (!fileRepository.existsById(id)) {
+            throw new RuntimeException("Metadata with id " + id + " not found");
+        }
+        fileRepository.deleteById(id);
+    }
+
 
 
     @Override

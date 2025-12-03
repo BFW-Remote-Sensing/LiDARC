@@ -1,0 +1,31 @@
+/* In your component's CSS/SCSS file */
+
+/* Status: Ready */
+.status-ready {
+  color: green;
+  font-weight: bold; /* Optional: adds emphasis */
+}
+
+/* Status: Error */
+.status-error {
+  color: red;
+  font-weight: bold; /* Optional: adds emphasis */
+}
+
+.upper-section {
+    display: flex; justify-content: space-between; align-items: center; padding: 8px 16px;
+
+    .upper-action-section {
+        display: flex; gap: 10px;
+        align-items: center;
+    }
+}
+
+.flex-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px; /* Adjust height as needed */
+}
+
+/* Default status (not 'Ready' and not 'Error') will be the standard black/default text color. */
