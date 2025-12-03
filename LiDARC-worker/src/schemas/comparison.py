@@ -12,9 +12,9 @@ schema = {
             "maxItems": 2,
             "items": {
                 "type": "object",
-                "required": ["originalFileName", "url"],
+                "required": ["originalFilename", "url"],
                 "properties": {
-                    "originalFileName": {
+                    "originalFilename": {
                         "type": "string",
                         "minLength": 1
                     },

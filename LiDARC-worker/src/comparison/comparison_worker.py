@@ -15,6 +15,10 @@ from messaging.message_model import BaseMessage
 from messaging.rabbit_connect import create_rabbit_con_and_return_channel
 from messaging.result_publisher import ResultPublisher
 from messaging.rabbit_config import get_rabbitmq_config
+import requests
+from requests.adapters import HTTPAdapter, Retry
+from requests.exceptions import HTTPError
+import util.file_handler as file_handler
 
 rabbitConfig = get_rabbitmq_config()
 
@@ -78,6 +82,31 @@ def process_req(ch, method, props, body):
             logging.warning("The comparison job is cancelled because of a Validation Error")
             publish_response(ch, mk_error_msg(job_id, "Comparison job is cancelled because job request is invalid"))
             return
+
+        files_local = []
+        for file_info in req["files"]:
+            file_url = file_info["url"]
+            file_name = file_info["originalFilename"]
+
+            try:
+                local_file = file_handler.download_file(file_url)
+            except HTTPError as e:
+                logging.warning("Couldn't download file from: {}, error: {}".format(file_url, e))
+                publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, comparison job cancelled".format(file_url)))
+                return
+            if local_file == "":
+                logging.warning("File not downloaded, stopping processing the request!")
+                publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, comparison job cancelled".format(file_url)))
+                return
+            files_local.append({
+                "originalFilename": file_name,
+                "path": local_file
+            })
+
+            for f in files_local:
+                os.remove(f["path"])
+
+
     except Exception as e:
         logging.error(f"Failed to process message: {e}")
         publish_response(ch, mk_error_msg(job_id, "An unexpected error occured, comparison job cancelled"))
