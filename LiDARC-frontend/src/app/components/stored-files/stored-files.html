@@ -16,9 +16,9 @@
     <div class="upper-section">
         <div class="upper-action-section">
             <span>
-                {{ selectedFileIds.size }} file(s) selected. (Maximum 2)
+                {{ selectedFileIds.size }} file(s) selected. (Maximum 2 for now)
             </span>
-            <button mat-raised-button color="primary" [routerLink]="['/comparison-setup']"
+            <button mat-raised-button color="primary" (click)="goToComparison()"
                 [disabled]="selectedFileIds.size !== 2">
                 Compare
             </button>

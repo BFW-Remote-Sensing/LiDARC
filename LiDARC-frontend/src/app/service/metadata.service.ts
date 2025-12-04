@@ -18,9 +18,16 @@ export class MetadataService {
         private globals: Globals,
     ) { }
 
+    getMetadataById(id: number): Observable<FileMetadataDTO> {
+        return this.httpClient.get<FileMetadataDTO>(
+            this.globals.backendUri + defaultMetadataPath + `/${id}`,
+            { headers }
+        );
+    }
+
     getAllMetadata(): Observable<FileMetadataDTO[]> {
         return this.httpClient.get<FileMetadataDTO[]>(
-           this.globals.backendUri + defaultMetadataPath + '/all-metadata',
+            this.globals.backendUri + defaultMetadataPath + '/all-metadata',
             { headers }
         );
     }

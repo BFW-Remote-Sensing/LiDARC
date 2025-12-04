@@ -1,1 +1,19 @@
-<p>comparison-setup works!</p>
+<div style="margin-left: 50px">
+    <h2>Comparison Setup</h2>
+</div>
+    <h3 style="text-align: center; margin-bottom: 20px;">Selected Files for Comparison</h3>
+<div style="display: flex; justify-content: end;">
+    <button mat-raised-button color="primary" (click)="defineGrid()">
+        Define Grid
+    </button>
+</div>
+<div style="display: flex; justify-content: center;">
+    <app-file-details-card [metadataId]="firstMetadataId"></app-file-details-card>
+    <app-file-details-card [metadataId]="secondMetadataId"></app-file-details-card>
+</div>
+
+<div style="display: flex; justify-content: center; margin-top: 20px;">
+    <button mat-raised-button color="primary" (click)="startComparison()">
+        Start Comparison
+    </button>
+</div>

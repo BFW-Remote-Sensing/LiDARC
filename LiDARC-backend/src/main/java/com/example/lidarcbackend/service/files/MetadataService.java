@@ -43,6 +43,14 @@ public class MetadataService implements IMetadataService {
         this.mapper = mapper;
     }
 
+    public FileMetadataDTO GetMetadata(String metadataId) {
+        return fileRepository.findById(Long.parseLong(metadataId)).map(mapper::toDto).orElse(null);
+    }
+
+    public Boolean existsWithId(Long id) {
+        return fileRepository.existsById(id);
+    }
+
     public Page<FileMetadataDTO> getPagedMetadata(Pageable pageable) {
         return fileRepository.findAll(pageable)
                 .map(mapper::toDto);

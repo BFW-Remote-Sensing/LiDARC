@@ -1,16 +1,22 @@
 import { Component, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { FileDetailsCard } from "../file-details-card/file-details-card";
 
 @Component({
   selector: 'app-file-details',
-  imports: [],
+  imports: [
+    CommonModule,
+    FileDetailsCard
+],
   templateUrl: './file-details.html',
   styleUrl: './file-details.scss',
 })
 export class FileDetails {
-  readonly userId: string | null;
+  readonly metadataId: string | null;
   private route = inject(ActivatedRoute);
+
   constructor() {
-    this.userId = this.route.snapshot.paramMap.get('id');
+    this.metadataId = this.route.snapshot.paramMap.get('id');
   }
 }

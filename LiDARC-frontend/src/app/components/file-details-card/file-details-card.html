@@ -1,0 +1,124 @@
+@if (loading()) {
+<div class="flex-center">
+    <mat-spinner></mat-spinner>
+</div>
+}
+@else if (!loading() && !metadata && !errorMessage()) {
+<div class="flex-center">No files found.</div>
+}
+@else if (errorMessage()) {
+<div class="flex-center">
+    <div style="color: red;">{{ errorMessage() }}</div>
+</div>
+}
+@else if(metadata) {
+<div class="flex-center">
+    <mat-card class="metadata-card-material">
+        <mat-card-header>
+            <mat-icon mat-card-avatar>cloud_upload</mat-icon>
+            <mat-card-title>{{ metadata.filename }}</mat-card-title>
+            <mat-card-subtitle>{{ metadata.originalFilename }}</mat-card-subtitle>
+            <mat-chip-listbox class="status-chip">
+                <mat-chip [ngClass]="metadata.status.toLowerCase()" selected color="white">
+                    <span class="chip-text">
+                        {{ metadata.status | titlecase }}
+                    </span>
+                </mat-chip>
+            </mat-chip-listbox>
+        </mat-card-header>
+
+        <mat-card-content>
+            <mat-list role="list">
+                <mat-list-item>
+                    <div class="list-item">
+                        <span>ID:</span>
+                        <span>{{ metadata.id }}</span>
+                    </div>
+                </mat-list-item>
+
+                <mat-list-item>
+                    <div class="list-item">
+                        <span>Size:</span>
+                        <span>{{ formatBytes(metadata.sizeBytes) }}</span>
+                    </div>
+                </mat-list-item>
+
+                <mat-list-item *ngIf="metadata.pointCount">
+                    <div class="list-item">
+                        <span>Point Count:</span>
+                        <span>{{ metadata.pointCount | number }}</span>
+                    </div>
+                </mat-list-item>
+
+                <mat-list-item>
+                    <div class="list-item">
+                        <span>Capture Year:</span>
+                        <span>{{ metadata.captureYear }}</span>
+                    </div>
+                </mat-list-item>
+            </mat-list>
+
+            <mat-expansion-panel class="details-panel" [hideToggle]="false">
+                <mat-expansion-panel-header>
+                    <mat-panel-title>
+                        Detailed Specifications
+                    </mat-panel-title>
+                    <mat-panel-description>
+                        Click to view LAS version and Bounding Box
+                    </mat-panel-description>
+                </mat-expansion-panel-header>
+
+                <mat-grid-list cols="2" rowHeight="50px" class="detail-grid-list">
+                    <mat-grid-tile *ngIf="metadata.systemIdentifier">
+                        <div class="grid-label">System ID:</div>
+                        <div class="grid-value">{{ metadata.systemIdentifier }}</div>
+                    </mat-grid-tile>
+
+                    <mat-grid-tile *ngIf="metadata.lasVersion">
+                        <div class="grid-label">LAS Version:</div>
+                        <div class="grid-value">{{ metadata.lasVersion }}</div>
+                    </mat-grid-tile>
+
+                    <mat-grid-tile *ngIf="metadata.captureSoftware">
+                        <div class="grid-label">Software:</div>
+                        <div class="grid-value">{{ metadata.captureSoftware }}</div>
+                    </mat-grid-tile>
+
+                    <mat-grid-tile *ngIf="metadata.uploadedAt">
+                        <div class="grid-label">Uploaded At:</div>
+                        <div class="grid-value">{{ metadata.uploadedAt | date: 'short' }}</div>
+                    </mat-grid-tile>
+                </mat-grid-list>
+
+                <h4 class="box-header">Bounding Box (Min/Max Coordinates)</h4>
+                <mat-list class="bounding-list">
+                    <mat-list-item>
+                        <div class="box-coord-row">
+                            <span class="coord-label">X:</span>
+                            <span class="coord-min">{{ metadata.minX | number: '1.2-2' }}</span>
+                            <mat-icon class="separator-icon">arrow_right_alt</mat-icon>
+                            <span class="coord-max">{{ metadata.maxX | number: '1.2-2' }}</span>
+                        </div>
+                    </mat-list-item>
+                    <mat-list-item>
+                        <div class="box-coord-row">
+                            <span class="coord-label">Y:</span>
+                            <span class="coord-min">{{ metadata.minY | number: '1.2-2' }}</span>
+                            <mat-icon class="separator-icon">arrow_right_alt</mat-icon>
+                            <span class="coord-max">{{ metadata.maxY | number: '1.2-2' }}</span>
+                        </div>
+                    </mat-list-item>
+                    <mat-list-item>
+                        <div class="box-coord-row">
+                            <span class="coord-label">Z:</span>
+                            <span class="coord-min">{{ metadata.minZ | number: '1.2-2' }}</span>
+                            <mat-icon class="separator-icon">arrow_right_alt</mat-icon>
+                            <span class="coord-max">{{ metadata.maxZ | number: '1.2-2' }}</span>
+                        </div>
+                    </mat-list-item>
+                </mat-list>
+            </mat-expansion-panel>
+        </mat-card-content>
+    </mat-card>
+</div>
+}

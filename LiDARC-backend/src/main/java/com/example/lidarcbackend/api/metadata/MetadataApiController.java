@@ -45,6 +45,14 @@ class MetadataApiController {
         this.coordinateSystemService = coordinateSystemService;
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<FileMetadataDTO> getMetadataById(@PathVariable Long id) {
+        if (!metadataService.existsWithId(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(metadataService.GetMetadata(id.toString()));
+    }
+
     /**
      * List metadata paged
      *

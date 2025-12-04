@@ -1,0 +1,138 @@
+/* Container and Card Styling */
+.metadata-card-material {
+    max-width: 450px;
+    margin: 20px;
+}
+
+.flex-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Header Adjustments */
+mat-card-header {
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--mat-card-border-color, #e0e0e0);
+    margin-bottom: 10px;
+}
+
+.status-chip {
+    margin-left: auto;
+    padding-left: 10px;
+    .processed {
+        background-color: green;
+
+    }
+
+    .failed {
+        background-color: red;
+    }
+
+    .chip-text {
+        color: white;
+        font-weight: bold;
+    }
+}
+
+/* Mat-List styling for Key Info */
+mat-list {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+mat-list-item {
+    font-size: 0.95em;
+    height: 36px !important;
+    /* Slightly denser list items */
+}
+
+mat-list-item .mat-list-item-title {
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.6);
+    min-width: 120px;
+}
+
+mat-list-item .mat-list-item-line {
+    font-weight: 500;
+}
+
+/* Mat Expansion Panel for Details */
+.details-panel {
+    padding: 10px;
+    margin-top: 15px;
+}
+
+.details-panel .mat-expansion-panel-header-title {
+    font-weight: 600;
+}
+
+/* Mat Grid List for detailed properties */
+.detail-grid-list {
+    margin-bottom: 10px;
+}
+
+.detail-grid-list .grid-label {
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.6);
+    margin-right: 8px;
+}
+
+.detail-grid-list .grid-value {
+    font-weight: 400;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Bounding Box Styling */
+.box-header {
+    font-size: 1.05em;
+    font-weight: 600;
+    color: var(--mat-typography-headline-color, #333);
+    margin: 15px 0 5px 0;
+    border-top: 1px solid #f0f0f0;
+    padding-top: 10px;
+}
+
+.bounding-list {
+    padding: 0;
+}
+
+.box-coord-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.coord-label {
+    font-weight: bold;
+    color: var(--mat-primary-color, #3f51b5);
+    width: 25px;
+    /* Fixed width for 'X:', 'Y:', 'Z:' */
+}
+
+.coord-min,
+.coord-max {
+    flex-grow: 1;
+    text-align: center;
+    font-family: monospace;
+    padding: 2px 5px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.separator-icon {
+    margin: 0 10px;
+    font-size: 16px;
+    height: 16px;
+    width: 16px;
+    color: rgba(0, 0, 0, 0.5);
+}
