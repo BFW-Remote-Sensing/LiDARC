@@ -1,19 +1,53 @@
-<div style="margin-left: 50px">
-    <h2>Comparison Setup</h2>
-</div>
-    <h3 style="text-align: center; margin-bottom: 20px;">Selected Files for Comparison</h3>
-<div style="display: flex; justify-content: end;">
-    <button mat-raised-button color="primary" (click)="defineGrid()">
-        Define Grid
-    </button>
-</div>
-<div style="display: flex; justify-content: center;">
-    <app-file-details-card [metadataId]="firstMetadataId"></app-file-details-card>
-    <app-file-details-card [metadataId]="secondMetadataId"></app-file-details-card>
-</div>
+<h2 style="text-align: center;">Comparison Setup</h2>
+<div style="display:flex">
+    <div style="width: 70%">
+        <h3 style="text-align: center; margin-bottom: 20px;">Selected Files for Comparison</h3>
+        <div style="display: flex; justify-content: center;">
+            <app-file-details-card [metadataId]="firstMetadataId"></app-file-details-card>
+            <app-file-details-card [metadataId]="secondMetadataId"></app-file-details-card>
+        </div>
+    </div>
+    <mat-divider role="separator" [vertical]="true"></mat-divider>
+    <div style="width: 30%;">
+        <div style="padding: 0px 50px;">
+            <h3 style="text-align: center; margin-bottom: 20px;">Comparison Details</h3>
+            <mat-form-field appearance="fill" style="width: 100%;">
+                <mat-label>Comparison Name</mat-label>
+                <input matInput [(ngModel)]="comparison.name" />
+            </mat-form-field>
+            <div>
+                <mat-checkbox [checked]="comparison.highestVegetation"
+                    (change)="comparison.highestVegetation = $event.checked">
+                    Highest Vegetation
+                </mat-checkbox>
+            </div>
 
-<div style="display: flex; justify-content: center; margin-top: 20px;">
-    <button mat-raised-button color="primary" (click)="startComparison()">
-        Start Comparison
-    </button>
+            <div>
+                <mat-checkbox [checked]="comparison.outlierDetection"
+                    (change)="comparison.outlierDetection = $event.checked">
+                    Outlier Detection
+                </mat-checkbox>
+            </div>
+            <div>
+                <mat-checkbox [checked]="comparison.statisticsOverScenery"
+                    (change)="comparison.statisticsOverScenery = $event.checked">
+                    Statistics over Scenery
+                </mat-checkbox>
+            </div>
+            <div>
+                <mat-checkbox [checked]="comparison.mostDifferences"
+                    (change)="comparison.mostDifferences = $event.checked">
+                    Most Differences
+                </mat-checkbox>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0px;">
+                <button mat-raised-button color="secondary" (click)="defineGrid()">
+                    Define Grid
+                </button>
+                <button mat-raised-button color="primary" (click)="startComparison()">
+                    Start Comparison
+                </button>
+            </div>
+        </div>
+    </div>
 </div>

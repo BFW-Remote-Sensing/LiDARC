@@ -1,22 +1,40 @@
-import { Component } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { FileDetailsCard } from '../file-details-card/file-details-card';
 import { SelectedFilesService } from '../../service/selectedFile.service';
 import { MatAnchor, MatButtonModule } from "@angular/material/button";
+import { FormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatDivider } from '@angular/material/divider';
+import { MatCheckbox } from '@angular/material/checkbox';
+import { Comparison } from '../../dto/comparison';
 
 @Component({
   selector: 'app-comparison-setup',
   imports: [
     FileDetailsCard,
     MatAnchor,
-    MatButtonModule
-],
+    MatButtonModule,
+    FormsModule,
+    MatInputModule,
+    MatFormFieldModule,
+    MatDivider,
+    MatCheckbox
+  ],
   templateUrl: './comparison-setup.html',
   styleUrl: './comparison-setup.scss',
 })
 export class ComparisonSetup {
   firstMetadataId: string | null = null;
   secondMetadataId: string | null = null;
-  grid: any | null = null;
+  @Input() comparison: Comparison = {
+    name: '',
+    highestVegetation: false,
+    outlierDetection: false,
+    statisticsOverScenery: false,
+    mostDifferences: false,
+    grid: null
+  };
 
   constructor(private selectedFilesService: SelectedFilesService) { }
 
