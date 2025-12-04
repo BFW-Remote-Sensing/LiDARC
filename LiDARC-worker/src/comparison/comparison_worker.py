@@ -69,14 +69,14 @@ def validate_request(json_req):
         return False
 
 def compare_files() -> dict:
-    # TODO check for message structure and content, and download corresponding files (just mocked for now)
-    logging.info("Received MSG! Downloading files...")
+    # TODO remove lines below; just sample files for testing as long as files not in minio
     csv1 = "/data/pre-process-job-1010-output.csv"
     csv2 = "/data/pre-process-job-1015-output.csv"
     df_a = pd.read_csv(csv1)
     df_b = pd.read_csv(csv2)
     logging.info("Loaded CSV A with %d rows", len(df_a))
     logging.info("Loaded CSV B with %d rows", len(df_b))
+    df_a["veg_height_max"] = df_a["veg_height_max"] / 1000.0
 
     merged = df_a.merge(
         df_b,
@@ -84,7 +84,7 @@ def compare_files() -> dict:
         suffixes=("_a", "_b")
     )
 
-    merged["delta_z"] = df_b["veg_height_max"] - df_a["veg_height_max"]
+    merged["delta_z"] = merged["veg_height_max_b"] - merged["veg_height_max_a"]
 
     logging.info("Merged into %d matched grid cells", len(merged))
     for _, row in merged.iterrows():
@@ -95,30 +95,71 @@ def compare_files() -> dict:
         logging.info(f"Cell {cell}: veg_height_max (A={veg_a}, B={veg_b}), delta_z={delta_z}")
 
     logging.info("Calculating Statistics:")
-    # calculate basic statistics
+
+    # basic metrics of veg_height b
+    mean_veg_height_b = merged["veg_height_max_b"].mean()
+    median_veg_height_b = merged["veg_height_max_b"].median()
+    std_veg_height_b = merged["veg_height_max_b"].std()
+    min_veg_height_b = merged["veg_height_max_b"].min()
+    max_veg_height_b = merged["veg_height_max_b"].max()
+    percentiles_veg_height_b = np.percentile(merged["veg_height_max_b"], [10, 25, 50, 75, 90])
+    logging.info(f"Statistics for vegetational height of file b:")
+    logging.info(f"Mean Difference: {mean_veg_height_b}")
+    logging.info(f"Median Difference: {median_veg_height_b}")
+    logging.info(f"Std Difference: {std_veg_height_b}")
+    logging.info(f"Min Difference: {min_veg_height_b}")
+    logging.info(f"Max Difference: {max_veg_height_b}")
+    logging.info(f"Percentiles [10,25,50,75,90]: {percentiles_veg_height_b}")
+
+    # basic metrics of veg_height a
+    mean_veg_height_a = merged["veg_height_max_a"].mean()
+    median_veg_height_a = merged["veg_height_max_a"].median()
+    std_veg_height_a = merged["veg_height_max_a"].std()
+    min_veg_height_a = merged["veg_height_max_a"].min()
+    max_veg_height_a = merged["veg_height_max_a"].max()
+    percentiles_veg_height_a = np.percentile(merged["veg_height_max_a"], [10, 25, 50, 75, 90])
+    logging.info(f"Statistics for vegetational height of file a:")
+    logging.info(f"Mean Difference: {mean_veg_height_a}")
+    logging.info(f"Median Difference: {median_veg_height_a}")
+    logging.info(f"Std Difference: {std_veg_height_a}")
+    logging.info(f"Min Difference: {min_veg_height_a}")
+    logging.info(f"Max Difference: {max_veg_height_a}")
+    logging.info(f"Percentiles [10,25,50,75,90]: {percentiles_veg_height_a}")
+
+    # calculate basic statistics of the difference
     mean_diff = merged["delta_z"].mean()
     median_diff = merged["delta_z"].median()
     std_diff = merged["delta_z"].std()
-    min_diff = merged["delta_z"].min()
-    max_diff = merged["delta_z"].max()
+    diffs = merged["delta_z"]
+    neg = diffs[diffs <= 0]
+    pos = diffs[diffs >= 0]
+    most_negative = neg.min() if not neg.empty else None
+    least_negative = neg.max() if not neg.empty else None
+    smallest_positive = pos.min() if not pos.empty else None
+    largest_positive = pos.max() if not pos.empty else None
     percentiles = np.percentile(merged["delta_z"], [10, 25, 50, 75, 90])
+    logging.info(f"Statistics for difference of max height (veg_height_max_b - veg_height_max a):")
     logging.info(f"Mean Difference: {mean_diff}")
     logging.info(f"Median Difference: {median_diff}")
     logging.info(f"Std Difference: {std_diff}")
-    logging.info(f"Min Difference: {min_diff}")
-    logging.info(f"Max Difference: {max_diff}")
+    logging.info(f"Most Negative: {most_negative}")
+    logging.info(f"Least Negativ: {least_negative}")
+    logging.info(f"Smallest Positive: {smallest_positive}")
+    logging.info(f"Largest Positive: {largest_positive}")
     logging.info(f"Percentiles [10,25,50,75,90]: {percentiles}")
 
-    logging.info("Simple Categorization::")
-    # example categorization
+    logging.info("Simple Categorization:")
+    # categorization
     categories = pd.cut(
         merged["delta_z"].abs(),
         bins=[0, 2, 4, 5, np.inf],
         labels=["almost equal", "slightly different", "different", "highly different"]
     )
     category_counts = categories.value_counts()
+    logging.info("Simple Categorization:")
     logging.info(f"Category counts:\n{category_counts}")
 
+    # TODO also calculate the slope
     logging.info("Calculating Correlation:")
     pearson_corr = merged["veg_height_max_a"].corr(merged["veg_height_max_b"])
     logging.info(f"Pearson correlation between A and B: {pearson_corr}")
@@ -141,6 +182,7 @@ def process_req(ch, method, props, body):
             publish_response(ch, mk_error_msg(job_id, "Comparison job is cancelled because job request is invalid"))
             return
 
+        compare_files()
         # files_local = []
         # for file_info in req["files"]:
         #     file_url = file_info["url"]
