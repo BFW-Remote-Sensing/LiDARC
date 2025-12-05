@@ -1,5 +1,6 @@
 package com.example.lidarcbackend.model.DTO;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,6 +13,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class ReportComponentDto {
+    @NotBlank
     private String type;
-    private String imageId;
+    private String fileName;
 }

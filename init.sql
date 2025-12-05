@@ -40,7 +40,11 @@ CREATE TABLE IF NOT EXISTS coordinate_system (
     code VARCHAR(50)
 );
 
-
+CREATE TABLE IF NOT EXISTS reports (
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    file_name TEXT NOT NULL UNIQUE,
+    title TEXT
+);
 
 ALTER TABLE files 
 ADD CONSTRAINT fk_files_coordinate_system FOREIGN KEY (coordinate_system) REFERENCES coordinate_system(id);

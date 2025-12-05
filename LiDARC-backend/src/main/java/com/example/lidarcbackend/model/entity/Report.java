@@ -23,6 +23,7 @@ public class Report {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String reportName;
+    private String fileName;
+    private String title;
 
 }

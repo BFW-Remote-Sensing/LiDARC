@@ -5,6 +5,7 @@ import com.example.lidarcbackend.model.DTO.ImageInfoDto;
 import com.example.lidarcbackend.model.DTO.ReportInfoDto;
 import com.example.lidarcbackend.service.IImageService;
 import com.example.lidarcbackend.service.reports.IReportService;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -41,9 +42,14 @@ public class ReportController {
     }
 
     @PostMapping
-    public ResponseEntity<ReportInfoDto> createReport(@RequestBody CreateReportDto report) {
+    public ResponseEntity<ReportInfoDto> createReport(@Valid @RequestBody CreateReportDto report) {
         log.info("POST /api/v1/reports");
-        return ResponseEntity.status(HttpStatus.CREATED).body(reportService.createReport(report));
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(reportService.createReport(report));
+        } catch (IOException e){
+            log.error(e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @PostMapping("/images")

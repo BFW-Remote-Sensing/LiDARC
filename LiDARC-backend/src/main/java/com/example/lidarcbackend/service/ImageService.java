@@ -1,7 +1,6 @@
 package com.example.lidarcbackend.service;
 
 import com.example.lidarcbackend.model.DTO.ImageInfoDto;
-import jakarta.xml.bind.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.tika.Tika;

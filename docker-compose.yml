@@ -96,6 +96,10 @@ services:
     depends_on:
       minio-mc:
         condition: service_completed_successfully
+      postgres:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
     ports:
       - "8080:8080"
     environment:
