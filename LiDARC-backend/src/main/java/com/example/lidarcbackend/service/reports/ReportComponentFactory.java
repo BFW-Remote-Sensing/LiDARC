@@ -12,7 +12,7 @@ public class ReportComponentFactory {
 
     public ReportComponentFactory() {
         reportComponentRegistry = new HashMap<>();
-        reportComponentRegistry.put("bar_chart", BarChartComponent::new);
+        reportComponentRegistry.put("simple", SimpleReportComponent::new);
     }
 
     public IReportComponent getReportComponent(String type) {

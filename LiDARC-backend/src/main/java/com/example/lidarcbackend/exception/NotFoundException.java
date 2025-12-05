@@ -1,4 +1,4 @@
-package com.example.lidarcbackend.api;
+package com.example.lidarcbackend.exception;
 
 public class NotFoundException extends ApiException {
     private int code;

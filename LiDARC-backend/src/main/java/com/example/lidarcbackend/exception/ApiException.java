@@ -1,4 +1,4 @@
-package com.example.lidarcbackend.api;
+package com.example.lidarcbackend.exception;
 
 public class ApiException extends Exception {
     private int code;

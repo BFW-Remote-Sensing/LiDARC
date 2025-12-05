@@ -5,6 +5,7 @@ import com.example.lidarcbackend.model.DTO.ReportComponentDto;
 import com.example.lidarcbackend.model.DTO.ReportInfoDto;
 import com.example.lidarcbackend.model.entity.Report;
 import com.example.lidarcbackend.repository.ReportRepository;
+import com.itextpdf.text.BadElementException;
 import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.Element;
@@ -14,13 +15,19 @@ import com.itextpdf.text.pdf.PdfWriter;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+
+import static com.example.lidarcbackend.api.ReportController.UPLOAD_DIRECTORY;
 
 @Slf4j
 @Service
@@ -28,7 +35,6 @@ public class ReportService implements IReportService {
 
     private final ReportComponentFactory reportComponentFactory;
     private final ReportRepository reportRepository;
-    private static final String UPLOAD_DIRECTORY = "src/main/resources/static/reports"; //TODO: MAYBE CHANGE TO MINIO BUCKET IF WANTED
     private static final String LOGO_PATH = "src/main/resources/static/images/lidarc_logo.png";
     public ReportService(ReportComponentFactory reportComponentFactory,  ReportRepository reportRepository) {
         this.reportComponentFactory = reportComponentFactory;
@@ -36,25 +42,35 @@ public class ReportService implements IReportService {
     }
     @Override
     @Transactional
-    public ReportInfoDto createReport(CreateReportDto report) throws IOException {
+    public ReportInfoDto createReport(CreateReportDto report, MultipartFile[] files) throws IOException {
         //TODO: Read config for report aka fetch comparison from table + possible metadata
         String filename = generateUniqueReportName();
-        Document document = assembleReport(report.getComponents(), filename);
+        Document document = assembleReport(report, filename, files);
         Report toCreate = Report.builder().title(report.getTitle()).fileName(filename).build();
         Report created = reportRepository.save(toCreate);
         return ReportInfoDto.builder().id(created.getId()).fileName(created.getFileName()).title(created.getTitle()).build();
     }
 
 
-    private Document assembleReport(List<ReportComponentDto> components, String uniqueName) throws IOException {
+    private Document assembleReport(CreateReportDto reportDto, String uniqueName, MultipartFile[] files) throws IOException {
+        List<ReportComponentDto> components = reportDto.getComponents();
+        Map<String, byte[]> fileToComponent =  new HashMap<>();
+
+        if (files != null) {
+            for (MultipartFile file : files) {
+                fileToComponent.put(file.getOriginalFilename(), file.getBytes());
+            }
+        }
         try {
             Document document = generateBaseLayout(uniqueName);
             for (ReportComponentDto component : components) {
                 IReportComponent componentInstance = reportComponentFactory.getReportComponent(component.getType());
-                if (component.getFileName() != null && !component.getFileName().isBlank()) {
-                    document = componentInstance.render(document, component.getFileName());
+                if (component.getFileName() != null && !component.getFileName().isBlank()
+                    && !fileToComponent.isEmpty() && fileToComponent.containsKey(component.getFileName())) {
+                    document = componentInstance.render(document, fileToComponent.get(component.getFileName()));
+                } else {
+                    document = componentInstance.render(document);
                 }
-                document = componentInstance.render(document);
             }
             document.close();
             return document;
@@ -83,8 +99,6 @@ public class ReportService implements IReportService {
 
         Paragraph paragraph = new Paragraph("This is the report!");
         document.add(paragraph);
-
-
         return document;
     }
 
