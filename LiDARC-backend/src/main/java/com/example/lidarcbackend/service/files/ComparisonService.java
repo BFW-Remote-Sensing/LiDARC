@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -72,7 +73,7 @@ public class ComparisonService implements IComparisonService {
 
     @Override
     public List<ComparisonDTO> getAllComparisons() {
-        List<Comparison> comparisons = comparisonRepository.findAll();
+        List<Comparison> comparisons = comparisonRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
 
         return comparisons.stream().map(comparison -> {
             ComparisonDTO dto = mapper.toDto(comparison);

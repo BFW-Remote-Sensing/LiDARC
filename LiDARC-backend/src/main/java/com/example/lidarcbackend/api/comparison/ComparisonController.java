@@ -20,7 +20,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/comparisons")
+@RequestMapping("/api/v1/comparisons")
 public class ComparisonController {
     private final ComparisonService comparisonService;
 
