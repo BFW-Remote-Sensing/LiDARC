@@ -1,8 +1,28 @@
 package com.example.lidarcbackend.service.files;
 
+import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
+import com.example.lidarcbackend.model.entity.File;
+import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import java.util.List;
 import java.util.Map;
 
+
 public interface IMetadataService {
+    Page<FileMetadataDTO> getPagedMetadata(Pageable pageable);
+
+    List<FileMetadataDTO> getAllMetadata();
+
+    File saveMetadata(File file);
+
+    FileMetadataDTO GetMetadata(String metadataId);
+
+    List<FileMetadataDTO> getMetadataList(List<String> metadataIds);
+
+    @Transactional
+    void deleteMetadataById(Long id);
 
     /**
      * Processes a metadata worker result message
