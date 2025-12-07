@@ -20,7 +20,6 @@ public class ComparisonMapper {
         dto.setNeedMostDifferences(entity.getNeedMostDifferences());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setStatus(entity.getStatus().toString());
-        dto.setResultReportUrl(entity.getResultReportUrl());
         dto.setErrorMessage(entity.getErrorMessage());
         return dto;
     }

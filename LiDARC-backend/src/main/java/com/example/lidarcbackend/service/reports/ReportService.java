@@ -1,9 +1,12 @@
 package com.example.lidarcbackend.service.reports;
 
+import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.model.DTO.CreateReportDto;
 import com.example.lidarcbackend.model.DTO.ReportComponentDto;
 import com.example.lidarcbackend.model.DTO.ReportInfoDto;
+import com.example.lidarcbackend.model.entity.Comparison;
 import com.example.lidarcbackend.model.entity.Report;
+import com.example.lidarcbackend.repository.ComparisonRepository;
 import com.example.lidarcbackend.repository.ReportRepository;
 import com.itextpdf.text.BadElementException;
 import com.itextpdf.text.Document;
@@ -35,20 +38,36 @@ public class ReportService implements IReportService {
 
     private final ReportComponentFactory reportComponentFactory;
     private final ReportRepository reportRepository;
+    private final ComparisonRepository comparisonRepository;
     private static final String LOGO_PATH = "src/main/resources/static/images/lidarc_logo.png";
-    public ReportService(ReportComponentFactory reportComponentFactory,  ReportRepository reportRepository) {
+    public ReportService(ReportComponentFactory reportComponentFactory,  ReportRepository reportRepository, ComparisonRepository comparisonRepository) {
         this.reportComponentFactory = reportComponentFactory;
         this.reportRepository = reportRepository;
+        this.comparisonRepository = comparisonRepository;
     }
     @Override
     @Transactional
-    public ReportInfoDto createReport(CreateReportDto report, MultipartFile[] files) throws IOException {
+    public ReportInfoDto createReport(Long id, CreateReportDto report, MultipartFile[] files) throws IOException, NotFoundException {
         //TODO: Read config for report aka fetch comparison from table + possible metadata
+        Comparison comparison = comparisonRepository.findById(id).orElseThrow(
+                () -> new NotFoundException("Comparison with id " + id + " not found"));
         String filename = generateUniqueReportName();
         Document document = assembleReport(report, filename, files);
-        Report toCreate = Report.builder().title(report.getTitle()).fileName(filename).build();
+        Report toCreate = Report.builder().title(report.getTitle()).fileName(filename).comparison(comparison).build();
         Report created = reportRepository.save(toCreate);
         return ReportInfoDto.builder().id(created.getId()).fileName(created.getFileName()).title(created.getTitle()).build();
+    }
+
+    @Override
+    public ReportInfoDto getReport(Long reportId) throws NotFoundException {
+        Report report = reportRepository.findById(reportId).orElseThrow(
+                () -> new NotFoundException("Report with id " + reportId + " not found")
+        );
+        return ReportInfoDto.builder()
+                .id(report.getId())
+                .title(report.getTitle())
+                .fileName(report.getFileName())
+                .build();
     }
 
 

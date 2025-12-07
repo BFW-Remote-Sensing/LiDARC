@@ -7,8 +7,10 @@ import com.example.lidarcbackend.api.metadata.MetadataMapper;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import com.example.lidarcbackend.model.entity.Comparison;
 import com.example.lidarcbackend.model.entity.ComparisonFile;
+import com.example.lidarcbackend.model.entity.Report;
 import com.example.lidarcbackend.repository.ComparisonFileRepository;
 import com.example.lidarcbackend.repository.ComparisonRepository;
+import com.example.lidarcbackend.repository.ReportRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Validator;
@@ -20,15 +22,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @Slf4j
 public class ComparisonService implements IComparisonService {
     private final ComparisonRepository comparisonRepository;
+    private final ReportRepository reportRepository;
     private final ComparisonFileRepository comparisonFileRepository;
     private final IMetadataService metadataService;
     private final Validator validator;
@@ -45,7 +45,8 @@ public class ComparisonService implements IComparisonService {
             RabbitTemplate rabbitTemplate,
             ComparisonMapper mapper,
             ObjectMapper objectMapper,
-            MetadataMapper metadataMapper) {
+            MetadataMapper metadataMapper,
+            ReportRepository reportRepository) {
         this.comparisonRepository = comparisonRepository;
         this.comparisonFileRepository = comparisonFileRepository;
         this.metadataService = metadataService;
@@ -54,6 +55,7 @@ public class ComparisonService implements IComparisonService {
         this.mapper = mapper;
         this.objectMapper = objectMapper;
         this.metadataMapper = metadataMapper;
+        this.reportRepository = reportRepository;
     }
 
     @Override
@@ -62,7 +64,8 @@ public class ComparisonService implements IComparisonService {
 
         List<ComparisonDTO> dtoList = comparisonPage.getContent().stream().map(comparison -> {
             ComparisonDTO dto = mapper.toDto(comparison);
-
+            reportRepository.findTopByComparisonIdOrderByCreationDateDesc(comparison.getId())
+                    .ifPresent(report -> dto.setLatestReport("/api/v1/reports/" + report.getId() + "/download"));
             List<Long> fileMetadataIds = comparisonFileRepository
                     .getComparisonFilesByComparisonId(comparison.getId());
 
@@ -87,6 +90,8 @@ public class ComparisonService implements IComparisonService {
 
         return comparisons.stream().map(comparison -> {
             ComparisonDTO dto = mapper.toDto(comparison);
+            reportRepository.findTopByComparisonIdOrderByCreationDateDesc(comparison.getId())
+                    .ifPresent(report -> dto.setLatestReport("/api/v1/reports/" + report.getId() + "/download"));
 
             List<Long> fileMetadataIds = comparisonFileRepository
                     .getComparisonFilesByComparisonId(comparison.getId());
@@ -164,7 +169,8 @@ public class ComparisonService implements IComparisonService {
     public ComparisonDTO GetComparison(Long comparisonId) {
         ComparisonDTO dto = comparisonRepository.findById(comparisonId).map(mapper::toDto).orElse(null);
         if (dto == null) return null;
-
+        reportRepository.findTopByComparisonIdOrderByCreationDateDesc(dto.getId())
+                .ifPresent(report -> dto.setLatestReport("/api/v1/reports/" + report.getId() + "/download"));
         List<Long> fileMetadataIds = comparisonFileRepository.getComparisonFilesByComparisonId(comparisonId);
         List<String> fileMetadataIdStrings = fileMetadataIds.stream()
                 .map(String::valueOf)

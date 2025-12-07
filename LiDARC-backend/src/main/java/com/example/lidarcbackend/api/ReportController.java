@@ -1,5 +1,6 @@
 package com.example.lidarcbackend.api;
 
+import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.model.DTO.CreateReportDto;
 import com.example.lidarcbackend.model.DTO.ImageInfoDto;
 import com.example.lidarcbackend.model.DTO.ReportInfoDto;
@@ -17,14 +18,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,27 +50,6 @@ public class ReportController {
         return null;
     }
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Resource> createReport(
-        @Parameter(description = "Report JSON", required = true, content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = CreateReportDto.class)))
-        @Valid @RequestPart("report") CreateReportDto report,
-        @Parameter(description = "Report images", required = false, content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE))
-        @RequestPart(value = "files", required = false) MultipartFile[] files) {
-        log.info("POST /api/v1/reports");
-        try {
-            ReportInfoDto createdReport = reportService.createReport(report, files);
-            Resource resource = new UrlResource(Paths.get(UPLOAD_DIRECTORY).resolve(createdReport.getFileName()).toUri());
-            return ResponseEntity.status(HttpStatus.CREATED)
-                .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + createdReport.getFileName() + "\"")
-                .body(resource);
-        } catch (IOException e) {
-            log.error(e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
     @PostMapping("/images")
     public ResponseEntity<List<ImageInfoDto>> uploadImages(@RequestPart(value = "files", required = false) MultipartFile[] files) {
         log.info("POST /api/v1/reports/images");
@@ -84,5 +62,39 @@ public class ReportController {
             }
         });
         return ResponseEntity.status(HttpStatus.CREATED).body(images);
+    }
+
+    @GetMapping("/{reportId}/download")
+    public ResponseEntity<Resource> downloadReport(@PathVariable Long reportId) {
+        log.info("GET /api/v1/reports/" + reportId + "/download");
+        try {
+            ReportInfoDto createdReport = reportService.getReport(reportId);
+            Resource resource = new UrlResource(Paths.get(UPLOAD_DIRECTORY).resolve(createdReport.getFileName()).toUri());
+            if (resource.exists() || resource.isReadable()) {
+                return ResponseEntity.status(HttpStatus.OK)
+                        .contentType(MediaType.APPLICATION_PDF)
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + createdReport.getFileName() + "\"")
+                        .body(resource);
+            }
+            log.warn("Report Resource does not exist or is not readable");
+            return ResponseEntity.notFound().build();
+        } catch (MalformedURLException e) {
+            log.warn(e.getMessage());
+            //TODO: Change
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        } catch (NotFoundException e) {
+            logClientError(HttpStatus.NOT_FOUND, "Report not found", e);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+        }
+    }
+    /**
+     * Logs client-side errors with status, message, and exception details.
+     *
+     * @param status  the HTTP status code
+     * @param message a short description of the error
+     * @param e       the caught exception
+     */
+    private void logClientError(HttpStatus status, String message, Exception e) {
+        log.warn("{} {}: {}: {}", status.value(), message, e.getClass().getSimpleName(), e.getMessage());
     }
 }

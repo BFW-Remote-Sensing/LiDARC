@@ -1,9 +1,8 @@
 package com.example.lidarcbackend.exception;
 
-public class NotFoundException extends ApiException {
-    private int code;
-    public NotFoundException (int code, String msg) {
-        super(code, msg);
-        this.code = code;
+public class NotFoundException extends Exception {
+
+    public NotFoundException(String msg) {
+        super(msg);
     }
 }

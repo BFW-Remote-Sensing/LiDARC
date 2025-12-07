@@ -1,5 +1,6 @@
 package com.example.lidarcbackend.service.reports;
 
+import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.model.DTO.CreateReportDto;
 import com.example.lidarcbackend.model.DTO.ReportInfoDto;
 import org.springframework.web.multipart.MultipartFile;
@@ -8,5 +9,7 @@ import java.io.IOException;
 
 public interface IReportService {
 
-    ReportInfoDto createReport(CreateReportDto report, MultipartFile[] files) throws IOException;
+    ReportInfoDto createReport(Long id, CreateReportDto report, MultipartFile[] files) throws IOException, NotFoundException;
+
+    ReportInfoDto getReport(Long reportId) throws NotFoundException;
 }

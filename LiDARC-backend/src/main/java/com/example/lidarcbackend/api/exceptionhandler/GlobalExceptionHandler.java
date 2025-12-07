@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.time.LocalDateTime;
@@ -23,8 +24,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(value= {NotFoundException.class})
-    protected ResponseEntity<Object> handleNotFound(RuntimeException ex, WebRequest request) {
+    protected ResponseEntity<Object> handleNotFound(NotFoundException ex, WebRequest request) {
         log.warn(ex.getMessage());
+
         return handleExceptionInternal(ex, ex.getMessage(), new HttpHeaders(), HttpStatus.NOT_FOUND, request);
     }
 
