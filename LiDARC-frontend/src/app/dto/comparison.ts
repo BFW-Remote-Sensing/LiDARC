@@ -1,8 +1,20 @@
-export type Comparison = {
+import { FileMetadataDTO } from "./fileMetadata";
+
+export type CreateComparison = {
     name: string;
-    highestVegetation: boolean;
-    outlierDetection: boolean;
-    statisticsOverScenery: boolean;
-    mostDifferences: boolean;
-    grid: any; // TODO
+    needHighestVegetation: boolean;
+    needOutlierDetection: boolean;
+    needStatisticsOverScenery: boolean;
+    needMostDifferences: boolean;
+    fileMetadataIds: number[];
+    //grid: any; // TODO
+}
+
+export type ComparisonDTO = CreateComparison & {
+    id: number;
+    createdAt: string;
+    status: string;
+    resultReportUrl: string | null;
+    errorMessage: string | null;
+    files: FileMetadataDTO[];
 }

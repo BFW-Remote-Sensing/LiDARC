@@ -11,6 +11,7 @@ import { CommonModule } from '@angular/common';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { finalize } from 'rxjs';
 import { MatIcon } from '@angular/material/icon';
+import { FormatService } from '../../service/format.service';
 
 @Component({
   selector: 'app-file-details-card',
@@ -28,19 +29,23 @@ import { MatIcon } from '@angular/material/icon';
   styleUrl: './file-details-card.scss',
 })
 export class FileDetailsCard implements OnInit {
-  @Input() metadataId: string | null = null;
+  @Input() metadataId: number | null = null;
   private metadataService = inject(MetadataService);
   @Input() metadata: FileMetadataDTO | null = null;
   public loading: WritableSignal<boolean> = signal(true);
   public errorMessage = signal<string | null>(null);
 
+  formattedSize: string = '';
+
+  constructor(private formatService: FormatService) { }
+
   ngOnInit(): void {
+    this.formattedSize = this.formatService.formatBytes(this.metadata?.sizeBytes || 0);
     if (this.metadataId) {
       this.metadataService.getMetadataById(+this.metadataId)
         .pipe(finalize(() => this.loading.set(false)))
         .subscribe({
           next: (data) => {
-            console.log('Fetched metadata:', data);
             this.metadata = data;
           },
           error: (error) => {
@@ -49,17 +54,5 @@ export class FileDetailsCard implements OnInit {
           }
         });
     }
-  }
-
-  formatBytes(bytes: number, decimals = 2): string {
-    if (bytes === 0) return '0 Bytes';
-
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GВ', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
   }
 }

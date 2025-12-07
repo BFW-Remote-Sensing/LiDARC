@@ -10,6 +10,7 @@ export class Globals {
 
 export const defaultBucketPath: string = '/bucket';
 export const defaultMetadataPath: string = '/metadata';
+export const defaultComparisonPath: string = '/comparisons';
 
 export const httpOptions = {
   headers: new HttpHeaders({

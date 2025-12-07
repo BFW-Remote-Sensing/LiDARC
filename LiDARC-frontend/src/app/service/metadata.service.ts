@@ -27,7 +27,21 @@ export class MetadataService {
 
     getAllMetadata(): Observable<FileMetadataDTO[]> {
         return this.httpClient.get<FileMetadataDTO[]>(
-            this.globals.backendUri + defaultMetadataPath + '/all-metadata',
+            this.globals.backendUri + defaultMetadataPath + '/all',
+            { headers }
+        );
+    }
+
+    getPagedMetadata(page: number, size: number, sortBy: string, isAscending: boolean): Observable<FileMetadataDTO[]> {
+        return this.httpClient.get<FileMetadataDTO[]>(
+            this.globals.backendUri + defaultMetadataPath + `?page=${page}&size=${size}&sortBy=${sortBy}&ascending=${isAscending}`,
+            { headers }
+        );
+    }
+
+    deleteMetadataById(id: number): Observable<void> {
+        return this.httpClient.delete<void>(
+            this.globals.backendUri + defaultMetadataPath + `/${id}`,
             { headers }
         );
     }

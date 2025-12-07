@@ -1,18 +1,18 @@
-@if (loading()) {
-<div class="flex-center">
-    <mat-spinner></mat-spinner>
-</div>
-}
-@else if (!loading() && dataSource.data.length === 0 && !errorMessage()) {
-<div class="flex-center">No files found.</div>
-}
-@else if (errorMessage()) {
-<div class="flex-center">
-    <div style="color: red;">{{ errorMessage() }}</div>
-</div>
-}
-@else {
-<div>
+<div style="padding: 30px;">
+    @if (loading()) {
+    <div class="flex-center">
+        <mat-spinner></mat-spinner>
+    </div>
+    }
+    @else if (!loading() && dataSource.data.length === 0 && !errorMessage()) {
+    <div class="flex-center">No files found.</div>
+    }
+    @else if (errorMessage()) {
+    <div class="flex-center">
+        <div style="color: red;">{{ errorMessage() }}</div>
+    </div>
+    }
+    @else {
     <div class="upper-section">
         <div class="upper-action-section">
             <span>
@@ -60,8 +60,32 @@
       'status-ready': element.status === 'PROCESSED', 
       'status-error': element.status === 'FAILED'
     }">
-                {{ element.status }}
+                <div style="display: flex; column-gap: 10px;">
+                    <span>{{ element.status }}</span>
+                    @if (element.status === 'PROCESSING')
+                    {
+                    <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+                    }
+                </div>
             </td>
+        </ng-container>
+
+        <!-- Capture Year Column -->
+        <ng-container matColumnDef="captureYear">
+            <th mat-header-cell *matHeaderCellDef>Capture Year</th>
+            <td mat-cell *matCellDef="let element">{{ element.captureYear }}</td>
+        </ng-container>
+
+        <!-- Size Bytes Column -->
+        <ng-container matColumnDef="sizeBytes">
+            <th mat-header-cell *matHeaderCellDef>Size</th>
+            <td mat-cell *matCellDef="let element">{{ element.formattedSize }}</td>
+        </ng-container>
+
+        <!-- Uploaded At Column -->
+        <ng-container matColumnDef="uploadedAt">
+            <th mat-header-cell *matHeaderCellDef>Uploaded At</th>
+            <td mat-cell *matCellDef="let element">{{ element.uploadedAt }}</td>
         </ng-container>
 
         <!-- Actions Column -->
@@ -79,10 +103,7 @@
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
         <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
     </table>
+    }
+    <mat-paginator [pageSizeOptions]="[10, 20, 30]" showFirstLastButtons [hidden]="dataSource.data.length === 0">
+    </mat-paginator>
 </div>
-}
-<mat-paginator 
-  [pageSizeOptions]="[10, 20, 30]" 
-  showFirstLastButtons
-  [hidden]="dataSource.data.length === 0">
-</mat-paginator>
