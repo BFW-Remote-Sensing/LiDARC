@@ -9,6 +9,11 @@ export class Globals {
 }
 
 export const defaultBucketPath: string = '/bucket';
+export const defaultMetadataPath: string = '/metadata';
+export const defaultComparisonPath: string = '/comparisons';
+
+export const pollingIntervalMs: number = 1000;
+export const snackBarDurationMs: number = 3000;
 
 export const httpOptions = {
   headers: new HttpHeaders({

@@ -1,0 +1,11 @@
+.navbar {
+    display: flex;
+    column-gap: 20px;
+    width: 100%;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 10px;
+
+    .active-button {
+        background-color: #e0e0e0;
+    }
+}

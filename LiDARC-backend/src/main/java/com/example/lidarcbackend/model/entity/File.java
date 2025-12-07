@@ -84,7 +84,10 @@ public class File {
   private Long pointCount;
   @Column(name = "uploaded_at", updatable = false)
   @CreationTimestamp //TODO change this to the actual upload time when implementing uploadFinished
-  private Instant uploaded_at;
+  private Instant uploadedAt;
+
+  @Column(name = "status")
+  private String status;
 
   @OneToMany(mappedBy = "file")
   private Set<Url> urls = new LinkedHashSet<>();

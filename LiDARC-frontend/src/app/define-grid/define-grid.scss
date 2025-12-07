@@ -1,0 +1,16 @@
+.metadata-display {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.input-field-full {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.error-message {
+    color: red;
+    font-weight: bold;
+}
