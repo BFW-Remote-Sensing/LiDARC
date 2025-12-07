@@ -10,17 +10,12 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
-import org.checkerframework.checker.units.qual.C;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -45,6 +40,17 @@ public class MetadataService implements IMetadataService {
 
     public FileMetadataDTO GetMetadata(String metadataId) {
         return fileRepository.findById(Long.parseLong(metadataId)).map(mapper::toDto).orElse(null);
+    }
+
+    public List<FileMetadataDTO> getMetadataList(List<String> metadataIds) {
+
+        List<Long> ids = metadataIds.stream()
+                .map(Long::parseLong)
+                .toList();
+
+        return fileRepository.findAllById(ids).stream()
+                .map(mapper::toDto)
+                .toList();
     }
 
     public Boolean existsWithId(Long id) {

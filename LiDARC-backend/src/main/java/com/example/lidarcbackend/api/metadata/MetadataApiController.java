@@ -1,10 +1,8 @@
 package com.example.lidarcbackend.api.metadata;
 
-import com.example.lidarcbackend.api.metadata.dtos.CreateFileMetadataRequest;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import com.example.lidarcbackend.api.metadata.dtos.MetadataRequest;
 import com.example.lidarcbackend.api.metadata.dtos.MetadataResponse;
-import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.service.files.CoordinateSystemService;
 import com.example.lidarcbackend.service.files.MetadataService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -58,7 +56,7 @@ class MetadataApiController {
      *
      * @return list of all metadata
      */
-    @GetMapping("/all-metadata")
+    @GetMapping("/all")
     public ResponseEntity<List<FileMetadataDTO>> getAllMetadata() {
         try {
             List<FileMetadataDTO> all = metadataService.getAllMetadata();
@@ -78,7 +76,7 @@ class MetadataApiController {
      * @param request MetadataRequest(page, size, sortBy, ascending)
      * @return list of all metadata
      */
-    @GetMapping("/paged-metadata")
+    @GetMapping("/paged")
     public ResponseEntity<MetadataResponse> getPagedMetadata(@Valid @ModelAttribute MetadataRequest request) {
         try {
             Sort sort = request.isAscending() ?

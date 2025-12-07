@@ -1,0 +1,57 @@
+package com.example.lidarcbackend.model.entity;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+@Entity
+@Table(name = "comparisons")
+@Getter
+@Setter
+@Builder
+@AllArgsConstructor
+public class Comparison {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "name")
+    private String name;
+
+    @Column(name = "need_highest_vegetation")
+    private Boolean needHighestVegetation;
+
+    @Column(name = "need_outlier_detection")
+    private Boolean needOutlierDetection;
+
+    @Column(name = "need_statistics_over_scenery")
+    private Boolean needStatisticsOverScenery;
+
+    @Column(name = "need_most_differences")
+    private Boolean needMostDifferences;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private Status status = Status.PENDING;
+
+    @Column(name = "result_report_url")
+    private String resultReportUrl;
+
+    @Column(name = "error_message")
+    private String errorMessage;
+
+    public enum Status {
+        PENDING,
+        COMPLETED,
+        FAILED
+    }
+
+    public Comparison() {
+
+    }
+}

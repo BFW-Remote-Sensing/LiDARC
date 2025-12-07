@@ -41,7 +41,26 @@ CREATE TABLE IF NOT EXISTS coordinate_system (
     code VARCHAR(50)
 );
 
+CREATE TABLE IF NOT EXISTS comparisons (
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    name TEXT NOT NULL,
+    need_highest_vegetation BOOLEAN DEFAULT FALSE,
+    need_outlier_detection BOOLEAN DEFAULT FALSE,
+    need_statistics_over_scenery BOOLEAN DEFAULT FALSE,
+    need_most_differences BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP,
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING' CHECK (status in ('PENDING', 'COMPLETED', 'FAILED')),
+    result_report_url TEXT,
+    error_message TEXT
+);
 
+CREATE TABLE IF NOT EXISTS comparison_file (
+    comparison_id INTEGER NOT NULL,
+    file_id INTEGER NOT NULL,
+    CONSTRAINT pk_comparison_file PRIMARY KEY (comparison_id, file_id),
+    CONSTRAINT fk_comparison_id FOREIGN KEY (comparison_id) REFERENCES comparisons(id) ON DELETE CASCADE,
+    CONSTRAINT fk_file_id FOREIGN KEY (file_id) REFERENCES files(id)
+);
 
 ALTER TABLE files 
 ADD CONSTRAINT fk_files_coordinate_system FOREIGN KEY (coordinate_system) REFERENCES coordinate_system(id);

@@ -18,6 +18,9 @@ public interface IMetadataService {
     File saveMetadata(File file);
 
     FileMetadataDTO GetMetadata(String metadataId);
+
+    List<FileMetadataDTO> getMetadataList(List<String> metadataIds);
+
     @Transactional
     void deleteMetadataById(Long id);
 
