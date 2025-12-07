@@ -14,6 +14,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { FileMetadataDTO } from '../../dto/fileMetadata';
+import { pollingIntervalMs, snackBarDurationMs } from '../../globals/globals';
 
 @Component({
   selector: 'app-comparisons',
@@ -50,7 +51,7 @@ export class Comparisons {
     this.fetchAndProcessComparisons();
 
     // Poll every 3 seconds
-    interval(3000)
+    interval(pollingIntervalMs)
       .pipe(
         takeUntil(this.stopPolling$),
         switchMap(() => this.comparisonService.getAllComparisons()),
@@ -96,12 +97,12 @@ export class Comparisons {
       if (prev === 'PENDING' && item.status === 'COMPLETED') {
         this.snackBar.open(
           `Comparison "${item.name}" completed!`,
-          'OK', { duration: 3000 }
+          'OK', { duration: snackBarDurationMs }
         );
       } else if (prev === 'PENDING' && item.status === 'FAILED') {
         this.snackBar.open(
           `Comparison "${item.name}" failed!`,
-          'OK', { duration: 3000 }
+          'OK', { duration: snackBarDurationMs }
         );
       }
 

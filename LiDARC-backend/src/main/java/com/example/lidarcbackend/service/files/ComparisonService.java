@@ -7,19 +7,23 @@ import com.example.lidarcbackend.api.metadata.MetadataMapper;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import com.example.lidarcbackend.model.entity.Comparison;
 import com.example.lidarcbackend.model.entity.ComparisonFile;
-import com.example.lidarcbackend.model.entity.ComparisonFilePK;
 import com.example.lidarcbackend.repository.ComparisonFileRepository;
 import com.example.lidarcbackend.repository.ComparisonRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -28,7 +32,9 @@ public class ComparisonService implements IComparisonService {
     private final ComparisonFileRepository comparisonFileRepository;
     private final IMetadataService metadataService;
     private final Validator validator;
+    private final RabbitTemplate rabbitTemplate;
     private final ComparisonMapper mapper;
+    private final ObjectMapper objectMapper;
     private final MetadataMapper metadataMapper;
 
     public ComparisonService(
@@ -36,13 +42,17 @@ public class ComparisonService implements IComparisonService {
             ComparisonFileRepository comparisonFileRepository,
             IMetadataService metadataService,
             Validator validator,
+            RabbitTemplate rabbitTemplate,
             ComparisonMapper mapper,
+            ObjectMapper objectMapper,
             MetadataMapper metadataMapper) {
         this.comparisonRepository = comparisonRepository;
         this.comparisonFileRepository = comparisonFileRepository;
         this.metadataService = metadataService;
         this.validator = validator;
+        this.rabbitTemplate = rabbitTemplate;
         this.mapper = mapper;
+        this.objectMapper = objectMapper;
         this.metadataMapper = metadataMapper;
     }
 
@@ -112,6 +122,31 @@ public class ComparisonService implements IComparisonService {
 
         comparisonFileRepository.saveAll(comparisonFiles);
 
+        // TODO Trigger worker for each file
+//        Map<String, Object> grid = new HashMap<>();
+//        grid.put("x_min", comparisonRequest.getGrid().getMinX());
+//        grid.put("x_max", comparisonRequest.getGrid().getMaxX());
+//        grid.put("y_min", comparisonRequest.getGrid().getMinY());
+//        grid.put("y_max", comparisonRequest.getGrid().getMaxY());
+//        grid.put("cell_height", comparisonRequest.getGrid().getCellHeight());
+//        grid.put("cell_width", comparisonRequest.getGrid().getCellWidth());
+//
+//        Map<String, Object> msg = new HashMap<>();
+//        // Use worker's expected jobId key
+//        msg.put("jobId", UUID.randomUUID().toString());
+//        Long fileId = comparisonRequest.getFileMetadataIds().getFirst();
+//        // TODO get url for the fileId and send it
+//        msg.put("url", "");
+//
+//        msg.put("grid", grid);
+//
+//        String exchange = System.getenv().getOrDefault("EXCHANGE_NAME", "worker.job");
+//        String routingKey = "job.preprocessor.create";
+//
+//        String payload = objectMapper.writeValueAsString(msg);
+//        rabbitTemplate.convertAndSend(exchange, routingKey, payload);
+
+
         // 3️⃣ Map the saved entity to DTO
         ComparisonDTO dto = mapper.toDto(savedComparison);
 
@@ -142,6 +177,6 @@ public class ComparisonService implements IComparisonService {
     @Override
     @Transactional
     public void deleteComparisonById(Long id) {
-            comparisonRepository.deleteById(id);
+        comparisonRepository.deleteById(id);
     }
 }

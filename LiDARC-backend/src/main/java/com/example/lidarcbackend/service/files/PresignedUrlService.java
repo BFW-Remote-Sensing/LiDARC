@@ -148,6 +148,7 @@ public class PresignedUrlService implements IPresignedUrlService {
       file.setFilename(fileName);
       file.setUploaded(false);
       file.setOriginalFilename(originalFileName);
+      file.setStatus("UPLOADED");
       file = fileRepository.save(file);
     }
 

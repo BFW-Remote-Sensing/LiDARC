@@ -13,10 +13,10 @@ import { FileDetailsCard } from "../file-details-card/file-details-card";
   styleUrl: './file-details.scss',
 })
 export class FileDetails {
-  readonly metadataId: string | null;
+  readonly metadataId: number | null;
   private route = inject(ActivatedRoute);
 
   constructor() {
-    this.metadataId = this.route.snapshot.paramMap.get('id');
+    this.metadataId = Number(this.route.snapshot.paramMap.get('id'));
   }
 }

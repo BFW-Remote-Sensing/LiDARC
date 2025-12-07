@@ -7,7 +7,16 @@ export type CreateComparison = {
     needStatisticsOverScenery: boolean;
     needMostDifferences: boolean;
     fileMetadataIds: number[];
-    //grid: any; // TODO
+    grid: GridParameters | null;
+}
+
+export type GridParameters = {
+    cellWidth: number;
+    cellHeight: number;
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
 }
 
 export type ComparisonDTO = CreateComparison & {

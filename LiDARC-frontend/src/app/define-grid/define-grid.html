@@ -1,0 +1,50 @@
+<h2 mat-dialog-title>AOI of Reference File: {{ file.filename }}</h2>
+
+<mat-dialog-content>
+    <h3>Define Grid Boundaries</h3>
+    <form (ngSubmit)="onDefine()">
+        <div class="metadata-display">
+            <mat-form-field appearance="fill" class="input-field">
+                <mat-label>X Min</mat-label>
+                <input matInput type="number" [(ngModel)]="minX" name="minX" required [min]="file.minX" [max]="file.maxX">
+            </mat-form-field>
+
+            <mat-form-field appearance="fill" class="input-field">
+                <mat-label>X Max</mat-label>
+                <input matInput type="number" [(ngModel)]="maxX" name="maxX" required [min]="file.minX" [max]="file.maxX">
+            </mat-form-field>
+
+            <mat-form-field appearance="fill" class="input-field">
+                <mat-label>Y Min</mat-label>
+                <input matInput type="number" [(ngModel)]="minY" name="minY" required [min]="file.minY" [max]="file.maxY">
+            </mat-form-field>
+
+            <mat-form-field appearance="fill" class="input-field">
+                <mat-label>Y Max</mat-label>
+                <input matInput type="number" [(ngModel)]="maxY" name="maxY" required [min]="file.minY" [max]="file.maxY">
+            </mat-form-field>
+        </div>
+
+        <h3>Define New Cell Dimensions</h3>
+        <mat-form-field appearance="fill" class="input-field-full">
+            <mat-label>Cell Width</mat-label>
+            <input matInput type="number" [(ngModel)]="cellWidth" name="cellWidth" required min="1">
+            <mat-hint>Define the cell width in meters</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" class="input-field-full">
+            <mat-label>Cell Height</mat-label>
+            <input matInput type="number" [(ngModel)]="cellHeight" name="cellHeight" required min="1">
+            <mat-hint>Define the cell height in meters</mat-hint>
+        </mat-form-field>
+    </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+    <button mat-button (click)="onCancel()">Cancel</button>
+    <button mat-raised-button color="primary"
+        [disabled]="cellWidth === null || cellHeight === null || minX === null || maxX === null || minY === null || maxY === null || minX >= maxX || minY >= maxY"
+        (click)="onDefine()">
+        Define Grid
+    </button>
+</mat-dialog-actions>

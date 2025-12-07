@@ -45,6 +45,24 @@ public class Comparison {
     @Column(name = "error_message")
     private String errorMessage;
 
+    @Column(name = "grid_cell_width")
+    private Integer gridCellWidth;
+
+    @Column(name = "grid_cell_height")
+    private Integer gridCellHeight;
+
+    @Column(name = "grid_min_x")
+    private Double gridMinX;
+
+    @Column(name = "grid_max_x")
+    private Double gridMaxX;
+
+    @Column(name = "grid_min_y")
+    private Double gridMinY;
+
+    @Column(name = "grid_max_y")
+    private Double gridMaxY;
+
     public enum Status {
         PENDING,
         COMPLETED,

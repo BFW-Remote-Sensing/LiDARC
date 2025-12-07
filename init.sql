@@ -51,7 +51,13 @@ CREATE TABLE IF NOT EXISTS comparisons (
     created_at TIMESTAMP,
     status VARCHAR(32) NOT NULL DEFAULT 'PENDING' CHECK (status in ('PENDING', 'COMPLETED', 'FAILED')),
     result_report_url TEXT,
-    error_message TEXT
+    error_message TEXT,
+    grid_cell_width INTEGER,
+    grid_cell_height INTEGER,
+    grid_min_x DOUBLE PRECISION,
+    grid_max_x DOUBLE PRECISION,
+    grid_min_y DOUBLE PRECISION,
+    grid_max_y DOUBLE PRECISION
 );
 
 CREATE TABLE IF NOT EXISTS comparison_file (

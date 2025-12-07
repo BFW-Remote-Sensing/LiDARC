@@ -1,4 +1,4 @@
-import { Component, Input, signal, WritableSignal } from '@angular/core';
+import { ChangeDetectorRef, Component, Input, signal, WritableSignal } from '@angular/core';
 import { FileDetailsCard } from '../file-details-card/file-details-card';
 import { SelectedFilesService } from '../../service/selectedFile.service';
 import { MatAnchor, MatButtonModule } from "@angular/material/button";
@@ -12,6 +12,8 @@ import { MatSpinner } from '@angular/material/progress-spinner';
 import { ComparisonService } from '../../service/comparison.service';
 import { finalize } from 'rxjs';
 import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { GridDefinitionDialogComponent } from '../../define-grid/define-grid';
 
 @Component({
   selector: 'app-comparison-setup',
@@ -36,20 +38,28 @@ export class ComparisonSetup {
     needOutlierDetection: false,
     needStatisticsOverScenery: false,
     needMostDifferences: false,
-    fileMetadataIds: []
+    fileMetadataIds: [],
+    grid: null
   };
   public loadingStart: WritableSignal<boolean> = signal(false);
   public errorMessage: WritableSignal<string | null> = signal(null);
 
-  constructor(private selectedFilesService: SelectedFilesService, private comparisonService: ComparisonService, private router: Router) { }
+  constructor(
+    private selectedFilesService: SelectedFilesService,
+    private comparisonService: ComparisonService,
+    private router: Router,
+    private dialog: MatDialog,
+    private cdr: ChangeDetectorRef) { }
 
   startComparisonDisabled(): boolean {
-    return this.comparison.name.trim() === '' || (
-      this.comparison.needHighestVegetation === false &&
-      this.comparison.needOutlierDetection === false &&
-      this.comparison.needStatisticsOverScenery === false &&
-      this.comparison.needMostDifferences === false
-    );
+    return this.comparison.name.trim() === '' ||
+      this.comparison.grid === null ||
+      (
+        this.comparison.needHighestVegetation === false &&
+        this.comparison.needOutlierDetection === false &&
+        this.comparison.needStatisticsOverScenery === false &&
+        this.comparison.needMostDifferences === false
+      );
   }
 
   ngOnInit(): void {
@@ -61,8 +71,37 @@ export class ComparisonSetup {
   }
 
   defineGrid(): void {
-    alert('\'Define Grid\' is not yet implemented.');
+    // Open the dialog
+    const dialogRef = this.dialog.open(GridDefinitionDialogComponent, {
+      width: '600px',
+      height: '600px',
+      data: {
+        file: this.selectedFilesService.selectedFiles[0] // Pass the first selected file to the dialog
+      }
+    });
+
+    // Handle the result when the dialog is closed
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.comparison = {
+          ...this.comparison,
+          grid: {
+            cellWidth: result.cellWidth,
+            cellHeight: result.cellHeight,
+            minX: result.minX,
+            maxX: result.maxX,
+            minY: result.minY,
+            maxY: result.maxY
+          }
+        };
+        this.cdr.markForCheck();
+        console.log('Grid defined:', this.comparison.grid);
+      } else {
+        console.log('Grid definition cancelled or no dimensions provided.');
+      }
+    });
   }
+
 
   async startComparison(): Promise<void> {
     this.loadingStart.set(true);

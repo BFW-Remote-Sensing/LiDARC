@@ -9,6 +9,7 @@ import { MetadataService } from '../../service/metadata.service'; import { FileM
 import { SelectedFilesService } from '../../service/selectedFile.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormatService } from '../../service/format.service';
+import { pollingIntervalMs, snackBarDurationMs } from '../../globals/globals';
 
 @Component({
   selector: 'app-stored-files',
@@ -50,7 +51,7 @@ export class StoredFiles {
     this.fetchAndProcessMetadata();
 
     // Poll every 3 seconds
-    interval(3000)
+    interval(pollingIntervalMs)
       .pipe(
         takeUntil(this.stopPolling$),
         switchMap(() => this.metadataService.getAllMetadata()),
@@ -98,13 +99,13 @@ export class StoredFiles {
 
       if (prev === 'PROCESSING' && item.status === 'PROCESSED') {
         this.snackBar.open(
-          `File "${item.filename}" precomputation completed!`,
-          'OK', { duration: 3000 }
+          `File "${item.filename}" preprocessed completed!`,
+          'OK', { duration: snackBarDurationMs }
         );
       } else if (prev === 'PROCESSING' && item.status === 'FAILED') {
         this.snackBar.open(
-          `File "${item.filename}" precomputation failed!`,
-          'OK', { duration: 3000 }
+          `File "${item.filename}" preprocessed failed!`,
+          'OK', { duration: snackBarDurationMs }
         );
       }
 
@@ -157,6 +158,7 @@ export class StoredFiles {
   goToComparison() {
     if (this.selectedFileIds.size === 2) {
       this.selectedFilesService.selectedIds = Array.from(this.selectedFileIds);
+      this.selectedFilesService.selectedFiles = this.dataSource.data.filter(file => this.selectedFileIds.has(file.id));
       this.router.navigate(['/comparison-setup']);
     }
   }

@@ -19,4 +19,6 @@ public class CreateComparisonRequest {
     private Boolean needMostDifferences;
 
     private List<Long> fileMetadataIds;
+
+    private GridParameters grid;
 }
