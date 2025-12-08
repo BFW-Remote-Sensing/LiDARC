@@ -1,0 +1,26 @@
+# Base image containing the Docker CLI (required for Testcontainers in CI)
+FROM docker:27-cli
+
+ENV DOCKER_API_VERSION=1.44
+
+# Install JDK 21, Maven, and required tools
+RUN apk add --no-cache openjdk21 maven bash
+
+# Match the same workdir as your application Dockerfile
+WORKDIR /app
+
+# Copy wrapper + config exactly as in the main Dockerfile
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
+
+RUN chmod +x mvnw
+
+# Download dependencies for faster CI runs
+RUN ./mvnw dependency:go-offline -B
+
+# Copy the project source exactly like the main Dockerfile
+COPY src src
+
+# Run tests (Testcontainers will connect to the CI Docker daemon)
+CMD ["./mvnw", "verify"]

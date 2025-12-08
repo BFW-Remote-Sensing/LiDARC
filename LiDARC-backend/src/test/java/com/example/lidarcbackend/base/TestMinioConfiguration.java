@@ -1,13 +1,23 @@
 package com.example.lidarcbackend.base;
 
 import io.minio.MinioClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.testcontainers.containers.MinIOContainer;
 
 @TestConfiguration
 public class TestMinioConfiguration {
-  private static final MinIOContainer MINIO = BucketBase.getMinIOContainer();
+
+  @Value("${minio.image}")
+  private static String image;
+
+  @Value("${minio.username}")
+  private static String username;
+  @Value("${minio.password}")
+  private static String password;
+
+  private static final MinIOContainer MINIO = BucketBase.getMinIOContainer(image, username, password);
 
   static {
     // ensure container is started; Testcontainers manages lifecycle if annotated in tests,

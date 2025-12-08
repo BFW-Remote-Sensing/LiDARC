@@ -1,3 +1,9 @@
+-- Create database
+CREATE DATABASE "lidarc_db";
+
+-- Connect to the new database and create tables
+\c lidarc_db
+
 CREATE TABLE IF NOT EXISTS files (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     filename TEXT NOT NULL UNIQUE,

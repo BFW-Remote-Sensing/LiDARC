@@ -15,65 +15,64 @@ import java.time.Instant;
 @Builder
 public class FileInfoDto {
 
-  @JsonProperty("fileName")
-  @NonNull
-  @FileNameValid
-  private String fileName;
+	@JsonProperty("fileName")
+	@NonNull
+	@FileNameValid
+	private String fileName;
 
-  @JsonProperty("originalFileName")
-  private String originalFileName;
+	@JsonProperty("originalFileName")
+	private String originalFileName;
 
-  @JsonProperty("presignedURL")
-  private String presignedURL;
+	@JsonProperty("presignedURL")
+	private String presignedURL;
 
-  @JsonProperty("uploaded")
-  private Boolean uploaded;
+	@JsonProperty("uploaded")
+	private Boolean uploaded;
 
-  @JsonProperty("urlExpiresAt")
-  private Instant urlExpiresAt;
+	@JsonProperty("urlExpiresAt")
+	private Instant urlExpiresAt;
 
-  public FileInfoDto() {
-  }
+	public FileInfoDto() {
+	}
 
-  public FileInfoDto(File file) {
-    this.fileName = file.getFilename();
-    this.presignedURL = null;
-    this.uploaded = file.getUploaded();
-    this.urlExpiresAt = null;
-    this.originalFileName = file.getOriginalFilename();
-  }
+	public FileInfoDto(File file) {
+		this.fileName = file.getFilename();
+		this.presignedURL = null;
+		this.uploaded = file.getUploaded();
+		this.urlExpiresAt = null;
+		this.originalFileName = file.getOriginalFilename();
+	}
 
-  FileInfoDto(String fileName) {
-    this.fileName = fileName;
-  }
+	public FileInfoDto(String fileName) {
+		this.fileName = fileName;
+	}
 
-  FileInfoDto(String fileName, String presignedURL) {
-    this.fileName = fileName;
-    this.presignedURL = presignedURL;
-  }
+	FileInfoDto(String fileName, String presignedURL) {
+		this.fileName = fileName;
+		this.presignedURL = presignedURL;
+	}
 
-  FileInfoDto(String fileName, String presignedURL, Boolean uploaded) {
-    this.fileName = fileName;
-    this.presignedURL = presignedURL;
-    this.uploaded = uploaded;
-  }
-
-
-  FileInfoDto(String fileName, String presignedURL, Boolean uploaded, Instant urlExpiresAt) {
-    this.fileName = fileName;
-    this.presignedURL = presignedURL;
-    this.uploaded = uploaded;
-    this.urlExpiresAt = urlExpiresAt;
-  }
+	FileInfoDto(String fileName, String presignedURL, Boolean uploaded) {
+		this.fileName = fileName;
+		this.presignedURL = presignedURL;
+		this.uploaded = uploaded;
+	}
 
 
-  FileInfoDto(String fileName, String originalFileName, String presignedURL, Boolean uploaded, Instant urlExpiresAt) {
-    this.fileName = fileName;
-    this.presignedURL = presignedURL;
-    this.uploaded = uploaded;
-    this.urlExpiresAt = urlExpiresAt;
-    this.originalFileName = originalFileName;
-  }
+	public FileInfoDto(String fileName, String presignedURL, Boolean uploaded, Instant urlExpiresAt) {
+		this.fileName = fileName;
+		this.presignedURL = presignedURL;
+		this.uploaded = uploaded;
+		this.urlExpiresAt = urlExpiresAt;
+	}
+
+	FileInfoDto(String fileName, String originalFileName, String presignedURL, Boolean uploaded, Instant urlExpiresAt) {
+		this.fileName = fileName;
+		this.presignedURL = presignedURL;
+		this.uploaded = uploaded;
+		this.urlExpiresAt = urlExpiresAt;
+		this.originalFileName = originalFileName;
+	}
 
 }
 
