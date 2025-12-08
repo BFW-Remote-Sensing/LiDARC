@@ -26,6 +26,14 @@ schema = {
                 "cellHeight": { "type": "integer", "minimum": 1 },
             },
             "additionalProperties": False
+        },
+        "comparisonId": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "fileId": {
+            "type": "integer",
+            "minimum": 1
         }
     },
     "additionalProperties": False

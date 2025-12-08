@@ -131,7 +131,9 @@ def mk_summary(grid_shape, df: pd.DataFrame):
     }
 
 def create_result_df(precomp_grid):
-    rows, cols = np.nonzero(precomp_grid["count"])
+    rows_indices, cols_indices = np.indices(precomp_grid["count"].shape)
+    rows = rows_indices.flatten()
+    cols = cols_indices.flatten()
 
     grid_width = precomp_grid["grid_width"]
     grid_height = precomp_grid["grid_height"]
@@ -191,7 +193,6 @@ def process_req(ch, method, properties, body):
         return
 
     #Process request
-    #las_file_url = request["url"]
     las_file = request["file"]
     grid = request["grid"]
 
@@ -222,16 +223,18 @@ def process_req(ch, method, properties, body):
                                status="success",
                                payload={
                                    "result":upload_result,
-                                   "summary": mk_summary(precomp_grid["grid_shape"], df)
+                                   "summary": mk_summary(precomp_grid["grid_shape"], df),
+                                   "comparisonId": request["comparisonId"],
+                                   "fileId": request["fileId"]
                                })
         publisher.publish_preprocessing_result(response)
     #TODO: Add exceptions correctly!
     except HTTPError as e:
-        logging.warning("Couldn't download file from: {}, error: {}".format(las_file_url, e))
+        logging.warning("Couldn't download file from: {}, error: {}".format(las_file, e))
         publisher.publish_preprocessing_result(BaseMessage(type="preprocessing",
                                                            status="error",
                                                            job_id=job_id,
-                                                           payload=mk_error_msg(error_msg="Couldn't download file from: {}, precompute job cancelled".format(las_file_url))))
+                                                           payload=mk_error_msg(error_msg="Couldn't download file from: {}, precompute job cancelled".format(las_file))))
         return
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)

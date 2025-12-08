@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -125,7 +126,6 @@ public class ComparisonService implements IComparisonService {
         //TODO: Is there validation needed?
         Comparison savedComparison = comparisonRepository.save(mapper.toEntityFromRequest(comparisonRequest));
 
-        // 2️⃣ Save the ComparisonFile relations
         List<ComparisonFile> comparisonFiles = fileMetadataIds.stream()
                 .map(fileId -> {
                     ComparisonFile cf = new ComparisonFile();
@@ -137,19 +137,20 @@ public class ComparisonService implements IComparisonService {
 
         comparisonFileRepository.saveAll(comparisonFiles);
 
+        Random r =  new Random();
         for (Long fileId : fileMetadataIds) {
             File toPreprocess = fileRepository.findById(fileId).orElseThrow(() -> new NotFoundException("File for comparison with id: " + fileId + " not found!"));
             //TODO: Change bucket on some var or column from db?
             MinioObjectDto file = new MinioObjectDto("basebucket", toPreprocess.getFilename());
-            StartPreProcessJobDto startPreProcessJobDto = new StartPreProcessJobDto("123", file, comparisonRequest.getGrid());
+            //TODO: Fix that later on
+            String jobId = UUID.randomUUID().toString().substring(0, 5);
+            StartPreProcessJobDto startPreProcessJobDto = new StartPreProcessJobDto(jobId, file, comparisonRequest.getGrid(), savedComparison.getId(), fileId);
             //TODO: Handle traceability in BE
             workerStartService.startPreprocessingJob(startPreProcessJobDto);
         }
 
-        // 3️⃣ Map the saved entity to DTO
         ComparisonDTO dto = mapper.toDto(savedComparison);
 
-        // 4️⃣ Optionally, also populate the file metadata DTOs if you want them included
         List<FileMetadataDTO> fileMetadataDTOs = metadataService.getMetadataList(
                 fileMetadataIds.stream().map(String::valueOf).toList()
         );

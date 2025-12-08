@@ -12,4 +12,6 @@ public class StartPreProcessJobDto {
     private String jobId;
     private MinioObjectDto file;
     private GridParameters grid;
+    private Long comparisonId;
+    private Long fileId;
 }
