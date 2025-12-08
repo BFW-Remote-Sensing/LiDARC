@@ -88,8 +88,13 @@ public class ComparisonController {
     public ResponseEntity<ComparisonDTO> saveComparison(
             @RequestBody CreateComparisonRequest request
     ) {
-        ComparisonDTO saved = comparisonService.saveComparison(request, request.getFileMetadataIds());
-        return ResponseEntity.ok(saved);
+        try {
+            ComparisonDTO saved = comparisonService.saveComparison(request, request.getFileMetadataIds());
+            return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+        } catch (NotFoundException e) {
+            logClientError(HttpStatus.NOT_FOUND, "Comparison not found for Report", e);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+        }
     }
 
     @DeleteMapping("/{id}")

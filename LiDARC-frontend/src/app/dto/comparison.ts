@@ -13,10 +13,10 @@ export type CreateComparison = {
 export type GridParameters = {
     cellWidth: number;
     cellHeight: number;
-    minX: number;
-    maxX: number;
-    minY: number;
-    maxY: number;
+    xMin: number;
+    xMax: number;
+    yMin: number;
+    yMax: number;
 }
 
 export type ComparisonDTO = CreateComparison & {

@@ -39,13 +39,13 @@ def connect_rabbitmq():
 
 
 def calculate_grid(grid: dict):
-    x_min = grid["xMin"]
-    x_max = grid["xMax"]
-    y_min = grid["yMin"]
-    y_max = grid["yMax"]
+    x_min = grid["xmin"]
+    x_max = grid["xmax"]
+    y_min = grid["ymin"]
+    y_max = grid["ymax"]
 
-    grid_width = grid["x"]
-    grid_height = grid["y"]
+    grid_width = grid["cellWidth"]
+    grid_height = grid["cellHeight"]
 
     grid_cells_x = int(np.ceil((x_max - x_min) / grid_width))
     grid_cells_y = int(np.ceil((y_max - y_min) / grid_height))
@@ -191,13 +191,14 @@ def process_req(ch, method, properties, body):
         return
 
     #Process request
-    las_file_url = request["url"]
+    #las_file_url = request["url"]
+    las_file = request["file"]
     grid = request["grid"]
 
     temp_dir = tempfile.mkdtemp()
     try:
-        downloaded_file_fn = file_handler.download_file(las_file_url, dest_dir=temp_dir)
-
+        #downloaded_file_fn = file_handler.download_file(las_file_url, dest_dir=temp_dir)
+        downloaded_file_fn = file_handler.fetch_file(las_file, dest_dir=temp_dir)
         precomp_grid = calculate_grid(grid)
         precomp_grid["veg_height_key"] = "gps_time"
 
@@ -205,7 +206,7 @@ def process_req(ch, method, properties, body):
             if "ndsm" in  f.header.point_format.extra_dimension_names:
                 logging.info("File to process is using ndsm for vegetational height of trees")
                 precomp_grid["veg_height_key"] = "ndsm"
-            logging.info("Processing point cloud from file: {}".format(las_file_url))
+            logging.info("Processing point cloud from file: {}".format(downloaded_file_fn))
             for points in f.chunk_iterator(500_000):
                 process_points(points, precomp_grid)
                 del points

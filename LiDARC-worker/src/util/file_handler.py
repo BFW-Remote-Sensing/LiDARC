@@ -130,6 +130,27 @@ def download_file(url: str, dest_dir: str = ".", chunk_size: int = 10* 1024 ) ->
             os.remove(local_filename)
         raise RuntimeError(f"Download failed for {url}: {e}") from e
 
+def fetch_file(file, dest_dir: str=".") -> str:
+    os.makedirs(dest_dir, exist_ok=True)
+    bucket_name = file.get("bucket")
+    object_key = file.get("objectKey")
+
+    if not bucket_name or not object_key:
+        raise ValueError("File object must contain 'bucket' and 'objectKey'")
+    local_filename = os.path.join(dest_dir, os.path.basename(object_key))
+    client = minio_client()
+    try:
+        client.fget_object(
+            bucket_name=bucket_name,
+            object_name=object_key,
+            file_path=local_filename
+        )
+        return local_filename
+    except Exception as e:
+        if os.path.exists(local_filename):
+            os.remove(local_filename)
+        raise RuntimeError(f"MinIO download failed for {bucket_name}/{object_key}: {e}") from e
+
 def main():
     test_file = os.path.join(os.getcwd(), "../Pre_Process_Job_0001_output.csv")
     try:

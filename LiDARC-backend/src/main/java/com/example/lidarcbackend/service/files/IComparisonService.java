@@ -2,6 +2,7 @@ package com.example.lidarcbackend.service.files;
 
 import com.example.lidarcbackend.api.comparison.dtos.ComparisonDTO;
 import com.example.lidarcbackend.api.comparison.dtos.CreateComparisonRequest;
+import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.model.entity.Comparison;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
@@ -14,7 +15,7 @@ public interface IComparisonService {
 
     List<ComparisonDTO> getAllComparisons();
 
-    ComparisonDTO saveComparison(CreateComparisonRequest comparison, List<Long> fileMetadataIds);
+    ComparisonDTO saveComparison(CreateComparisonRequest comparison, List<Long> fileMetadataIds) throws NotFoundException;
 
     ComparisonDTO GetComparison(Long comparisonId);
 

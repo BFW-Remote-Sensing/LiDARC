@@ -1,25 +1,29 @@
 schema = {
     "type": "object",
-    "required": ["jobId", "url", "grid"],
+    "required": ["jobId", "file", "grid"],
     "properties": {
         "jobId": {
             "type": "string",
             "minLength": 1
         },
-        "url": {
-            "type": "string"
+        "file": {
+            "type": "object",
+            "required": ["bucket", "objectKey"],
+            "properties": {
+                "bucket": {"type": "string"},
+                "objectKey": {"type": "string"}
+            }
         },
         "grid": {
             "type": "object",
-            "required": ["xMin", "xMax", "yMin", "yMax", "x", "y"],
+            "required": ["xmin", "xmax", "ymin", "ymax", "cellWidth", "cellHeight"],
             "properties": {
-                "xMin": { "type": "number" },
-                "xMax": { "type": "number" },
-                "yMin": { "type": "number" },
-                "yMax": { "type": "number" },
-                "x": { "type": "integer", "minimum": 1 },
-                "y": { "type": "integer", "minimum": 1 },
-                "offset": { "type": "number" }
+                "xmin": { "type": "number" },
+                "xmax": { "type": "number" },
+                "ymin": { "type": "number" },
+                "ymax": { "type": "number" },
+                "cellWidth": { "type": "integer", "minimum": 1 },
+                "cellHeight": { "type": "integer", "minimum": 1 },
             },
             "additionalProperties": False
         }
