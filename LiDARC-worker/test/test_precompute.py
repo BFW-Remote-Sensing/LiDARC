@@ -32,7 +32,7 @@ def test_process_req_accumulates_points_correctly_in_grid(very_small_las_file, t
         captured_upload["df"] = df
         return "http://minio.local/bucket/preprocess.csv"
 
-    with patch("preprocess.preprocess_worker.file_handler.download_file", return_value=very_small_las_file), \
+    with patch("preprocess.preprocess_worker.file_handler.fetch_file", return_value=very_small_las_file), \
             patch("preprocess.preprocess_worker.file_handler.upload_file_by_type", side_effect=fake_upload_file_by_type), \
             patch("preprocess.preprocess_worker.ResultPublisher") as MockPublisher:
 
@@ -91,7 +91,7 @@ def test_precompute_generates_grid_with_all_points(generated_las_file, tmp_path,
         captured_upload["df"] = df
         return "http://minio.local/bucket/preprocess.csv"
 
-    with patch("preprocess.preprocess_worker.file_handler.download_file", return_value=generated_las_file[0]), \
+    with patch("preprocess.preprocess_worker.file_handler.fetch_file", return_value=generated_las_file[0]), \
             patch("preprocess.preprocess_worker.file_handler.upload_file_by_type", side_effect=fake_upload_file_by_type), \
             patch("preprocess.preprocess_worker.ResultPublisher") as MockPublisher:
 

@@ -41,7 +41,6 @@ def test_precompute_integration(minio_client, rabbitmq_ch, load_json, very_small
     client, upload_file = minio_client
     assert client.bucket_exists("basebucket")
     upload_file(very_small_las_file, object_name="small.las")
-    presigned_url = client.get_presigned_url(method=HTTPMethod.GET, bucket_name="basebucket", object_name="small.las")
 
     def run_worker():
         preprocess_worker.main()
@@ -49,7 +48,10 @@ def test_precompute_integration(minio_client, rabbitmq_ch, load_json, very_small
     worker_thread.start()
 
     test_msg = load_json("valid_precompute_job_small_las_file.json")
-    test_msg["url"] = presigned_url
+    test_msg["file"] = {
+        "bucket": "basebucket",
+        "objectKey": "small.las"
+    }
     publish_message(rabbitmq_ch, WORKER_EXCHANGE, PREPROCESSING_JOB_RK, test_msg)
     body = consume_single_message(rabbitmq_ch, PREPROCESSING_RESULT_QUEUE)
     assert body is not None, "Result message of preprocess worker is None"
@@ -94,7 +96,6 @@ def test_precompute_integration_with_small_las_file(minio_client, rabbitmq_ch, l
     client, upload_file = minio_client
     assert client.bucket_exists("basebucket")
     upload_file(small_las_file, object_name="small.las")
-    presigned_url = client.get_presigned_url(method=HTTPMethod.GET, bucket_name="basebucket", object_name="small.las")
 
     def run_worker():
         preprocess_worker.main()
@@ -102,7 +103,10 @@ def test_precompute_integration_with_small_las_file(minio_client, rabbitmq_ch, l
     worker_thread.start()
 
     test_msg = load_json("valid_precompute_job_small_las_file.json")
-    test_msg["url"] = presigned_url
+    test_msg["file"] = {
+        "bucket": "basebucket",
+        "objectKey": "small.las"
+    }
     publish_message(rabbitmq_ch, WORKER_EXCHANGE, PREPROCESSING_JOB_RK, test_msg)
     body = consume_single_message(rabbitmq_ch, PREPROCESSING_RESULT_QUEUE)
     assert body is not None, "Result message of preprocess worker is None"
