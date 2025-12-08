@@ -11,5 +11,7 @@
     "cellWidth": 1.0,
     "cellHeight": 1.0
   },
-  "jobId": "12345"
+  "jobId": "12345",
+  "comparisonId": 1,
+  "fileId": 2
 }

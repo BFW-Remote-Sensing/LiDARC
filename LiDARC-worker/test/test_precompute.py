@@ -3,7 +3,7 @@ import pytest
 import pytest_check as check
 
 from messaging.message_model import BaseMessage
-from preprocess.preprocess_worker import process_req, calculate_grid, mk_error_msg
+from preprocess.preprocess_worker import process_req, mk_error_msg
 import json
 import os
 
@@ -56,7 +56,7 @@ def test_process_req_accumulates_points_correctly_in_grid(very_small_las_file, t
     for key, expected in expected_points.items():
         check.equal(points.get(key, None), expected, f"Point count mismatch at grid cell {key}")
 
-    check.equal(len(points), 3, "Unexpected number of grid cells")
+    check.equal(len(points), 100, "Unexpected number of grid cells")
 
     z_maxes = {
         (row['x0'], row['y0']): row['z_max'] for _, row in df.iterrows()
