@@ -37,8 +37,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class PresignedUrlService implements IPresignedUrlService {
 
-  private final MinioAsyncClient minioClient;
-  private final MinioProperties minioProperties;
+  protected final MinioAsyncClient minioClient;
+  protected final MinioProperties minioProperties;
 
   //private final FileDao fileDao;
   private final UrlRepository urlRepository;
@@ -213,8 +213,8 @@ public class PresignedUrlService implements IPresignedUrlService {
   }
 
   private void sendFinishMessage(String jobId, String presignedUploadUrl) {
-      StartMetadataJobDto startMetadataJobDto = new StartMetadataJobDto(jobId, presignedUploadUrl);
-      workerStartService.startMetadataJob(startMetadataJobDto);
+    StartMetadataJobDto startMetadataJobDto = new StartMetadataJobDto(jobId, presignedUploadUrl);
+    workerStartService.startMetadataJob(startMetadataJobDto);
   }
 
   private boolean checkExistence(FileInfoDto body) {
@@ -232,7 +232,7 @@ public class PresignedUrlService implements IPresignedUrlService {
   private Optional<FileInfoDto> getUrl(GetPresignedObjectUrlArgs presignedObjectUrlArgs, String fileName, String originalFileName) {
     try {
       String url = minioClient.getPresignedObjectUrl(presignedObjectUrlArgs);
-      return Optional.of(FileInfoDto.builder().fileName(minioProperties.getBaseObject()).presignedURL(url).originalFileName(originalFileName).build());
+      return Optional.of(FileInfoDto.builder().fileName(fileName).presignedURL(url).originalFileName(originalFileName).build());
     } catch (MinioException | GeneralSecurityException | IOException e) {
       log.info("Could not fetch presigned {} URL for file: {}", presignedObjectUrlArgs.method().toString(), fileName, e);
       return Optional.empty();

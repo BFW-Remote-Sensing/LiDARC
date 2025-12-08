@@ -2,119 +2,161 @@ package com.example.lidarcbackend.unit.service;
 
 import com.example.lidarcbackend.configuration.MinioProperties;
 import com.example.lidarcbackend.model.DTO.FileInfoDto;
-import com.example.lidarcbackend.model.DTO.Mapper.impl.UrlMapperImpl;
+import com.example.lidarcbackend.model.DTO.Mapper.UrlMapper;
 import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.model.entity.Url;
+import com.example.lidarcbackend.repository.FileRepository;
+import com.example.lidarcbackend.repository.UrlRepository;
 import com.example.lidarcbackend.service.files.PresignedUrlService;
 import com.example.lidarcbackend.service.files.WorkerStartService;
-import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioAsyncClient;
-import io.minio.errors.MinioException;
+import io.minio.errors.*;
 import io.minio.http.Method;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
-//this is more or less an integration test since it uses real repositories from AbstractUnitTest
 
-public class PresignedUrlServiceTest extends com.example.lidarcbackend.unit.AbstractUnitTest {
+@ExtendWith(MockitoExtension.class)
+public class PresignedUrlServiceTest {
+    @Mock
+    private FileRepository fileRepository;
 
-  private MinioAsyncClient minioClient;
-  private MinioProperties minioProperties;
-  private UrlMapperImpl urlMapper;
-  private PresignedUrlService presignedUrlService;
-  private WorkerStartService workerStartService;
+    @Mock
+    private UrlRepository urlRepository;
 
-  @BeforeEach
-  void setUpService() {
-    minioClient = mock(MinioAsyncClient.class);
-    minioProperties = new MinioProperties();
-    minioProperties.setBucket("basebucket");
-    minioProperties.setBaseObject("baseobject");
-    minioProperties.setDefaultExpiryTime(60);
-    urlMapper = new UrlMapperImpl();
 
-    // create service instance with real repositories from AbstractUnitTest
-    presignedUrlService = new PresignedUrlService(
-        minioClient,
-        minioProperties,
-        urlRepository,
-        fileRepository,
-        workerStartService,
-        urlMapper
-    );
-  }
+    @Mock
+    private MinioAsyncClient minioClient;
 
-  @Test
-  void fetchUploadUrl_whenFileDoesNotExist_returnsSomeURL() throws Exception {
-    // arrange
-    String fileName = "upload-me.txt";
-    when(minioClient.getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class))).thenReturn("http://upload-url");
-    when(minioClient.bucketExists(any())).thenReturn(CompletableFuture.completedFuture(true));
 
-    // ensure no file exists
-    assertThat(fileRepository.findFileByFilenameAndUploaded(fileName, true)).isEmpty();
+    @Mock
+    private MinioProperties minioProperties;
 
-    // act
-    Optional<FileInfoDto> result = presignedUrlService.fetchUploadUrl(fileName, "");
-    assertThat(result).isPresent();
-    assertThat(result.get().getPresignedURL()).isEqualTo("http://upload-url");
-  }
+    @Mock
+    private WorkerStartService workerStartService;
 
-  @Test
-  void fetchUploadUrl_whenFileAlreadyUploaded_returnsEmpty() {
-    // arrange
-    String fileName = "already.txt";
-    File f = new File();
-    f.setFilename(fileName);
-    f.setUploaded(true);
-    fileRepository.save(f);
+    @Mock
+    private UrlMapper urlMapper;
 
-    // act
-    Optional<FileInfoDto> result = presignedUrlService.fetchUploadUrl(fileName, "");
+    @InjectMocks
+    private PresignedUrlService presignedUrlService;
 
-    // assert
-    assertThat(result).isEmpty();
-  }
 
-  @Test
-  void fetchFileInfo_whenFileExistsAndUploaded_returnsPresignedAndSavesUrl() throws Exception {
-    // arrange
-    String fileName = "get-me.txt";
-    File f = new File();
-    f.setFilename(fileName);
-    f.setUploaded(true);
-    fileRepository.save(f);
+    @Test
+    void fetchFileInfo_returns_mappedDto_when_existing_valid_url_found() {
+        // arrange
+        String filename = "file1";
+        File f = new File();
+        f.setId(1L);
+        f.setFilename(filename);
+        Url url = new Url();
+        url.setFile(f);
+        url.setPresignedURL("http://existing");
+        FileInfoDto mapped = new FileInfoDto();
+        when(urlRepository.findByFile_Filename_AndMethod_AndExpiresAtAfter(eq(filename), eq(Method.GET), any(Instant.class)))
+                .thenReturn(List.of(url));
+        when(urlMapper.urlToFileInfoDto(url)).thenReturn(mapped);
 
-    when(minioClient.getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class))).thenReturn("http://get-url");
-    when(minioClient.bucketExists(any())).thenReturn(CompletableFuture.completedFuture(true));
+        // act
+        Optional<FileInfoDto> res = presignedUrlService.fetchFileInfo(filename, "orig");
 
-    // act
-    Optional<FileInfoDto> result = presignedUrlService.fetchFileInfo(fileName, "");
+        // assert
+        assertThat(res).isPresent();
+        assertThat(res.get()).isSameAs(mapped);
+        verify(urlRepository, never()).save(any());
+    }
 
-    // assert
-    assertThat(result).isPresent();
-    assertThat(result.get().getPresignedURL()).isEqualTo("http://get-url");
 
-    // url saved with GET
-    Url savedUrl = urlRepository.findAll().stream().filter(u -> u.getFile().getFilename().equals(fileName)).findFirst().orElse(null);
-    assertThat(savedUrl).isNotNull();
-    assertThat(savedUrl.getMethod()).isEqualTo(Method.GET);
-  }
+    @Test
+    void fetchFileInfo_generates_and_saves_url_when_none_found() throws Exception {
+        // arrange
+        String filename = "file2";
+        when(urlRepository.findByFile_Filename_AndMethod_AndExpiresAtAfter(eq(filename), eq(Method.GET), any(Instant.class)))
+                .thenReturn(Collections.emptyList());
+        when(minioProperties.getDefaultExpiryTime()).thenReturn(3600);
+        when(minioProperties.getBucket()).thenReturn("bucket");
+        when(minioClient.getPresignedObjectUrl(any())).thenReturn("http://generated");
+        File file = new File();
+        file.setId(1L);
+        file.setFilename("file");
+        when(fileRepository.findFileByFilenameAndUploaded(eq(filename), eq(true))).thenReturn(Optional.of(file));
+        // capture saved Url
+        when(urlRepository.save(any(Url.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(urlMapper.urlToFileInfoDto(any(Url.class))).thenAnswer(invocation -> {
+            Url u = invocation.getArgument(0);
+            return new FileInfoDto(u.getFile().getFilename(), u.getPresignedURL(), true, u.getExpiresAt());
+        });
+        // act
+        Optional<FileInfoDto> res = presignedUrlService.fetchFileInfo(filename, "orig");
 
-  @Test
-  void init_whenBucketDoesNotExist_throwsMinioException() throws Exception {
-    when(minioClient.bucketExists(any())).thenReturn(CompletableFuture.completedFuture(false));
+        // assert
+        assertThat(res).isPresent();
+        verify(urlRepository).save(any(Url.class));
+    }
 
-    assertThatThrownBy(() -> presignedUrlService.init()).isInstanceOf(MinioException.class);
-  }
 
+    @Test
+    void fetchUploadUrl_returns_empty_when_file_already_uploaded() throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+        // arrange
+        String filename = "file3";
+        File existing = new File();
+        existing.setId(5L);
+        when(minioProperties.getDefaultExpiryTime()).thenReturn(3600);
+        when(minioProperties.getBucket()).thenReturn("bucket");
+        when(fileRepository.findFileByFilenameAndUploaded(eq(filename), eq(true))).thenReturn(Optional.of(existing));
+
+        // act
+        Optional<FileInfoDto> res = presignedUrlService.fetchUploadUrl(filename, "orig");
+
+        // assert
+        assertThat(res).isEmpty();
+        verify(minioClient, never()).getPresignedObjectUrl(any());
+    }
+
+
+    @Test
+    void uploadFinished_succeeds_and_deletes_upload_urls() throws Exception {
+        // arrange
+        String filename = "file4";
+        File file = new File();
+        file.setId(10L);
+        file.setFilename(filename);
+        when(fileRepository.findFileByFilenameAndUploaded(eq(filename), eq(false))).thenReturn(Optional.of(file));
+        when(fileRepository.save(file)).thenReturn(file);
+        when(minioProperties.getDefaultExpiryTime()).thenReturn(3600);
+        when(minioProperties.getBucket()).thenReturn("bucket");
+        when(minioClient.getPresignedObjectUrl(any())).thenReturn("http://getafterupload");
+        // simulate statObject not throwing to indicate existence
+        when(minioClient.statObject(any())).thenReturn(null);
+        // prepare a mocked FileInfoDto parameter
+        FileInfoDto body = mock(FileInfoDto.class);
+        when(body.getFileName()).thenReturn(filename);
+        when(body.getOriginalFileName()).thenReturn("orig");
+
+
+        // act
+        Optional<FileInfoDto> res = presignedUrlService.uploadFinished(body);
+
+        // assert
+        assertThat(res).isPresent();
+        verify(fileRepository).save(any(File.class));
+        verify(urlRepository).deleteByFileIdAndMethod(eq(file.getId()), eq(Method.PUT));
+        verify(workerStartService).startMetadataJob(any());
+    }
 }

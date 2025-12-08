@@ -1,2 +1,6 @@
 data/
 .idea
+
+*.cmd
+*.sh
+.gitlab-ci-local

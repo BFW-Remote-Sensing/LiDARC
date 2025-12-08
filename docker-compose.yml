@@ -2,18 +2,16 @@ name: lidarc
 
 services:
   rabbitmq:
-    image: rabbitmq:3.12-management
+    build:
+      context: ./rabbitmq
+      dockerfile: Dockerfile
     container_name: rabbitmq
     ports:
-      - "5672:5672" # für AMQP (Java-Client)
-      - "15672:15672" # für Web UI
-    environment:
-      RABBITMQ_CONFIG_FILE: rabbitmq/rabbit
-    volumes:
-      - ./rabbitmq/rabbit.conf:/rabbitmq/rabbit.conf:ro #config tells where to fetch definitions from at startup
-      - ./rabbitmq/definitions.json:/rabbitmq/definitions.json:ro #schema definitions (exchanges, queues,..)
+      - "5672:5672"
+      - "15672:15672"
     networks:
       - ase-network
+
   minio:
     image: quay.io/minio/minio:latest
     container_name: minio
@@ -25,7 +23,7 @@ services:
       MINIO_ROOT_USER: admin
       MINIO_ROOT_PASSWORD: aseWS25LiDARC
     volumes:
-      - ./data:/data
+      - ${LIDAR_DATA_ROOT:-./data}/minio:/data
       #minio_data:/data
     command: server /data --console-address ":9001"
     networks:
@@ -38,12 +36,12 @@ services:
       start_period: 5s
 
   redis:
-    image: redis:latest
+    image: redis:8.4
     container_name: redis_cache
     ports:
       - "6379:6379"
     volumes:
-      - ./data:/data
+      - ${LIDAR_DATA_ROOT:-./data}/redis:/data
     restart: unless-stopped
     networks:
       - ase-network
@@ -64,18 +62,20 @@ services:
     restart: on-failure
 
   postgres:
-    image: postgres:16
+    build:
+      context: ./postgres
+      dockerfile: Dockerfile
     container_name: postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
-      POSTGRES_DB: lidarc_db
     ports:
       - "5432:5432"
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      #volume mounts can be tricky ./data/postgresql was always somehow saved in another image
+      #maybe we need to change the volume every time we need a fresh db
+      - ${POSTGRES_DATA:-./data}/postgres:/var/lib/postgresql/data
     networks:
       - ase-network
 
@@ -83,11 +83,24 @@ services:
     build:
       context: ./LiDARC-frontend
       dockerfile: Dockerfile
+    depends_on:
+      minio-mc:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_started
+        restart: true
+      postgres:
+        condition: service_started
+        restart: true
+      backend:
+        condition: service_started
+        restart: true
     container_name: frontend
     ports:
       - "8081:8081"
     networks:
       - ase-network
+
   backend:
     build:
       context: ./LiDARC-backend
@@ -98,18 +111,30 @@ services:
     depends_on:
       minio-mc:
         condition: service_completed_successfully
-      postgres:
-        condition: service_started
+
       rabbitmq:
         condition: service_started
+        restart: true
+      postgres:
+        condition: service_started
+        restart: true
     ports:
       - "8080:8080"
     environment:
       - POSTGRES_HOST=postgres
       - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin
       - APP_UPLOAD_DIR=/app/uploads
+    healthcheck:
+      test: "curl --fail --silent localhost:8080/actuator/health | grep UP || exit 1"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     networks:
       - ase-network
+
   preprocess-worker:
     image: preprocess-lidarc-worker
     build:

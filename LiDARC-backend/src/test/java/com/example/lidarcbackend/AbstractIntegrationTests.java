@@ -2,32 +2,28 @@ package com.example.lidarcbackend;
 
 import com.example.lidarcbackend.repository.FileRepository;
 import com.example.lidarcbackend.repository.UrlRepository;
-import io.minio.MinioClient;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
-@Testcontainers
+@DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@SpringBootTest
-class LiDarcBackendApplicationTests {
-
-  static org.testcontainers.postgresql.PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16-alpine")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public abstract class AbstractIntegrationTests {
+  static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16-alpine")
       .withInitScript("init.sql");
 
   @Autowired
   public FileRepository fileRepository;
   @Autowired
   public UrlRepository urlRepository;
-  @MockitoBean
-  MinioClient minioClient;
 
   @BeforeAll
   static void setup() {
@@ -44,6 +40,12 @@ class LiDarcBackendApplicationTests {
     registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate"); // or create-drop
   }
 
+
+  @BeforeEach
+  void cleanDatabase() {
+    fileRepository.deleteAll();
+    urlRepository.deleteAll();
+  }
 
   @Test
   void contextLoads() {
