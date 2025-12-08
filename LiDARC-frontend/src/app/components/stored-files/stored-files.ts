@@ -47,6 +47,11 @@ export class StoredFiles {
   constructor(private selectedFilesService: SelectedFilesService, private router: Router, private snackBar: MatSnackBar, private formatService: FormatService) { }
 
   ngOnInit(): void {
+    const storedSelectedFileIds = localStorage.getItem('selectedFileIds');
+    if (storedSelectedFileIds) {
+      const ids = JSON.parse(storedSelectedFileIds).map((id: any) => Number(id));
+      this.selectedFileIds = new Set(ids);
+    }
     // First load
     this.fetchAndProcessMetadata();
 
@@ -86,11 +91,13 @@ export class StoredFiles {
    * Processes metadata: maps formatted size, detects transitions,
    * updates previousMap, and checks for stopPolling
    */
+  //TODO: FIX THE STATUS MANAGEMENT IN THE CORRESPONDING ISSUE see #44
   private processMetadata(data: FileMetadataDTO[]): void {
     // Map formatted size
     this.dataSource.data = data.map(item => ({
       ...item,
-      formattedSize: this.formatService.formatBytes(item.sizeBytes)
+      formattedSize: this.formatService.formatBytes(item.sizeBytes),
+      status: item.status === 'UPLOADED' ? 'PROCESSED' : item.status
     }));
 
     // Detect transitions and update previousMap
@@ -130,10 +137,10 @@ export class StoredFiles {
         this.dataSource.paginator = this.paginator;
       }
     });
-    const storedSelectedFileIds = localStorage.getItem('selectedFileIds');
-    if (storedSelectedFileIds) {
-      this.selectedFileIds = new Set(JSON.parse(storedSelectedFileIds));
-    }
+    //const storedSelectedFileIds = localStorage.getItem('selectedFileIds');
+    //if (storedSelectedFileIds) {
+    //  this.selectedFileIds = new Set(JSON.parse(storedSelectedFileIds));
+    //}
   }
 
   toggleSelection(id: number, event: any) {

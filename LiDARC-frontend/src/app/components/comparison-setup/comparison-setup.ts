@@ -88,10 +88,10 @@ export class ComparisonSetup {
           grid: {
             cellWidth: result.cellWidth,
             cellHeight: result.cellHeight,
-            minX: result.minX,
-            maxX: result.maxX,
-            minY: result.minY,
-            maxY: result.maxY
+            xMin: result.xMin,
+            xMax: result.xMax,
+            yMin: result.yMin,
+            yMax: result.yMax
           }
         };
         this.cdr.markForCheck();

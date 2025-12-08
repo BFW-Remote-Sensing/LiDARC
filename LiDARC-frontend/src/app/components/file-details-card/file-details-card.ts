@@ -40,13 +40,14 @@ export class FileDetailsCard implements OnInit {
   constructor(private formatService: FormatService) { }
 
   ngOnInit(): void {
-    this.formattedSize = this.formatService.formatBytes(this.metadata?.sizeBytes || 0);
+    this.formattedSize = this.formatService.formatBytes(0);
     if (this.metadataId) {
       this.metadataService.getMetadataById(+this.metadataId)
         .pipe(finalize(() => this.loading.set(false)))
         .subscribe({
           next: (data) => {
             this.metadata = data;
+            this.formattedSize = this.formatService.formatBytes(data.sizeBytes);
           },
           error: (error) => {
             console.error('Error fetching metadata by ID:', error);

@@ -2,6 +2,7 @@ package com.example.lidarcbackend.service.files;
 
 import com.example.lidarcbackend.configuration.RabbitConfig;
 import com.example.lidarcbackend.model.DTO.StartMetadataJobDto;
+import com.example.lidarcbackend.model.DTO.StartPreProcessJobDto;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
@@ -24,11 +25,11 @@ public class WorkerStartService {
         );
     }
 
-    public void startPreprocessingJob(String payload) {
+    public void startPreprocessingJob(StartPreProcessJobDto startPreProcessJobDto) {
         rabbitTemplate.convertAndSend(
                 RabbitConfig.WORKER_JOB_EXCHANGE,
                 RabbitConfig.WORKER_PREPROCESSING_START_ROUTING_KEY,
-                payload
+                startPreProcessJobDto
         );
     }
 

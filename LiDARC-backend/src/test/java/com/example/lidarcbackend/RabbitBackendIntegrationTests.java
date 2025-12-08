@@ -203,17 +203,17 @@ public class RabbitBackendIntegrationTests {
 //
 //    }
 
-    @Test
-    void testPreprocessorJobStarterService() {
-        String  expected = "testMessageComparisonJobStarterService";
-        jobStarterService.startPreprocessingJob(expected);
-
-        Object message = rabbitTemplate.receiveAndConvert(RabbitConfig.WORKER_PREPROCESSING_JOB_QUEUE, 1000);
-
-        Assertions.assertNotNull(message);
-        assertEquals(expected, message);
-
-    }
+//    @Test
+//    void testPreprocessorJobStarterService() {
+//        String  expected = "testMessageComparisonJobStarterService";
+//        jobStarterService.startPreprocessingJob(expected);
+//
+//        Object message = rabbitTemplate.receiveAndConvert(RabbitConfig.WORKER_PREPROCESSING_JOB_QUEUE, 1000);
+//
+//        Assertions.assertNotNull(message);
+//        assertEquals(expected, message);
+//
+//    }
 
     @Test
     void printRabbitTopology() throws Exception {

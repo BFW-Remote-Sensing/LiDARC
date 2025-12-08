@@ -14,7 +14,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { FileMetadataDTO } from '../../dto/fileMetadata';
-import { pollingIntervalMs, snackBarDurationMs } from '../../globals/globals';
+import {Globals, pollingIntervalMs, snackBarDurationMs} from '../../globals/globals';
 
 @Component({
   selector: 'app-comparisons',
@@ -42,7 +42,8 @@ export class Comparisons {
   private stopPolling$ = new Subject<void>();
   private previousMap = new Map<number, string>(); // id → status
 
-  constructor(private snackBar: MatSnackBar) { }
+  constructor(private snackBar: MatSnackBar,
+              public globals: Globals) { }
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 

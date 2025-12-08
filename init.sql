@@ -21,7 +21,6 @@ CREATE TABLE IF NOT EXISTS files (
     uploaded_at TIMESTAMP
 );
 
-
 CREATE TABLE IF NOT EXISTS urls (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     file_id INTEGER NOT NULL,
@@ -32,8 +31,6 @@ CREATE TABLE IF NOT EXISTS urls (
     expires_at TIMESTAMP,
     created_at TIMESTAMP
 );
-
-
 
 CREATE TABLE IF NOT EXISTS coordinate_system (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
@@ -50,7 +47,6 @@ CREATE TABLE IF NOT EXISTS comparisons (
     need_most_differences BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP,
     status VARCHAR(32) NOT NULL DEFAULT 'PENDING' CHECK (status in ('PENDING', 'COMPLETED', 'FAILED')),
-    result_report_url TEXT,
     error_message TEXT,
     grid_cell_width INTEGER,
     grid_cell_height INTEGER,
@@ -66,6 +62,15 @@ CREATE TABLE IF NOT EXISTS comparison_file (
     CONSTRAINT pk_comparison_file PRIMARY KEY (comparison_id, file_id),
     CONSTRAINT fk_comparison_id FOREIGN KEY (comparison_id) REFERENCES comparisons(id) ON DELETE CASCADE,
     CONSTRAINT fk_file_id FOREIGN KEY (file_id) REFERENCES files(id)
+);
+
+CREATE TABLE IF NOT EXISTS reports (
+   id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+   file_name TEXT NOT NULL UNIQUE,
+   title TEXT,
+   creation_date TIMESTAMP,
+   comparison_id INTEGER NOT NULL,
+   CONSTRAINT fk_comparison_id FOREIGN KEY(comparison_id) REFERENCES comparisons(id)
 );
 
 ALTER TABLE files 

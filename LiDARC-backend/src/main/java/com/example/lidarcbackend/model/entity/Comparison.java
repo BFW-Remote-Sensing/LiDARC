@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
+
 @Entity
 @Table(name = "comparisons")
 @Getter
@@ -39,8 +41,11 @@ public class Comparison {
     @Column(nullable = false, length = 32)
     private Status status = Status.PENDING;
 
-    @Column(name = "result_report_url")
-    private String resultReportUrl;
+    //@Column(name = "result_report_url")
+    //private String resultReportUrl;
+
+    @OneToMany(mappedBy = "comparison")
+    private List<Report> reports;
 
     @Column(name = "error_message")
     private String errorMessage;

@@ -1,4 +1,4 @@
-<h2 mat-dialog-title>AOI of Reference File: {{ file.filename }}</h2>
+<h2 mat-dialog-title>AOI of Reference File: {{ file.originalFilename }}</h2>
 
 <mat-dialog-content>
     <h3>Define Grid Boundaries</h3>
@@ -6,22 +6,22 @@
         <div class="metadata-display">
             <mat-form-field appearance="fill" class="input-field">
                 <mat-label>X Min</mat-label>
-                <input matInput type="number" [(ngModel)]="minX" name="minX" required [min]="file.minX" [max]="file.maxX">
+                <input matInput type="number" [(ngModel)]="xMin" name="minX" required [min]="file.minX" [max]="file.maxX">
             </mat-form-field>
 
             <mat-form-field appearance="fill" class="input-field">
                 <mat-label>X Max</mat-label>
-                <input matInput type="number" [(ngModel)]="maxX" name="maxX" required [min]="file.minX" [max]="file.maxX">
+                <input matInput type="number" [(ngModel)]="xMax" name="maxX" required [min]="file.minX" [max]="file.maxX">
             </mat-form-field>
 
             <mat-form-field appearance="fill" class="input-field">
                 <mat-label>Y Min</mat-label>
-                <input matInput type="number" [(ngModel)]="minY" name="minY" required [min]="file.minY" [max]="file.maxY">
+                <input matInput type="number" [(ngModel)]="yMin" name="minY" required [min]="file.minY" [max]="file.maxY">
             </mat-form-field>
 
             <mat-form-field appearance="fill" class="input-field">
                 <mat-label>Y Max</mat-label>
-                <input matInput type="number" [(ngModel)]="maxY" name="maxY" required [min]="file.minY" [max]="file.maxY">
+                <input matInput type="number" [(ngModel)]="yMax" name="maxY" required [min]="file.minY" [max]="file.maxY">
             </mat-form-field>
         </div>
 
@@ -43,7 +43,7 @@
 <mat-dialog-actions align="end">
     <button mat-button (click)="onCancel()">Cancel</button>
     <button mat-raised-button color="primary"
-        [disabled]="cellWidth === null || cellHeight === null || minX === null || maxX === null || minY === null || maxY === null || minX >= maxX || minY >= maxY"
+        [disabled]="cellWidth === null || cellHeight === null || xMin === null || xMax === null || yMin === null || yMax === null || xMin >= xMax || yMin >= yMax"
         (click)="onDefine()">
         Define Grid
     </button>

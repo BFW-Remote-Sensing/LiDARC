@@ -3,12 +3,20 @@ package com.example.lidarcbackend.service.files;
 import com.example.lidarcbackend.api.comparison.dtos.ComparisonDTO;
 import com.example.lidarcbackend.api.comparison.ComparisonMapper;
 import com.example.lidarcbackend.api.comparison.dtos.CreateComparisonRequest;
+import com.example.lidarcbackend.api.comparison.dtos.GridParameters;
 import com.example.lidarcbackend.api.metadata.MetadataMapper;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
+import com.example.lidarcbackend.exception.NotFoundException;
+import com.example.lidarcbackend.model.DTO.MinioObjectDto;
+import com.example.lidarcbackend.model.DTO.StartMetadataJobDto;
+import com.example.lidarcbackend.model.DTO.StartPreProcessJobDto;
 import com.example.lidarcbackend.model.entity.Comparison;
 import com.example.lidarcbackend.model.entity.ComparisonFile;
+import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.repository.ComparisonFileRepository;
 import com.example.lidarcbackend.repository.ComparisonRepository;
+import com.example.lidarcbackend.repository.FileRepository;
+import com.example.lidarcbackend.repository.ReportRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Validator;
@@ -20,40 +28,44 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @Slf4j
 public class ComparisonService implements IComparisonService {
     private final ComparisonRepository comparisonRepository;
+    private final ReportRepository reportRepository;
     private final ComparisonFileRepository comparisonFileRepository;
+    private final FileRepository fileRepository;
     private final IMetadataService metadataService;
     private final Validator validator;
     private final RabbitTemplate rabbitTemplate;
     private final ComparisonMapper mapper;
     private final ObjectMapper objectMapper;
     private final MetadataMapper metadataMapper;
-
+    private final WorkerStartService workerStartService;
     public ComparisonService(
-            ComparisonRepository comparisonRepository,
-            ComparisonFileRepository comparisonFileRepository,
-            IMetadataService metadataService,
-            Validator validator,
-            RabbitTemplate rabbitTemplate,
-            ComparisonMapper mapper,
-            ObjectMapper objectMapper,
-            MetadataMapper metadataMapper) {
+        ComparisonRepository comparisonRepository,
+        ComparisonFileRepository comparisonFileRepository, FileRepository fileRepository,
+        IMetadataService metadataService,
+        Validator validator,
+        RabbitTemplate rabbitTemplate,
+        ComparisonMapper mapper,
+        ObjectMapper objectMapper,
+        MetadataMapper metadataMapper,
+        ReportRepository reportRepository,
+        WorkerStartService workerStartService) {
         this.comparisonRepository = comparisonRepository;
         this.comparisonFileRepository = comparisonFileRepository;
+        this.fileRepository = fileRepository;
         this.metadataService = metadataService;
         this.validator = validator;
         this.rabbitTemplate = rabbitTemplate;
         this.mapper = mapper;
         this.objectMapper = objectMapper;
         this.metadataMapper = metadataMapper;
+        this.reportRepository = reportRepository;
+        this.workerStartService = workerStartService;
     }
 
     @Override
@@ -62,7 +74,8 @@ public class ComparisonService implements IComparisonService {
 
         List<ComparisonDTO> dtoList = comparisonPage.getContent().stream().map(comparison -> {
             ComparisonDTO dto = mapper.toDto(comparison);
-
+            reportRepository.findTopByComparisonIdOrderByCreationDateDesc(comparison.getId())
+                    .ifPresent(report -> dto.setLatestReport("/reports/" + report.getId() + "/download"));
             List<Long> fileMetadataIds = comparisonFileRepository
                     .getComparisonFilesByComparisonId(comparison.getId());
 
@@ -87,6 +100,8 @@ public class ComparisonService implements IComparisonService {
 
         return comparisons.stream().map(comparison -> {
             ComparisonDTO dto = mapper.toDto(comparison);
+            reportRepository.findTopByComparisonIdOrderByCreationDateDesc(comparison.getId())
+                    .ifPresent(report -> dto.setLatestReport("/reports/" + report.getId() + "/download"));
 
             List<Long> fileMetadataIds = comparisonFileRepository
                     .getComparisonFilesByComparisonId(comparison.getId());
@@ -106,8 +121,8 @@ public class ComparisonService implements IComparisonService {
 
     @Override
     @Transactional
-    public ComparisonDTO saveComparison(CreateComparisonRequest comparisonRequest, List<Long> fileMetadataIds) {
-        // 1️⃣ Save the Comparison entity
+    public ComparisonDTO saveComparison(CreateComparisonRequest comparisonRequest, List<Long> fileMetadataIds) throws NotFoundException {
+        //TODO: Is there validation needed?
         Comparison savedComparison = comparisonRepository.save(mapper.toEntityFromRequest(comparisonRequest));
 
         // 2️⃣ Save the ComparisonFile relations
@@ -122,30 +137,14 @@ public class ComparisonService implements IComparisonService {
 
         comparisonFileRepository.saveAll(comparisonFiles);
 
-        // TODO Trigger worker for each file
-//        Map<String, Object> grid = new HashMap<>();
-//        grid.put("x_min", comparisonRequest.getGrid().getMinX());
-//        grid.put("x_max", comparisonRequest.getGrid().getMaxX());
-//        grid.put("y_min", comparisonRequest.getGrid().getMinY());
-//        grid.put("y_max", comparisonRequest.getGrid().getMaxY());
-//        grid.put("cell_height", comparisonRequest.getGrid().getCellHeight());
-//        grid.put("cell_width", comparisonRequest.getGrid().getCellWidth());
-//
-//        Map<String, Object> msg = new HashMap<>();
-//        // Use worker's expected jobId key
-//        msg.put("jobId", UUID.randomUUID().toString());
-//        Long fileId = comparisonRequest.getFileMetadataIds().getFirst();
-//        // TODO get url for the fileId and send it
-//        msg.put("url", "");
-//
-//        msg.put("grid", grid);
-//
-//        String exchange = System.getenv().getOrDefault("EXCHANGE_NAME", "worker.job");
-//        String routingKey = "job.preprocessor.create";
-//
-//        String payload = objectMapper.writeValueAsString(msg);
-//        rabbitTemplate.convertAndSend(exchange, routingKey, payload);
-
+        for (Long fileId : fileMetadataIds) {
+            File toPreprocess = fileRepository.findById(fileId).orElseThrow(() -> new NotFoundException("File for comparison with id: " + fileId + " not found!"));
+            //TODO: Change bucket on some var or column from db?
+            MinioObjectDto file = new MinioObjectDto("basebucket", toPreprocess.getFilename());
+            StartPreProcessJobDto startPreProcessJobDto = new StartPreProcessJobDto("123", file, comparisonRequest.getGrid());
+            //TODO: Handle traceability in BE
+            workerStartService.startPreprocessingJob(startPreProcessJobDto);
+        }
 
         // 3️⃣ Map the saved entity to DTO
         ComparisonDTO dto = mapper.toDto(savedComparison);
@@ -164,7 +163,8 @@ public class ComparisonService implements IComparisonService {
     public ComparisonDTO GetComparison(Long comparisonId) {
         ComparisonDTO dto = comparisonRepository.findById(comparisonId).map(mapper::toDto).orElse(null);
         if (dto == null) return null;
-
+        reportRepository.findTopByComparisonIdOrderByCreationDateDesc(dto.getId())
+                .ifPresent(report -> dto.setLatestReport("/reports/" + report.getId() + "/download"));
         List<Long> fileMetadataIds = comparisonFileRepository.getComparisonFilesByComparisonId(comparisonId);
         List<String> fileMetadataIdStrings = fileMetadataIds.stream()
                 .map(String::valueOf)

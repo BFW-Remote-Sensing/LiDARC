@@ -1,13 +1,13 @@
 {
-  "jobId": "0001",
-  "url": "",
+  "jobId": "1010",
+  "url": "http://minio:9000/basebucket/37587f93ce804cfdca9d7a21be8b5b78648cad2513eb1e3a445fe84951b02dab_graz2024_block1_1022_1021_elv_test.laz?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=admin%2F20251203%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20251203T092405Z&X-Amz-Expires=100000&X-Amz-SignedHeaders=host&X-Amz-Signature=2bc8b0edb358d52941ebba9d1fd2f9eb26fa1cf66c8b7a9634a355b4a745ef28",
   "grid": {
-    "xMin": -77220.71,
-    "xMax": -76820.938,
-    "yMin": 189553.953,
-    "yMax": 189953.718,
-    "x": 10,
-    "y": 10,
-    "offset": 1
+      "xMin": -77684.929,
+      "xMax": -76466.603,
+      "yMin": 189393.548,
+      "yMax": 190611.87300000002,
+      "x": 100,
+      "y": 100,
+      "offset": 1
   }
 }

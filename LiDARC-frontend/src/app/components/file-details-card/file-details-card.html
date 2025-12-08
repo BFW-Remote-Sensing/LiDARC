@@ -16,8 +16,8 @@
     <mat-card class="metadata-card-material">
         <mat-card-header>
             <mat-icon mat-card-avatar>cloud_upload</mat-icon>
-            <mat-card-title>{{ metadata.filename }}</mat-card-title>
-            <mat-card-subtitle>{{ metadata.originalFilename }}</mat-card-subtitle>
+            <mat-card-title>{{ metadata.originalFilename }}</mat-card-title>
+            <mat-card-subtitle>{{ metadata.filename }}</mat-card-subtitle>
             <mat-chip-listbox class="status-chip">
                 <mat-chip [ngClass]="metadata.status.toLowerCase()" selected color="white">
                     <span class="chip-text">

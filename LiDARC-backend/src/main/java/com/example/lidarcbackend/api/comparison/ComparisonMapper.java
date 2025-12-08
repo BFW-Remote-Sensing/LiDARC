@@ -20,7 +20,6 @@ public class ComparisonMapper {
         dto.setNeedMostDifferences(entity.getNeedMostDifferences());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setStatus(entity.getStatus().toString());
-        dto.setResultReportUrl(entity.getResultReportUrl());
         dto.setErrorMessage(entity.getErrorMessage());
         return dto;
     }
@@ -38,10 +37,10 @@ public class ComparisonMapper {
         newComparison.setCreatedAt(java.time.LocalDateTime.now());
         newComparison.setGridCellHeight(request.getGrid().getCellHeight());
         newComparison.setGridCellWidth(request.getGrid().getCellWidth());
-        newComparison.setGridMinX(request.getGrid().getMinX());
-        newComparison.setGridMinY(request.getGrid().getMinY());
-        newComparison.setGridMaxX(request.getGrid().getMaxX());
-        newComparison.setGridMaxY(request.getGrid().getMaxY());
+        newComparison.setGridMinX(request.getGrid().getXMin());
+        newComparison.setGridMinY(request.getGrid().getYMin());
+        newComparison.setGridMaxX(request.getGrid().getXMax());
+        newComparison.setGridMaxY(request.getGrid().getYMax());
         return newComparison;
     }
 }

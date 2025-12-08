@@ -17,7 +17,7 @@ public class WorkerResultListener {
 
     //TODO
     // set Input Parameter for every method
-    @RabbitListener(queues = RabbitConfig.WORKER_PREPROCESSING_RESULT_QUEUE)
+    //@RabbitListener(queues = RabbitConfig.WORKER_PREPROCESSING_RESULT_QUEUE)
     public void handlePreprocessingResult(String message) {
         // Status aktualisieren, DB schreiben etc.
 

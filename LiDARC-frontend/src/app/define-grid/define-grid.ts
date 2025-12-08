@@ -25,10 +25,10 @@ export class GridDefinitionDialogComponent implements OnInit {
   cellHeight: number = 1;
 
 
-  minX: number | null = null;
-  maxX: number | null = null;
-  minY: number | null = null;
-  maxY: number | null = null;
+  xMin: number | null = null;
+  xMax: number | null = null;
+  yMin: number | null = null;
+  yMax: number | null = null;
   file!: FileMetadataDTO;
   constructor(
     public dialogRef: MatDialogRef<GridDefinitionDialogComponent>,
@@ -40,10 +40,10 @@ export class GridDefinitionDialogComponent implements OnInit {
   ngOnInit() {
     console.log('File passed to dialog:', this.file);
     this.file = this.data.file;
-    this.minX = this.file.minX;
-    this.maxX = this.file.maxX;
-    this.minY = this.file.minY;
-    this.maxY = this.file.maxY;
+    this.xMin = this.file.minX;
+    this.xMax = this.file.maxX;
+    this.yMin = this.file.minY;
+    this.yMax = this.file.maxY;
   }
 
   onCancel(): void {
@@ -52,15 +52,15 @@ export class GridDefinitionDialogComponent implements OnInit {
 
   onDefine(): void {
     if (this.cellWidth != null && this.cellHeight != null &&
-      this.minX !== null && this.maxX !== null &&
-      this.minY !== null && this.maxY !== null) {
+      this.xMin !== null && this.xMax !== null &&
+      this.yMin !== null && this.yMax !== null) {
       this.dialogRef.close({
         cellWidth: this.cellWidth,
         cellHeight: this.cellHeight,
-        minX: this.minX,
-        maxX: this.maxX,
-        minY: this.minY,
-        maxY: this.maxY
+        xMin: this.xMin,
+        xMax: this.xMax,
+        yMin: this.yMin,
+        yMax: this.yMax
       });
     }
   }

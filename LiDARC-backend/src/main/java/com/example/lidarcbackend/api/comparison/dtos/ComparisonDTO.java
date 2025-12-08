@@ -27,7 +27,7 @@ public class ComparisonDTO {
 
     private String status;
 
-    private String resultReportUrl;
+    private String latestReport;
 
     private String errorMessage;
 
