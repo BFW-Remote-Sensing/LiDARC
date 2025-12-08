@@ -24,6 +24,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +70,16 @@ public class ReportService implements IReportService {
                 .title(report.getTitle())
                 .fileName(report.getFileName())
                 .build();
+    }
+
+    @Override
+    public List<ReportInfoDto> getReportsOfComparsion(Long comparisonId) throws NotFoundException {
+        List<Report> reports =  this.reportRepository.findAllByComparisonId(comparisonId).orElseThrow(() -> new NotFoundException("No comparison found with id: " + comparisonId));
+        List<ReportInfoDto> reportInfoDtos = new ArrayList<>();
+        for  (Report report : reports) {
+            reportInfoDtos.add(ReportInfoDto.builder().id(report.getId()).title(report.getTitle()).fileName(report.getFileName()).build());
+        }
+        return reportInfoDtos;
     }
 
 

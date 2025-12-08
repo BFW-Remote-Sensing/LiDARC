@@ -46,7 +46,7 @@ public class ComparisonController {
 
 
     @Autowired
-    public ComparisonController(ComparisonService comparisonService, IReportService reportService, IImageService imageService) {
+    public ComparisonController(ComparisonService comparisonService, IReportService reportService) {
         this.comparisonService = comparisonService;
         this.reportService = reportService;
     }
@@ -104,9 +104,14 @@ public class ComparisonController {
     }
 
     @GetMapping("/{id}/reports")
-    public ResponseEntity<?> getReportsOfComparison(@PathVariable Long id) {
-        //TODO
-        return null;
+    public ResponseEntity<List<ReportInfoDto>> getReportsOfComparison(@PathVariable Long id) {
+        log.info("GET /api/v1/comparisons/{}/reports", id);
+        try {
+            return ResponseEntity.status(HttpStatus.OK).body(reportService.getReportsOfComparsion(id));
+        } catch (NotFoundException e) {
+            logClientError(HttpStatus.NOT_FOUND, "Comparison not found for Report", e);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+        }
     }
 
 
@@ -118,7 +123,7 @@ public class ComparisonController {
                     schema = @Schema(implementation = CreateReportDto.class)))
             @Valid @RequestPart("report") CreateReportDto report,
             @Parameter(description = "Report images", content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE))
-            @RequestPart(value = "files", required = false) MultipartFile[] files) throws NotFoundException {
+            @RequestPart(value = "files", required = false) MultipartFile[] files) {
         log.info("POST /api/v1/reports");
         try {
             ReportInfoDto createdReport = reportService.createReport(id, report, files);
