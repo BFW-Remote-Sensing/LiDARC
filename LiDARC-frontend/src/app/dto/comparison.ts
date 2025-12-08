@@ -23,7 +23,7 @@ export type ComparisonDTO = CreateComparison & {
     id: number;
     createdAt: string;
     status: string;
-    resultReportUrl: string | null;
+    latestReport: string | null;
     errorMessage: string | null;
     files: FileMetadataDTO[];
 }

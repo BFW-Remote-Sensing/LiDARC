@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.PageRequest;
@@ -40,7 +41,8 @@ import java.util.List;
 public class ComparisonController {
     private final ComparisonService comparisonService;
     private final IReportService reportService;
-    public static final String UPLOAD_DIRECTORY = "src/main/resources/static/reports"; //TODO: MAYBE CHANGE TO MINIO BUCKET IF WANTED
+    @Value("${app.upload.dir:uploads}")
+    private String UPLOAD_DIRECTORY; //TODO: MAYBE CHANGE TO MINIO BUCKET IF WANTED
 
 
     @Autowired

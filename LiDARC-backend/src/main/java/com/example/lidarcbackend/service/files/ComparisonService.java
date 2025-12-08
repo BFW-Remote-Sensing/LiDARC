@@ -65,7 +65,7 @@ public class ComparisonService implements IComparisonService {
         List<ComparisonDTO> dtoList = comparisonPage.getContent().stream().map(comparison -> {
             ComparisonDTO dto = mapper.toDto(comparison);
             reportRepository.findTopByComparisonIdOrderByCreationDateDesc(comparison.getId())
-                    .ifPresent(report -> dto.setLatestReport("/api/v1/reports/" + report.getId() + "/download"));
+                    .ifPresent(report -> dto.setLatestReport("/reports/" + report.getId() + "/download"));
             List<Long> fileMetadataIds = comparisonFileRepository
                     .getComparisonFilesByComparisonId(comparison.getId());
 
@@ -91,7 +91,7 @@ public class ComparisonService implements IComparisonService {
         return comparisons.stream().map(comparison -> {
             ComparisonDTO dto = mapper.toDto(comparison);
             reportRepository.findTopByComparisonIdOrderByCreationDateDesc(comparison.getId())
-                    .ifPresent(report -> dto.setLatestReport("/api/v1/reports/" + report.getId() + "/download"));
+                    .ifPresent(report -> dto.setLatestReport("/reports/" + report.getId() + "/download"));
 
             List<Long> fileMetadataIds = comparisonFileRepository
                     .getComparisonFilesByComparisonId(comparison.getId());
@@ -170,7 +170,7 @@ public class ComparisonService implements IComparisonService {
         ComparisonDTO dto = comparisonRepository.findById(comparisonId).map(mapper::toDto).orElse(null);
         if (dto == null) return null;
         reportRepository.findTopByComparisonIdOrderByCreationDateDesc(dto.getId())
-                .ifPresent(report -> dto.setLatestReport("/api/v1/reports/" + report.getId() + "/download"));
+                .ifPresent(report -> dto.setLatestReport("/reports/" + report.getId() + "/download"));
         List<Long> fileMetadataIds = comparisonFileRepository.getComparisonFilesByComparisonId(comparisonId);
         List<String> fileMetadataIdStrings = fileMetadataIds.stream()
                 .map(String::valueOf)

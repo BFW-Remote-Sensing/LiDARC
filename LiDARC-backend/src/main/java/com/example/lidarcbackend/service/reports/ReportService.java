@@ -8,7 +8,6 @@ import com.example.lidarcbackend.model.entity.Comparison;
 import com.example.lidarcbackend.model.entity.Report;
 import com.example.lidarcbackend.repository.ComparisonRepository;
 import com.example.lidarcbackend.repository.ReportRepository;
-import com.itextpdf.text.BadElementException;
 import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.Element;
@@ -17,12 +16,12 @@ import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.pdf.PdfWriter;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -30,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static com.example.lidarcbackend.api.ReportController.UPLOAD_DIRECTORY;
 
 @Slf4j
 @Service
@@ -40,6 +38,9 @@ public class ReportService implements IReportService {
     private final ReportRepository reportRepository;
     private final ComparisonRepository comparisonRepository;
     private static final String LOGO_PATH = "src/main/resources/static/images/lidarc_logo.png";
+    @Value("${app.upload.dir:/app/uploads}")
+    private String UPLOAD_DIRECTORY;
+
     public ReportService(ReportComponentFactory reportComponentFactory,  ReportRepository reportRepository, ComparisonRepository comparisonRepository) {
         this.reportComponentFactory = reportComponentFactory;
         this.reportRepository = reportRepository;
