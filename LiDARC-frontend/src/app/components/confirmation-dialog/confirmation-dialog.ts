@@ -16,16 +16,7 @@ export interface ConfirmationDialogData {
     MatDialogModule,
     MatButtonModule
   ],
-  template: `
-    <h2 mat-dialog-title>{{ data.title }}</h2>
-    <mat-dialog-content>{{ data.subtitle }}</mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button (click)="onCancel()">{{ data.secondaryButtonText || 'Cancel' }}</button>
-      <button mat-raised-button color="primary" (click)="onConfirm()">
-        {{ data.primaryButtonText || 'Confirm' }}
-      </button>
-    </mat-dialog-actions>
-  `,
+  templateUrl: './confirmation-dialog.html',
 })
 export class ConfirmationDialogComponent {
   constructor(
