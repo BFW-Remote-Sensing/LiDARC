@@ -184,6 +184,8 @@ public class ComparisonService implements IComparisonService {
 
     @Override
     public void processPreprocessingResult(Map<String, Object> result) {
+        //TODO proper error handling
+
         log.info("Processing Preprocessing result...");
 
         String status = (String) result.get("status");
@@ -198,16 +200,30 @@ public class ComparisonService implements IComparisonService {
 
         Integer comparisonId = (Integer) payload.get("comparisonId");
         Integer fileId = (Integer) payload.get("fileId");
-        if (comparisonId == null || fileId == null) {
-            log.error("Missing comparisonId or fileId in preprocessing payload.");
+        if (comparisonId == null) {
+            log.error("Missing comparisonId in preprocessing payload.");
             return;
         }
+
+        Optional<Comparison> comparisonOpt = comparisonRepository.findComparisonsById(comparisonId.longValue());
+        if(comparisonOpt.isEmpty()){
+            log.error("comparison file entry not found for comparisonId={}", comparisonId);
+            return;
+        }
+        Comparison comparison = comparisonOpt.get();
+
+        if (fileId == null) {
+            log.error("Missing fileId in preprocessing payload.");
+            persistComparisonError(comparison, "Missing fileId in preprocessing payload.");
+            return;
+        }
+
 
         if (!status.equalsIgnoreCase("success")) {
             Object payloadMsg = ((Map<?, ?>) payload).get("msg");
             if (payloadMsg instanceof String errorMessage) {
-                //Todo set status to error + store error message?
                 log.warn("Preprocessing job {} failed: {}", jobId, errorMessage);
+                persistComparisonError(comparison, errorMessage);
                 return;
             }
         }
@@ -215,6 +231,7 @@ public class ComparisonService implements IComparisonService {
         Map<String, Object> resultObj = (Map<String, Object>) payload.get("result");
         if (resultObj == null) {
             log.error("Missing result object for file {}", fileId);
+            persistComparisonError(comparison, "Missing result object for file " + fileId);
             return;
         }
 
@@ -223,7 +240,13 @@ public class ComparisonService implements IComparisonService {
 
         Optional<ComparisonFile> cfOpt = comparisonFileRepository.findComparisonFiles(comparisonId, fileId);
         if(cfOpt.isEmpty()){
-            log.error("comparison_file entry not found for comparisonId={} fileId={}", comparisonId, fileId);
+            String errorMsg = String.format(
+                    "comparison_file entry not found for comparisonId=%s fileId=%s",
+                    comparisonId,
+                    fileId
+            );
+            log.error(errorMsg);
+            persistComparisonError(comparison, errorMsg);
             return;
         }
 
@@ -237,6 +260,7 @@ public class ComparisonService implements IComparisonService {
 
     @Override
     public void processComparisonResult(Map<String, Object> result) {
+        //TODO proper error handling
         log.info("Processing Comparison result...");
 
         String status = (String) result.get("status");
@@ -255,11 +279,19 @@ public class ComparisonService implements IComparisonService {
             return;
         }
 
+        Optional<Comparison> comparisonOpt = comparisonRepository.findComparisonsById(comparisonId.longValue());
+        if(comparisonOpt.isEmpty()){
+            log.error("comparison  entry not found for comparisonId={}", comparisonId);
+            return;
+        }
+        Comparison comparison = comparisonOpt.get();
+
+
         if (!status.equalsIgnoreCase("success")) {
             Object payloadMsg = ((Map<?, ?>) payload).get("msg");
             if (payloadMsg instanceof String errorMessage) {
-                //Todo set status to error + store error message?
                 log.warn("Comparison job {} failed: {}", jobId, errorMessage);
+                persistComparisonError(comparison, errorMessage);
                 return;
             }
         }
@@ -268,12 +300,12 @@ public class ComparisonService implements IComparisonService {
         String bucket = resultLocation.get("bucket");
         String objectKey = resultLocation.get("objectKey");
 
-        Optional<Comparison> cOpt = comparisonRepository.findComparisonsById(comparisonId.longValue());
-        if(cOpt.isEmpty()){
-            log.error("comparison entry not found for comparisonId={}", comparisonId);
+        if(bucket == null || objectKey == null){
+            log.error("Missing bucket or objectKey in payload.");
+            persistComparisonError(comparison, "Missing bucket or objectKey in payload.");
             return;
         }
-        Comparison comparison = cOpt.get();
+
         comparison.setStatus(Comparison.Status.COMPLETED);
         comparison.setResultBucket(bucket);
         comparison.setResultObjectKey(objectKey);
@@ -304,5 +336,9 @@ public class ComparisonService implements IComparisonService {
         }
     }
 
-
+    private void persistComparisonError(Comparison comparison, String errorMsg) {
+        comparison.setStatus(Comparison.Status.FAILED);
+        comparison.setErrorMessage(errorMsg);
+        comparisonRepository.save(comparison);
+    }
 }
