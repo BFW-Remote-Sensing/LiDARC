@@ -20,6 +20,12 @@ public class ComparisonFile {
     @Column(name = "file_id")
     private Long fileId;
 
+    @Column(name = "bucket")
+    private String bucket;
+
+    @Column(name = "object_key")
+    private String objectKey;
+
     public ComparisonFile() {
 
     }

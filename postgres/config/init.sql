@@ -59,12 +59,16 @@ CREATE TABLE IF NOT EXISTS comparisons (
     grid_min_x DOUBLE PRECISION,
     grid_max_x DOUBLE PRECISION,
     grid_min_y DOUBLE PRECISION,
-    grid_max_y DOUBLE PRECISION
+    grid_max_y DOUBLE PRECISION,
+    result_bucket TEXT,
+    result_object_key TEXT
 );
 
 CREATE TABLE IF NOT EXISTS comparison_file (
     comparison_id INTEGER NOT NULL,
     file_id INTEGER NOT NULL,
+    bucket TEXT,
+    object_key TEXT,
     CONSTRAINT pk_comparison_file PRIMARY KEY (comparison_id, file_id),
     CONSTRAINT fk_comparison_id FOREIGN KEY (comparison_id) REFERENCES comparisons(id) ON DELETE CASCADE,
     CONSTRAINT fk_file_id FOREIGN KEY (file_id) REFERENCES files(id)
