@@ -1,0 +1,127 @@
+.flex-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 50px;
+}
+
+.coordinate {
+    margin-left: 20px
+}
+
+/* Container for the entire layout */
+.file-details-container {
+    padding: 20px 40px; /* Generous padding for laptop viewing */
+}
+
+/* Header Banner Styling */
+.metadata-header {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+.metadata-header h1 {
+    margin: 0 0 0 15px;
+    font-size: 1.8em;
+    flex-grow: 1; /* Pushes the status chip to the right */
+}
+
+.header-icon {
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+}
+
+.status-chip {
+    margin-left: auto;
+    padding-left: 10px;
+    .processed {
+        background-color: green;
+
+    }
+
+    .failed {
+        background-color: red;
+    }
+
+    .chip-text {
+        color: white;
+        font-weight: bold;
+    }
+}
+
+
+/* Two-Column Layout for the Content */
+.content-wrapper {
+    display: flex;
+    gap: 30px; /* Space between columns */
+}
+
+.general-info-section,
+.technical-info-section {
+    flex: 1; /* Each section takes equal width */
+}
+
+/* Section Headings */
+h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 10px;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+h3 {
+    margin-bottom: 10px;
+    padding: 0 !important;
+}
+
+mat-list {
+    padding: 0;
+}
+
+/* Material List Customization */
+mat-list-item {
+    padding: 10px 0;
+    height: auto !important; /* Override default fixed height */
+}
+
+.mat-list-item-row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+/* Expansion Panel Styling */
+mat-expansion-panel {
+    margin-bottom: 20px;
+}
+
+/* Bounding Box Styling */
+.bounding-box-flex {
+    display: flex;
+    justify-content: space-between;
+    gap: 40px;
+    padding: 10px 16px;
+}
+
+.bounding-box-flex h3 {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 1.1em;
+    color: #444;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+    margin-top: 0;
+}
+
+.bounding-box-flex p {
+    margin: 4px 0;
+    padding-left: 5px;
+}

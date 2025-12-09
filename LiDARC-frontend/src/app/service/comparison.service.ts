@@ -3,6 +3,7 @@ import { Injectable } from "@angular/core";
 import { defaultComparisonPath, Globals } from "../globals/globals";
 import { Observable } from "rxjs";
 import { ComparisonDTO, CreateComparison } from "../dto/comparison";
+import { ComparisonReport } from "../dto/comparisonReport";
 
 const headers = new HttpHeaders({
     'Content-Type': 'application/json',
@@ -21,6 +22,13 @@ export class ComparisonService {
     getComparisonById(id: number): Observable<ComparisonDTO> {
         return this.httpClient.get<ComparisonDTO>(
             this.globals.backendUri + defaultComparisonPath + `/${id}`,
+            { headers }
+        );
+    }
+
+    getComparisonReportsById(id: number): Observable<ComparisonReport[]> {
+        return this.httpClient.get<ComparisonReport[]>(
+            this.globals.backendUri + defaultComparisonPath + `/${id}/reports`,
             { headers }
         );
     }

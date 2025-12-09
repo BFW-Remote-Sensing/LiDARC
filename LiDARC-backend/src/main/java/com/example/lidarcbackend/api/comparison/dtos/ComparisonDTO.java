@@ -9,7 +9,6 @@ import java.util.List;
 
 @Getter
 @Setter
-
 public class ComparisonDTO {
     private Long id;
 
@@ -30,6 +29,8 @@ public class ComparisonDTO {
     private String latestReport;
 
     private String errorMessage;
+
+    private GridParameters grid;
 
     private List<FileMetadataDTO> files;
 

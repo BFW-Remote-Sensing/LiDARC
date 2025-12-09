@@ -2,6 +2,7 @@ package com.example.lidarcbackend.api.comparison;
 
 import com.example.lidarcbackend.api.comparison.dtos.ComparisonDTO;
 import com.example.lidarcbackend.api.comparison.dtos.CreateComparisonRequest;
+import com.example.lidarcbackend.api.comparison.dtos.GridParameters;
 import com.example.lidarcbackend.model.entity.Comparison;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +22,15 @@ public class ComparisonMapper {
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setStatus(entity.getStatus().toString());
         dto.setErrorMessage(entity.getErrorMessage());
+        GridParameters grid = new GridParameters(
+                entity.getGridCellWidth(),
+                entity.getGridCellHeight(),
+                entity.getGridMinX(),
+                entity.getGridMaxX(),
+                entity.getGridMinY(),
+                entity.getGridMaxY()
+        );
+        dto.setGrid(grid);
         return dto;
     }
     public Comparison toEntityFromRequest(CreateComparisonRequest request) {
@@ -37,10 +47,10 @@ public class ComparisonMapper {
         newComparison.setCreatedAt(java.time.LocalDateTime.now());
         newComparison.setGridCellHeight(request.getGrid().getCellHeight());
         newComparison.setGridCellWidth(request.getGrid().getCellWidth());
-        newComparison.setGridMinX(request.getGrid().getXMin());
-        newComparison.setGridMinY(request.getGrid().getYMin());
-        newComparison.setGridMaxX(request.getGrid().getXMax());
-        newComparison.setGridMaxY(request.getGrid().getYMax());
+        newComparison.setGridMinX(request.getGrid().getxMax());
+        newComparison.setGridMinY(request.getGrid().getyMin());
+        newComparison.setGridMaxX(request.getGrid().getxMax());
+        newComparison.setGridMaxY(request.getGrid().getyMax());
         return newComparison;
     }
 }

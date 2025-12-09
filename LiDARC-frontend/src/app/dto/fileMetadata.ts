@@ -2,7 +2,7 @@ export interface FileMetadataDTO {
     id: number;
     filename: string;
     originalFilename: string;
-    captureYear: number;
+    captureYear?: number;
     sizeBytes: number;
     minX: number;
     minY: number;

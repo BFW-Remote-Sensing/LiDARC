@@ -1,1 +1,227 @@
-<p>comparison-details works!</p>
+@if (loading()) {
+<div class="flex-center">
+    <mat-spinner></mat-spinner>
+</div>
+}
+@else if (!loading() && !comparison && !errorMessage()) {
+<app-text-card type="info" message="No file found."></app-text-card>
+}
+@else if (errorMessage()) {
+<app-text-card type="error" message="{{ errorMessage() }}"></app-text-card>
+}
+@else if(comparison) {
+<div class="file-details-container">
+
+    <header class="metadata-header mat-elevation-z2">
+        <mat-icon class="header-icon">description</mat-icon>
+        <h1>Comparison Details: {{ comparison.name }}</h1>
+    </header>
+
+    <div class="content-wrapper">
+
+        <section class="general-info-section">
+            <h2><mat-icon>info</mat-icon> General Information</h2>
+            <mat-list role="list">
+
+                <mat-list-item role="listitem">
+                    <mat-icon matListItemIcon>adjust</mat-icon>
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span>
+                            Status
+                        </span>
+                        <span>
+                            {{ comparison.status | titlecase }}
+                        </span>
+                    </div>
+                </mat-list-item>
+                <mat-divider></mat-divider>
+
+                <mat-list-item role="listitem">
+                    <mat-icon matListItemIcon>calendar_today</mat-icon>
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span>
+                            Created At
+                        </span>
+                        <span>
+                            {{ comparison.createdAt ? (comparison.createdAt | date:'medium') : 'N/A' }}
+                        </span>
+                    </div>
+                </mat-list-item>
+                <mat-divider></mat-divider>
+
+                <mat-list-item role="listitem">
+                    <mat-icon matListItemIcon>bar_chart_4_bars</mat-icon>
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span>
+                            Highest Vegetation
+                        </span>
+                        <span>
+                            <mat-icon [color]="comparison.needHighestVegetation ? 'primary' : 'warn'">
+                                {{ comparison.needHighestVegetation ? 'check_circle' : 'cancel' }}
+                            </mat-icon>
+                        </span>
+                    </div>
+                </mat-list-item>
+                <mat-divider></mat-divider>
+
+                <mat-list-item role="listitem">
+                    <mat-icon matListItemIcon>bar_chart_4_bars</mat-icon>
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span>
+                            Outlier Detection
+                        </span>
+                        <span>
+                            <mat-icon [color]="comparison.needOutlierDetection ? 'primary' : 'warn'">
+                                {{ comparison.needOutlierDetection ? 'check_circle' : 'cancel' }}
+                            </mat-icon>
+                        </span>
+                    </div>
+                </mat-list-item>
+                <mat-divider></mat-divider>
+
+                <mat-list-item role="listitem">
+                    <mat-icon matListItemIcon>bar_chart_4_bars</mat-icon>
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span>
+                            Statistics Over Scenery
+                        </span>
+                        <span>
+                            <mat-icon [color]="comparison.needStatisticsOverScenery ? 'primary' : 'warn'">
+                                {{ comparison.needStatisticsOverScenery ? 'check_circle' : 'cancel' }}
+                            </mat-icon>
+                        </span>
+                    </div>
+                </mat-list-item>
+                <mat-divider></mat-divider>
+
+                <mat-list-item role="listitem">
+                    <mat-icon matListItemIcon>bar_chart_4_bars</mat-icon>
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span>
+                            Most Differences
+                        </span>
+                        <span>
+                            <mat-icon [color]="comparison.needMostDifferences ? 'primary' : 'warn'">
+                                {{ comparison.needMostDifferences ? 'check_circle' : 'cancel' }}
+                            </mat-icon>
+                        </span>
+                    </div>
+                </mat-list-item>
+            </mat-list>
+            <h2 style="margin-top: 20px;"><mat-icon>folder</mat-icon>Compared Files</h2>
+            <mat-list role="list">
+                @for (file of comparison.files; track file.id; let last = $last) {
+
+                <mat-list-item role="listitem">
+                    <mat-icon matListItemIcon>insert_drive_file</mat-icon>
+
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span class="file-name">
+                            {{ file.originalFilename | titlecase }}
+                        </span>
+
+                        <span>
+                            <a [routerLink]="['/stored-files', file.id]">
+                                <button mat-icon-button matTooltip="View Details" matTooltipPosition="right">
+                                    <mat-icon>visibility</mat-icon>
+                                </button>
+                            </a>
+                        </span>
+                    </div>
+                </mat-list-item>
+
+                @if (!last) {
+                <mat-divider></mat-divider>
+                }}
+            </mat-list>
+
+        </section>
+
+        <mat-divider vertical="true"></mat-divider>
+
+        <section class="technical-info-section">
+            <h2><mat-icon>grid_on</mat-icon>Grid Parameters</h2>
+
+            <div class="bounding-box-flex align-center">
+                <h4>
+                    Cell Width:
+                    <span class="coordinate">
+                        {{ comparison.grid?.cellWidth != null ? (comparison.grid?.cellWidth | number:'1.2-6') : 'N/A' }}
+                        m
+                    </span>
+                </h4>
+                <h4>
+                    Cell Height:
+                    <span class="coordinate">
+                        {{ comparison.grid?.cellHeight != null ? (comparison.grid?.cellHeight | number:'1.2-6') : 'N/A'
+                        }} m
+                    </span>
+                </h4>
+            </div>
+            <mat-divider></mat-divider>
+            <div class="bounding-box-flex align-center">
+                <h4>
+                    X<sub style="font-size: 0.6em;">min</sub>:
+                    <span class="coordinate">
+                        {{ comparison.grid?.xMin != null ? (comparison.grid?.xMin | number:'1.2-6') : 'N/A' }}
+                    </span>
+                </h4>
+                <mat-icon>east</mat-icon>
+                <h4>
+                    X<sub style="font-size: 0.6em;">max</sub>:
+                    <span class="coordinate">
+                        {{ comparison.grid?.xMax != null ? (comparison.grid?.xMax | number:'1.2-6') : 'N/A' }}
+                    </span>
+                </h4>
+            </div>
+            <mat-divider></mat-divider>
+            <div class="bounding-box-flex align-center">
+                <h4>
+                    Y<sub style="font-size: 0.6em;">min</sub>:
+                    <span class="coordinate">
+                        {{ comparison.grid?.yMin != null ? (comparison.grid?.yMin | number:'1.2-6') : 'N/A' }}
+                    </span>
+                </h4>
+                <mat-icon>east</mat-icon>
+                <h4>
+                    Y<sub style="font-size: 0.6em;">max</sub>:
+                    <span class="coordinate">
+                        {{ comparison.grid?.yMax != null ? (comparison.grid?.yMax | number:'1.2-6') : 'N/A' }}
+                    </span>
+                </h4>
+            </div>
+            <h2 style="margin-top: 10px;"><mat-icon>assignment</mat-icon>Reports</h2>
+            <mat-list role="list">
+                @for (report of reports; track report.id; let last = $last) {
+
+                <mat-list-item role="listitem">
+                    <mat-icon matListItemIcon>insert_drive_file</mat-icon>
+
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span class="file-name">
+                            {{ report.title | titlecase }}
+                        </span>
+
+                        <span>
+                            {{ report.fileName | titlecase }}
+                        </span>
+                    </div>
+                </mat-list-item>
+
+                @if (!last) {
+                <mat-divider></mat-divider>
+                }}
+                @if (reports.length === 0) {
+                <mat-list-item role="listitem">
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span style="font-style: italic; color: gray; margin-left: 10px;">
+                            No reports available.
+                        </span>
+                    </div>
+                </mat-list-item>
+                }
+            </mat-list>
+        </section>
+    </div>
+</div>
+}

@@ -13,8 +13,9 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { FileMetadataDTO } from '../../dto/fileMetadata';
 import {Globals, pollingIntervalMs, snackBarDurationMs} from '../../globals/globals';
+import { MatCardModule } from '@angular/material/card';
+import { TextCard } from '../text-card/text-card';
 
 @Component({
   selector: 'app-comparisons',
@@ -28,12 +29,15 @@ import {Globals, pollingIntervalMs, snackBarDurationMs} from '../../globals/glob
     RouterModule,
     CommonModule,
     MatTooltipModule,
-    MatProgressSpinner],
+    MatProgressSpinner,
+    MatCardModule,
+    TextCard
+  ],
   templateUrl: './comparisons.html',
   styleUrls: ['./comparisons.scss', '../stored-files/stored-files.scss'],
 })
 export class Comparisons {
-  displayedColumns: string[] = ['name', 'status', 'filesLength', 'highestVegetation', 'outlierDetection', 'statisticsOverScenery', 'mostDifferences', 'resultReportUrl', 'createdAt'];//, 'actions'];
+  displayedColumns: string[] = ['name', 'status', 'filesLength', 'highestVegetation', 'outlierDetection', 'statisticsOverScenery', 'mostDifferences', 'resultReportUrl', 'createdAt', 'actions'];
   dataSource = new MatTableDataSource<ComparisonDTO>([]);
   private readonly comparisonService = inject(ComparisonService);
   public loading: WritableSignal<boolean> = signal(true);

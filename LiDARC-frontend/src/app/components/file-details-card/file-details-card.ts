@@ -11,6 +11,8 @@ import { CommonModule } from '@angular/common';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { finalize } from 'rxjs';
 import { MatIcon } from '@angular/material/icon';
+import { TextCard } from '../text-card/text-card';
+import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
 import { FormatService } from '../../service/format.service';
 
 @Component({
@@ -23,31 +25,30 @@ import { FormatService } from '../../service/format.service';
     MatGridListModule,
     MatExpansionModule,
     MatProgressSpinnerModule,
-    MatIcon
+    MatIcon,
+    TextCard,
+    FormatBytesPipe
   ],
   templateUrl: './file-details-card.html',
   styleUrl: './file-details-card.scss',
 })
 export class FileDetailsCard implements OnInit {
+  @Input() index: string = '';
   @Input() metadataId: number | null = null;
   private metadataService = inject(MetadataService);
   @Input() metadata: FileMetadataDTO | null = null;
   public loading: WritableSignal<boolean> = signal(true);
   public errorMessage = signal<string | null>(null);
 
-  formattedSize: string = '';
-
   constructor(private formatService: FormatService) { }
 
   ngOnInit(): void {
-    this.formattedSize = this.formatService.formatBytes(0);
     if (this.metadataId) {
       this.metadataService.getMetadataById(+this.metadataId)
         .pipe(finalize(() => this.loading.set(false)))
         .subscribe({
           next: (data) => {
-            this.metadata = data;
-            this.formattedSize = this.formatService.formatBytes(data.sizeBytes);
+            this.metadata = this.formatService.formatMetadata(data);
           },
           error: (error) => {
             console.error('Error fetching metadata by ID:', error);
