@@ -21,6 +21,7 @@ export class FormatService {
   formatMetadata(metadata: FileMetadataDTO): FileMetadataDTO {
     return {
       ...metadata,
+      status: metadata.status === 'UPLOADED' ? 'PROCESSED' : metadata.status,
       systemIdentifier: 'EPSG 31256',
     };
   }
