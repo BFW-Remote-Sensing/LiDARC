@@ -78,8 +78,8 @@ def compare_files(path_a: str, path_b: str) -> dict:
     #TODO handle errors
     df_a = pd.read_csv(path_a)
     df_b = pd.read_csv(path_b)
-    logging.info("Loaded CSV A with %d rows", len(df_a))
-    logging.info("Loaded CSV B with %d rows", len(df_b))
+    logging.debug("Loaded CSV A with %d rows", len(df_a))
+    logging.debug("Loaded CSV B with %d rows", len(df_b))
 
     # TODO should be in a defined format after preprocessing
     def normalize(df: pd.DataFrame, column: str = "veg_height_max") -> pd.DataFrame:
@@ -90,10 +90,10 @@ def compare_files(path_a: str, path_b: str) -> dict:
         max_val = df[column].max()
 
         if max_val > 100:  # extremely unlikely for meters
-            logging.info(f"Detected veg height in mm → converting to meters")
+            logging.debug(f"Detected veg height in mm → converting to meters")
             df[column] = df[column] / 1000.0
         else:
-            logging.info("Detected veg height already in meters")
+            logging.debug("Detected veg height already in meters")
         return df
 
     df_a = normalize(df_a, "veg_height_max")
@@ -114,10 +114,10 @@ def compare_files(path_a: str, path_b: str) -> dict:
 
     merged["delta_z"] = merged["veg_height_max_b"] - merged["veg_height_max_a"]
 
-    logging.info("Merged into %d matched grid cells", len(merged))
+    logging.debug("Merged into %d matched grid cells", len(merged))
 
 
-    logging.info("Calculating Statistics:")
+    logging.debug("Calculating Statistics...")
 
     # basic metrics of veg_height b
     stats_b = {
@@ -177,7 +177,7 @@ def compare_files(path_a: str, path_b: str) -> dict:
 
 
     # TODO consider if needed (probably also histogram bins?)
-    #logging.info("Simple Categorization:")
+    #logging.debug("Simple Categorization:")
     # categorization
     #categories = pd.cut(
     #    merged["delta_z"].abs(),
@@ -185,8 +185,8 @@ def compare_files(path_a: str, path_b: str) -> dict:
     #    labels=["almost equal", "slightly different", "different", "highly different"]
     #)
     #category_counts = categories.value_counts()
-    #logging.info("Simple Categorization:")
-    #logging.info(f"Category counts:\n{category_counts}")
+    #logging.debug("Simple Categorization:")
+    #logging.debug(f"Category counts:\n{category_counts}")
 
     cells = merged.apply(
         lambda row: {
