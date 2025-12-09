@@ -1,4 +1,7 @@
 import logging
+import shutil
+import tempfile
+
 import pika
 import time
 import json
@@ -68,17 +71,30 @@ def validate_request(json_req):
         logging.warning(f"The comparison job request is invalid")
         return False
 
-def compare_files() -> dict:
-    # TODO remove lines below; just sample files for testing as long as files not in minio
-    csv1 = "/data/pre-process-job-1012-output.csv"
-    csv2 = "/data/pre-process-job-1013-output.csv"
-    df_a = pd.read_csv(csv1)
-    df_b = pd.read_csv(csv2)
+def compare_files(path_a: str, path_b: str) -> dict:
+    #TODO handle errors
+    df_a = pd.read_csv(path_a)
+    df_b = pd.read_csv(path_b)
     logging.info("Loaded CSV A with %d rows", len(df_a))
     logging.info("Loaded CSV B with %d rows", len(df_b))
 
     # TODO should be in a defined format after preprocessing
-    df_a["veg_height_max"] = df_a["veg_height_max"] / 1000.0
+    def normalize(df: pd.DataFrame, column: str = "veg_height_max") -> pd.DataFrame:
+        if column not in df.columns:
+            raise ValueError(f"Column '{column}' not found in dataframe")
+
+        # Heuristic: if max height > 1000 → probably millimeters
+        max_val = df[column].max()
+
+        if max_val > 100:  # extremely unlikely for meters
+            logging.info(f"Detected veg height in mm → converting to meters")
+            df[column] = df[column] / 1000.0
+        else:
+            logging.info("Detected veg height already in meters")
+        return df
+
+    df_a = normalize(df_a, "veg_height_max")
+    df_b = normalize(df_b, "veg_height_max")
 
     merged = df_a.merge(
         df_b,
@@ -94,7 +110,6 @@ def compare_files() -> dict:
     logging.info("Calculating Statistics:")
 
     # basic metrics of veg_height b
-
     stats_b = {
         "mean_veg_height": merged["veg_height_max_b"].mean(),
         "median_veg_height": merged["veg_height_max_b"].median(),
@@ -110,6 +125,7 @@ def compare_files() -> dict:
         }
     }
 
+    # basic metrics of veg_height b
     stats_a = {
         "mean_veg_height": merged["veg_height_max_a"].mean(),
         "median_veg_height": merged["veg_height_max_a"].median(),
@@ -124,11 +140,6 @@ def compare_files() -> dict:
             "p90": float(np.percentile(merged["veg_height_max_a"], 90)),
         }
     }
-
-    diffs = merged["delta_z"]
-    neg = diffs[diffs <= 0]
-    pos = diffs[diffs >= 0]
-
 
     # calculate basic statistics of the difference
     diffs = merged["delta_z"]
@@ -188,13 +199,13 @@ def compare_files() -> dict:
             "difference": stats_diff
         }
     }
-
     return result
 
 
 def process_req(ch, method, props, body):
     start_time = time.time()
     job_id = ""
+    temp_dir = tempfile.mkdtemp()
     try:
         req = json.loads(body)
         if not req["jobId"]:
@@ -207,48 +218,41 @@ def process_req(ch, method, props, body):
             publish_response(ch, mk_error_msg(job_id, "Comparison job is cancelled because job request is invalid"))
             return
 
-        comparison_result = compare_files()
+        downloaded_files = []
+        for f in req["files"]:
+            try:
+                local_path = file_handler.fetch_file(
+                    {
+                        "bucket": f["bucket"],
+                        "objectKey": f["objectKey"]
+                    },
+                    dest_dir=temp_dir
+                )
+                downloaded_files.append(local_path)
+
+            except HTTPError as e:
+                logging.warning(f"Couldn't download file {f}: {e}")
+                publish_response(ch, mk_error_msg(job_id, f"Couldn't download file from MinIO"))
+                return
+
+
+        comparison_result = compare_files(downloaded_files[0], downloaded_files[1])
 
         destination_file = f"comparison-job-{job_id}.json"
 
         try:
-            file_handler.upload_json(destination_file, comparison_result)
+            result = file_handler.upload_json(destination_file, comparison_result)
+            publish_response(ch, mk_success_msg(job_id, result))
         except Exception as e:
             logging.error(f"Failed to upload JSON comparison file to MinIO: {e}")
             publish_response(ch, mk_error_msg(job_id, "Failed to store comparison result in MinIO"))
             return
 
-
-
-        # files_local = []
-        # for file_info in req["files"]:
-        #     file_url = file_info["url"]
-        #     file_name = file_info["originalFilename"]
-        #
-        #     try:
-        #         local_file = file_handler.download_file(file_url)
-        #     except HTTPError as e:
-        #         logging.warning("Couldn't download file from: {}, error: {}".format(file_url, e))
-        #         publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, comparison job cancelled".format(file_url)))
-        #         return
-        #     if local_file == "":
-        #         logging.warning("File not downloaded, stopping processing the request!")
-        #         publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, comparison job cancelled".format(file_url)))
-        #         return
-        #     files_local.append({
-        #         "originalFilename": file_name,
-        #         "path": local_file
-        #     })
-        #
-        #
-        # for f in files_local:
-        #     os.remove(f["path"])
-
-
     except Exception as e:
         logging.error(f"Failed to process message: {e}")
         publish_response(ch, mk_error_msg(job_id, "An unexpected error occured, comparison job cancelled"))
     finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
         processing_time = int((time.time() - start_time) * 1000)
         logging.info(f"Worker took {processing_time} ms to process the message.")
 

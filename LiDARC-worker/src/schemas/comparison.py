@@ -1,8 +1,12 @@
 schema = {
     "type": "object",
-    "required": ["jobId", "files"],
+    "required": ["jobId", "comparisonId", "files"],
     "properties": {
         "jobId": {
+            "type": "string",
+            "minLength": 1
+        },
+        "comparisonId": {
             "type": "string",
             "minLength": 1
         },
@@ -12,13 +16,13 @@ schema = {
             "maxItems": 2,
             "items": {
                 "type": "object",
-                "required": ["originalFilename", "url"],
+                "required": ["bucket", "objectKey"],
                 "properties": {
-                    "originalFilename": {
+                    "bucket": {
                         "type": "string",
                         "minLength": 1
                     },
-                    "url": {
+                    "objectKey": {
                         "type": "string",
                         "minLength": 1
                     }
