@@ -56,7 +56,7 @@ def mk_success_msg(job_id: str, comparison_result: dict):
         type = "comparison",
         job_id = job_id,
         status = "success",
-        payload={"result":comparison_result}
+        payload=comparison_result
     )
 
 def publish_response(ch, msg: BaseMessage):
@@ -260,8 +260,8 @@ def process_req(ch, method, props, body):
         try:
             result = file_handler.upload_json(destination_file, comparison_result)
             payload = {
-                "result": result,
-                "comparisonId": comparison_id
+                "comparisonId": int(comparison_id),
+                "result": result
             }
             publish_response(ch, mk_success_msg(job_id, payload))
         except Exception as e:

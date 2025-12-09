@@ -204,7 +204,6 @@ public class ComparisonService implements IComparisonService {
         }
 
         if (!status.equalsIgnoreCase("success")) {
-            //Todo set status to error + store error message?
             Object payloadMsg = ((Map<?, ?>) payload).get("msg");
             if (payloadMsg instanceof String errorMessage) {
                 //Todo set status to error + store error message?
@@ -238,7 +237,47 @@ public class ComparisonService implements IComparisonService {
 
     @Override
     public void processComparisonResult(Map<String, Object> result) {
+        log.info("Processing Comparison result...");
 
+        String status = (String) result.get("status");
+        String jobId = (String) result.get("job_id");
+        Map<String, Object> payload = (Map<String, Object>) result.get("payload");
+
+        if (status == null || jobId == null || payload == null) {
+            //Todo exception?
+            log.error("Invalid result message received, missing jobId, payload or status");
+            return;
+        }
+
+        Integer comparisonId = (Integer) payload.get("comparisonId");
+        if (comparisonId == null) {
+            log.error("Missing comparisonId in comparison payload.");
+            return;
+        }
+
+        if (!status.equalsIgnoreCase("success")) {
+            Object payloadMsg = ((Map<?, ?>) payload).get("msg");
+            if (payloadMsg instanceof String errorMessage) {
+                //Todo set status to error + store error message?
+                log.warn("Comparison job {} failed: {}", jobId, errorMessage);
+                return;
+            }
+        }
+
+        Map<String, String> resultLocation = (Map<String, String>) payload.get("result");
+        String bucket = resultLocation.get("bucket");
+        String objectKey = resultLocation.get("objectKey");
+
+        Optional<Comparison> cOpt = comparisonRepository.findComparisonsById(comparisonId.longValue());
+        if(cOpt.isEmpty()){
+            log.error("comparison entry not found for comparisonId={}", comparisonId);
+            return;
+        }
+        Comparison comparison = cOpt.get();
+        comparison.setStatus(Comparison.Status.COMPLETED);
+        comparison.setResultBucket(bucket);
+        comparison.setResultObjectKey(objectKey);
+        comparisonRepository.save(comparison);
     }
 
     private void checkIfPreprocessingDoneAndStartComparison(Long comparisonId, String jobId) {
