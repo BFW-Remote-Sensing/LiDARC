@@ -40,13 +40,14 @@ def connect_rabbitmq():
             logging.error("RabbitMQ connection failed, Retrying in 5s... Error: {}".format(e))
             time.sleep(5)
 
-def mk_error_msg(job_id: str, error_msg: str):
+def mk_error_msg(job_id: str, error_msg: str, comparison_id: str):
     return BaseMessage(
         type = "comparison",
         job_id = job_id,
         status = "error",
         payload={
-            "msg": error_msg
+            "msg": error_msg,
+            "comparisonId": comparison_id
         }
     )
 
@@ -215,17 +216,23 @@ def compare_files(path_a: str, path_b: str) -> dict:
 def process_req(ch, method, props, body):
     start_time = time.time()
     job_id = ""
+    comparison_id = ""
     temp_dir = tempfile.mkdtemp()
     try:
         req = json.loads(body)
         if not req["jobId"]:
             logging.warning("The comparison job is cancelled because there is no job id")
-            publish_response(ch, mk_error_msg(job_id="", error_msg="Comparison job is cancelled because job has no job id"))
+            publish_response(ch, mk_error_msg(job_id="", error_msg="Comparison job is cancelled because job has no job id", comparison_id=""))
+
+        if not req["comparisonId"]:
+            logging.warning("The comparison job is cancelled because there is no comparison id")
+            publish_response(ch, mk_error_msg(job_id="", error_msg="Comparison job is cancelled because job has no comparison id", comparison_id=""))
 
         job_id = req["jobId"]
+        comparison_id = req["comparisonId"]
         if not validate_request(req):
             logging.warning("The comparison job is cancelled because of a Validation Error")
-            publish_response(ch, mk_error_msg(job_id, "Comparison job is cancelled because job request is invalid"))
+            publish_response(ch, mk_error_msg(job_id, "Comparison job is cancelled because job request is invalid", comparison_id=comparison_id))
             return
 
         downloaded_files = []
@@ -242,7 +249,7 @@ def process_req(ch, method, props, body):
 
             except HTTPError as e:
                 logging.warning(f"Couldn't download file {f}: {e}")
-                publish_response(ch, mk_error_msg(job_id, f"Couldn't download file from MinIO"))
+                publish_response(ch, mk_error_msg(job_id, f"Couldn't download file from MinIO", comparison_id=comparison_id))
                 return
 
 
@@ -252,15 +259,19 @@ def process_req(ch, method, props, body):
 
         try:
             result = file_handler.upload_json(destination_file, comparison_result)
-            publish_response(ch, mk_success_msg(job_id, result))
+            payload = {
+                "result": result,
+                "comparisonId": comparison_id
+            }
+            publish_response(ch, mk_success_msg(job_id, payload))
         except Exception as e:
             logging.error(f"Failed to upload JSON comparison file to MinIO: {e}")
-            publish_response(ch, mk_error_msg(job_id, "Failed to store comparison result in MinIO"))
+            publish_response(ch, mk_error_msg(job_id, "Failed to store comparison result in MinIO", comparison_id))
             return
 
     except Exception as e:
         logging.error(f"Failed to process message: {e}")
-        publish_response(ch, mk_error_msg(job_id, "An unexpected error occured, comparison job cancelled"))
+        publish_response(ch, mk_error_msg(job_id, "An unexpected error occured, comparison job cancelled", comparison_id))
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
         processing_time = int((time.time() - start_time) * 1000)
