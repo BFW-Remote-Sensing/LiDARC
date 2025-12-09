@@ -1,0 +1,5 @@
+export type ComparisonReport = {
+    id: number;
+    title: string;
+    fileName: string;
+}

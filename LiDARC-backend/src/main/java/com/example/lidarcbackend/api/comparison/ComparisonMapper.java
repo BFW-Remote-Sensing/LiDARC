@@ -2,6 +2,7 @@ package com.example.lidarcbackend.api.comparison;
 
 import com.example.lidarcbackend.api.comparison.dtos.ComparisonDTO;
 import com.example.lidarcbackend.api.comparison.dtos.CreateComparisonRequest;
+import com.example.lidarcbackend.api.comparison.dtos.GridParameters;
 import com.example.lidarcbackend.model.entity.Comparison;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +22,15 @@ public class ComparisonMapper {
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setStatus(entity.getStatus().toString());
         dto.setErrorMessage(entity.getErrorMessage());
+        GridParameters grid = new GridParameters(
+                entity.getGridCellWidth(),
+                entity.getGridCellHeight(),
+                entity.getGridMinX(),
+                entity.getGridMaxX(),
+                entity.getGridMinY(),
+                entity.getGridMaxY()
+        );
+        dto.setGrid(grid);
         return dto;
     }
     public Comparison toEntityFromRequest(CreateComparisonRequest request) {

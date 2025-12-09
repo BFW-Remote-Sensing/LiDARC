@@ -37,7 +37,7 @@ import { TextCard } from '../text-card/text-card';
   styleUrls: ['./comparisons.scss', '../stored-files/stored-files.scss'],
 })
 export class Comparisons {
-  displayedColumns: string[] = ['name', 'status', 'filesLength', 'highestVegetation', 'outlierDetection', 'statisticsOverScenery', 'mostDifferences', 'resultReportUrl', 'createdAt'];//, 'actions'];
+  displayedColumns: string[] = ['name', 'status', 'filesLength', 'highestVegetation', 'outlierDetection', 'statisticsOverScenery', 'mostDifferences', 'resultReportUrl', 'createdAt', 'actions'];
   dataSource = new MatTableDataSource<ComparisonDTO>([]);
   private readonly comparisonService = inject(ComparisonService);
   public loading: WritableSignal<boolean> = signal(true);

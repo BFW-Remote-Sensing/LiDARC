@@ -1,5 +1,6 @@
 package com.example.lidarcbackend.api.comparison.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,10 +9,22 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 public class GridParameters {
-    Integer cellWidth;
-    Integer cellHeight;
-    Double xMin;
-    Double xMax;
-    Double yMin;
-    Double yMax;
+
+    @JsonProperty("cellWidth")
+    private Integer cellWidth;
+
+    @JsonProperty("cellHeight")
+    private Integer cellHeight;
+
+    @JsonProperty("xMin")
+    private Double xMin;
+
+    @JsonProperty("xMax")
+    private Double xMax;
+
+    @JsonProperty("yMin")
+    private Double yMin;
+
+    @JsonProperty("yMax")
+    private Double yMax;
 }
