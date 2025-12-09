@@ -47,10 +47,10 @@ public class ComparisonMapper {
         newComparison.setCreatedAt(java.time.LocalDateTime.now());
         newComparison.setGridCellHeight(request.getGrid().getCellHeight());
         newComparison.setGridCellWidth(request.getGrid().getCellWidth());
-        newComparison.setGridMinX(request.getGrid().getXMin());
-        newComparison.setGridMinY(request.getGrid().getYMin());
-        newComparison.setGridMaxX(request.getGrid().getXMax());
-        newComparison.setGridMaxY(request.getGrid().getYMax());
+        newComparison.setGridMinX(request.getGrid().getxMax());
+        newComparison.setGridMinY(request.getGrid().getyMin());
+        newComparison.setGridMaxX(request.getGrid().getxMax());
+        newComparison.setGridMaxY(request.getGrid().getyMax());
         return newComparison;
     }
 }
