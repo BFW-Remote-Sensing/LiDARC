@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.Map;
 
 public interface IComparisonService {
     Page<ComparisonDTO> getPagedComparisons(Pageable pageable);
@@ -18,6 +19,10 @@ public interface IComparisonService {
     ComparisonDTO saveComparison(CreateComparisonRequest comparison, List<Long> fileMetadataIds) throws NotFoundException;
 
     ComparisonDTO GetComparison(Long comparisonId);
+
+    void processPreprocessingResult(Map<String, Object> result);
+
+    void processComparisonResult(Map<String, Object> result);
 
     @Transactional
     void deleteComparisonById(Long id);

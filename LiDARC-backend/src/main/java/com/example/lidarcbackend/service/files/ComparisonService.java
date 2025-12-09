@@ -180,4 +180,83 @@ public class ComparisonService implements IComparisonService {
     public void deleteComparisonById(Long id) {
         comparisonRepository.deleteById(id);
     }
+
+    @Override
+    public void processPreprocessingResult(Map<String, Object> result) {
+        log.info("Processing Preprocessing result...");
+
+        String status = (String) result.get("status");
+        String jobId = (String) result.get("job_id");
+        Map<String, Object> payload = (Map<String, Object>) result.get("payload");
+
+        if (status == null || jobId == null || payload == null) {
+            //Todo exception?
+            log.error("Invalid result message received, missing jobId, payload or status");
+            return;
+        }
+
+        Integer comparisonId = (Integer) payload.get("comparisonId");
+        Integer fileId = (Integer) payload.get("fileId");
+        if (comparisonId == null || fileId == null) {
+            log.error("Missing comparisonId or fileId in preprocessing payload.");
+            return;
+        }
+
+        if (!status.equalsIgnoreCase("success")) {
+            //Todo set status to error + store error message?
+            Object payloadMsg = ((Map<?, ?>) payload).get("msg");
+            if (payloadMsg instanceof String errorMessage) {
+                //Todo set status to error + store error message?
+                log.warn("Preprocessing job {} failed: {}", jobId, errorMessage);
+                return;
+            }
+        }
+
+        Map<String, Object> resultObj = (Map<String, Object>) payload.get("result");
+        if (resultObj == null) {
+            log.error("Missing result object for file {}", fileId);
+            return;
+        }
+
+        String bucket = (String) resultObj.get("bucket");
+        String objectKey = (String) resultObj.get("objectKey");
+
+        Optional<ComparisonFile> cfOpt = comparisonFileRepository.findComparisonFiles(comparisonId, fileId);
+        if(cfOpt.isEmpty()){
+            log.error("comparison_file entry not found for comparisonId={} fileId={}", comparisonId, fileId);
+            return;
+        }
+
+        ComparisonFile cf = cfOpt.get();
+        cf.setBucket(bucket);
+        cf.setObjectKey(objectKey);
+        comparisonFileRepository.save(cf);
+        checkIfPreprocessingDoneAndStartComparison(comparisonId.longValue());
+
+    }
+
+    @Override
+    public void processComparisonResult(Map<String, Object> result) {
+
+    }
+
+    private void checkIfPreprocessingDoneAndStartComparison(Long comparisonId) {
+        List<Long> fileIds = comparisonFileRepository.getComparisonFilesByComparisonId(comparisonId);
+
+        boolean allReady = fileIds.stream().allMatch(fileId ->
+                comparisonFileRepository
+                        .findComparisonFiles(comparisonId.intValue(), fileId.intValue())
+                        .map(cf -> cf.getBucket() != null && cf.getObjectKey() != null)
+                        .orElse(false));
+
+        if(allReady) {
+            log.info("Comparison {}: all preprocessing files contain bucket & objectKey. Starting comparison worker...", comparisonId);
+            //TODO send request
+        }
+        else {
+            log.info("Comparison {} is not ready yet. Waiting for other files.", comparisonId);
+        }
+    }
+
+
 }

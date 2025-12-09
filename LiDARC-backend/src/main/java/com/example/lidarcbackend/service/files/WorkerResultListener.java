@@ -10,17 +10,18 @@ import java.util.Map;
 public class WorkerResultListener {
 
     private final IMetadataService metadataService;
+    private final IComparisonService comparisonService;
 
-    public WorkerResultListener(IMetadataService metadataService) {
+    public WorkerResultListener(IMetadataService metadataService, IComparisonService comparisonService) {
         this.metadataService = metadataService;
+        this.comparisonService = comparisonService;
     }
 
     //TODO
     // set Input Parameter for every method
-    //@RabbitListener(queues = RabbitConfig.WORKER_PREPROCESSING_RESULT_QUEUE)
-    public void handlePreprocessingResult(String message) {
-        // Status aktualisieren, DB schreiben etc.
-
+    @RabbitListener(queues = RabbitConfig.WORKER_PREPROCESSING_RESULT_QUEUE)
+    public void handlePreprocessingResult(Map<String, Object> result) {
+        comparisonService.processPreprocessingResult(result);
     }
 
     @RabbitListener(queues = RabbitConfig.WORKER_COMPARISON_RESULT_QUEUE)
