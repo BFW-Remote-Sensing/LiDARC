@@ -24,7 +24,7 @@ public class WorkerResultListener {
         comparisonService.processPreprocessingResult(result);
     }
 
-    @RabbitListener(queues = RabbitConfig.WORKER_COMPARISON_RESULT_QUEUE)
+    //@RabbitListener(queues = RabbitConfig.WORKER_COMPARISON_RESULT_QUEUE)
     public void handleComparisonResult(String message) {
         // ...
     }

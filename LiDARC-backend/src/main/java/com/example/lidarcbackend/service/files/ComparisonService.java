@@ -8,6 +8,7 @@ import com.example.lidarcbackend.api.metadata.MetadataMapper;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.model.DTO.MinioObjectDto;
+import com.example.lidarcbackend.model.DTO.StartComparisonJobDto;
 import com.example.lidarcbackend.model.DTO.StartMetadataJobDto;
 import com.example.lidarcbackend.model.DTO.StartPreProcessJobDto;
 import com.example.lidarcbackend.model.entity.Comparison;
@@ -231,7 +232,7 @@ public class ComparisonService implements IComparisonService {
         cf.setBucket(bucket);
         cf.setObjectKey(objectKey);
         comparisonFileRepository.save(cf);
-        checkIfPreprocessingDoneAndStartComparison(comparisonId.longValue());
+        checkIfPreprocessingDoneAndStartComparison(comparisonId.longValue(), jobId);
 
     }
 
@@ -240,18 +241,24 @@ public class ComparisonService implements IComparisonService {
 
     }
 
-    private void checkIfPreprocessingDoneAndStartComparison(Long comparisonId) {
-        List<Long> fileIds = comparisonFileRepository.getComparisonFilesByComparisonId(comparisonId);
+    private void checkIfPreprocessingDoneAndStartComparison(Long comparisonId, String jobId) {
+        List<ComparisonFile> comparisonFiles = comparisonFileRepository.findAllByComparisonId(comparisonId.intValue());
 
-        boolean allReady = fileIds.stream().allMatch(fileId ->
-                comparisonFileRepository
-                        .findComparisonFiles(comparisonId.intValue(), fileId.intValue())
-                        .map(cf -> cf.getBucket() != null && cf.getObjectKey() != null)
-                        .orElse(false));
+        boolean allReady = comparisonFiles.stream().allMatch(cf -> cf.getBucket() != null && cf.getObjectKey() != null);
 
         if(allReady) {
             log.info("Comparison {}: all preprocessing files contain bucket & objectKey. Starting comparison worker...", comparisonId);
-            //TODO send request
+            List<MinioObjectDto> filesDto = comparisonFiles.stream()
+                    .map(cf -> new MinioObjectDto(cf.getBucket(), cf.getObjectKey()))
+                    .toList();
+
+            StartComparisonJobDto dto = new StartComparisonJobDto(
+                    jobId,
+                    comparisonId.toString(),
+                    filesDto
+            );
+
+            workerStartService.startComparisonJob(dto);
         }
         else {
             log.info("Comparison {} is not ready yet. Waiting for other files.", comparisonId);

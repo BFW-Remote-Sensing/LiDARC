@@ -18,4 +18,7 @@ public interface ComparisonFileRepository extends JpaRepository<ComparisonFile, 
 
     @Query("SELECT cf.fileId FROM ComparisonFile cf WHERE cf.comparisonId = :comparisonId")
     List<Long> getComparisonFilesByComparisonId(Long comparisonId);
+
+    @Query("SELECT cf FROM ComparisonFile cf WHERE cf.comparisonId = :comparisonId")
+    List<ComparisonFile> findAllByComparisonId(@Param("comparisonId") int comparisonId);
 }
