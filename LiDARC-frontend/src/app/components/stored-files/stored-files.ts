@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal, ViewChild, WritableSignal } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, signal, ViewChild, WritableSignal } from '@angular/core';
 import { FormsModule } from '@angular/forms'; import { MatButtonModule } from '@angular/material/button';
 import { MatCheckbox } from '@angular/material/checkbox'; import { MatIconModule } from '@angular/material/icon';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator'; import { MatSelectModule } from '@angular/material/select';
@@ -10,6 +10,10 @@ import { SelectedFilesService } from '../../service/selectedFile.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormatService } from '../../service/format.service';
 import { pollingIntervalMs, snackBarDurationMs } from '../../globals/globals';
+import { TextCard } from '../text-card/text-card';
+import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
+import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
+import { MatDialog } from '@angular/material/dialog';
 
 @Component({
   selector: 'app-stored-files',
@@ -25,7 +29,10 @@ import { pollingIntervalMs, snackBarDurationMs } from '../../globals/globals';
     RouterModule,
     CommonModule,
     MatTooltipModule,
-    MatProgressSpinner],
+    MatProgressSpinner,
+    TextCard,
+    FormatBytesPipe
+  ],
   templateUrl: './stored-files.html',
   styleUrl: './stored-files.scss',
 })
@@ -44,14 +51,16 @@ export class StoredFiles {
 
   private previousMap = new Map<number, string>();
 
-  constructor(private selectedFilesService: SelectedFilesService, private router: Router, private snackBar: MatSnackBar, private formatService: FormatService) { }
+  constructor(
+    private selectedFilesService: SelectedFilesService,
+    private router: Router,
+    private snackBar: MatSnackBar,
+    private formatService: FormatService,
+    private dialog: MatDialog,
+    private cdr: ChangeDetectorRef
+  ) { }
 
   ngOnInit(): void {
-    const storedSelectedFileIds = localStorage.getItem('selectedFileIds');
-    if (storedSelectedFileIds) {
-      const ids = JSON.parse(storedSelectedFileIds).map((id: any) => Number(id));
-      this.selectedFileIds = new Set(ids);
-    }
     // First load
     this.fetchAndProcessMetadata();
 
@@ -94,11 +103,7 @@ export class StoredFiles {
   //TODO: FIX THE STATUS MANAGEMENT IN THE CORRESPONDING ISSUE see #44
   private processMetadata(data: FileMetadataDTO[]): void {
     // Map formatted size
-    this.dataSource.data = data.map(item => ({
-      ...item,
-      formattedSize: this.formatService.formatBytes(item.sizeBytes),
-      status: item.status === 'UPLOADED' ? 'PROCESSED' : item.status
-    }));
+    this.dataSource.data = data.map(item => this.formatService.formatMetadata(item));
 
     // Detect transitions and update previousMap
     data.forEach(item => {
@@ -137,10 +142,6 @@ export class StoredFiles {
         this.dataSource.paginator = this.paginator;
       }
     });
-    //const storedSelectedFileIds = localStorage.getItem('selectedFileIds');
-    //if (storedSelectedFileIds) {
-    //  this.selectedFileIds = new Set(JSON.parse(storedSelectedFileIds));
-    //}
   }
 
   toggleSelection(id: number, event: any) {
@@ -149,7 +150,6 @@ export class StoredFiles {
     } else {
       this.selectedFileIds.delete(id);
     }
-    localStorage.setItem('selectedFileIds', JSON.stringify(Array.from(this.selectedFileIds)));
   }
 
   isSelected(id: number): boolean {
@@ -159,7 +159,7 @@ export class StoredFiles {
   deleteSelectedFiles() {
     alert('Delete functionality not yet implemented.');
     this.selectedFileIds.clear();
-    localStorage.removeItem('selectedFileIds');
+    this.cdr.detectChanges(); // force Angular to update the view
   }
 
   goToComparison() {
@@ -168,5 +168,25 @@ export class StoredFiles {
       this.selectedFilesService.selectedFiles = this.dataSource.data.filter(file => this.selectedFileIds.has(file.id));
       this.router.navigate(['/comparison-setup']);
     }
+  }
+
+  openConfirmationDialog(): void {
+    const data: ConfirmationDialogData = {
+      title: 'Confirmation',
+      subtitle: 'Are you sure you want to delete the selected files?',
+      primaryButtonText: 'Delete',
+      secondaryButtonText: 'Cancel'
+    };
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '400px',
+      data
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.deleteSelectedFiles();
+      }
+    });
   }
 }

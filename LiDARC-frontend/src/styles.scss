@@ -13,9 +13,13 @@ html {
   height: 100%;
 }
 
-body {
-  background: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Roboto', sans-serif;
+  color: var(--mat-typography-headline-color, #333);
+}
 
+body {
+  color: var(--mat-sys-on-surface);
+  margin: 0;
   height: 100%;
 }

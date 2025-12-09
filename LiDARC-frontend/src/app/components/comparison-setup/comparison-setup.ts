@@ -8,12 +8,15 @@ import { MatInputModule } from '@angular/material/input';
 import { MatDivider } from '@angular/material/divider';
 import { MatCheckbox } from '@angular/material/checkbox';
 import { CreateComparison } from '../../dto/comparison';
-import { MatSpinner } from '@angular/material/progress-spinner';
+import { MatProgressSpinner, MatSpinner } from '@angular/material/progress-spinner';
 import { ComparisonService } from '../../service/comparison.service';
 import { finalize } from 'rxjs';
 import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
-import { GridDefinitionDialogComponent } from '../../define-grid/define-grid';
+import { GridDefinitionDialogComponent } from '../define-grid/define-grid';
+import { MatCardModule } from '@angular/material/card';
+import { MatIcon } from "@angular/material/icon";
+import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
 
 @Component({
   selector: 'app-comparison-setup',
@@ -26,7 +29,9 @@ import { GridDefinitionDialogComponent } from '../../define-grid/define-grid';
     MatFormFieldModule,
     MatDivider,
     MatCheckbox,
-    MatSpinner
+    MatProgressSpinner,
+    MatCardModule,
+    MatIcon
   ],
   templateUrl: './comparison-setup.html',
   styleUrl: './comparison-setup.scss',
@@ -49,7 +54,8 @@ export class ComparisonSetup {
     private comparisonService: ComparisonService,
     private router: Router,
     private dialog: MatDialog,
-    private cdr: ChangeDetectorRef) { }
+    private cdr: ChangeDetectorRef,
+  ) { }
 
   startComparisonDisabled(): boolean {
     return this.comparison.name.trim() === '' ||
@@ -74,7 +80,7 @@ export class ComparisonSetup {
     // Open the dialog
     const dialogRef = this.dialog.open(GridDefinitionDialogComponent, {
       width: '600px',
-      height: '600px',
+      height: 'auto',
       data: {
         file: this.selectedFilesService.selectedFiles[0] // Pass the first selected file to the dialog
       }
@@ -103,9 +109,8 @@ export class ComparisonSetup {
   }
 
 
-  async startComparison(): Promise<void> {
+  startComparison(): void {
     this.loadingStart.set(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
     console.log('Starting comparison with settings:', this.comparison);
     this.comparisonService.postComparison(this.comparison)
       .pipe(
@@ -125,5 +130,25 @@ export class ComparisonSetup {
           this.loadingStart.set(false);
         }
       });
+  }
+
+  openConfirmationDialog(): void {
+    const data: ConfirmationDialogData = {
+      title: 'Confirmation',
+      subtitle: 'Are you sure you want to start this comparison?',
+      primaryButtonText: 'Start',
+      secondaryButtonText: 'Cancel'
+    };
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '400px',
+      data
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.startComparison();
+      }
+    });
   }
 }

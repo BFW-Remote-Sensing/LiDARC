@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { Heatmap } from './features/heatmap/heatmap';
+import { Heatmap } from './components/heatmap/heatmap';
 import { UploadComponent } from './components/upload/upload.component';
 import { StoredFiles } from './components/stored-files/stored-files';
 import { Comparisons } from './components/comparisons/comparisons';

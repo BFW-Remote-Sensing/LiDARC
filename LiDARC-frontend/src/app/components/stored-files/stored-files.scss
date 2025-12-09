@@ -1,5 +1,10 @@
 /* In your component's CSS/SCSS file */
 
+.status-default {
+  color: black; /* Default text color */
+  font-weight: bold;
+}
+
 /* Status: Ready */
 .status-ready {
   color: green;

@@ -1,26 +1,32 @@
 /* Container and Card Styling */
 .metadata-card-material {
-    max-width: 450px;
-    margin: 20px;
+    max-width: 600px;
 }
 
 .flex-center {
     display: flex;
+    width: 100%;
     justify-content: center;
     align-items: center;
+}
+
+.loading-spinner {
+    margin-top: 50px;
 }
 
 .list-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 100px
 }
 
 /* Header Adjustments */
 mat-card-header {
-    padding-bottom: 10px;
+    align-items: center;;
     border-bottom: 1px solid var(--mat-card-border-color, #e0e0e0);
     margin-bottom: 10px;
+    padding: 10px 20px;
 }
 
 .status-chip {
@@ -39,6 +45,11 @@ mat-card-header {
         color: white;
         font-weight: bold;
     }
+}
+
+mat-icon {
+    margin: 0;
+    font-size: 40px;;
 }
 
 /* Mat-List styling for Key Info */
@@ -99,6 +110,7 @@ mat-list-item .mat-list-item-line {
     margin: 15px 0 5px 0;
     border-top: 1px solid #f0f0f0;
     padding-top: 10px;
+    padding-left: 16px;
 }
 
 .bounding-list {
@@ -122,7 +134,6 @@ mat-list-item .mat-list-item-line {
 .coord-max {
     flex-grow: 1;
     text-align: center;
-    font-family: monospace;
     padding: 2px 5px;
     background-color: #f5f5f5;
     border-radius: 4px;

@@ -1,8 +1,8 @@
-<h2 style="text-align: center;">Comparison Setup</h2>
+<h2 style="text-align: center; margin-bottom: 0">Comparison Setup</h2>
 <div style="display:flex">
     <div style="width: 70%">
-        <h3 style="text-align: center; margin-bottom: 20px;">Selected Files for Comparison</h3>
-        <div style="display: flex; justify-content: center;">
+        <h3 style="text-align: center; margin-bottom: 20px;">Selected Files for Comparison:</h3>
+        <div class="file-details-cards-container">
             <app-file-details-card [metadataId]="comparison.fileMetadataIds[0]"></app-file-details-card>
             <app-file-details-card [metadataId]="comparison.fileMetadataIds[1]"></app-file-details-card>
         </div>
@@ -13,7 +13,7 @@
             <h3 style="text-align: center; margin-bottom: 20px;">Comparison Details</h3>
             <mat-form-field appearance="fill" style="width: 100%;">
                 <mat-label>Comparison Name</mat-label>
-                <input matInput [(ngModel)]="comparison.name" [disabled]="loadingStart()" maxlength="60"/>
+                <input matInput [(ngModel)]="comparison.name" [disabled]="loadingStart()" maxlength="60" />
             </mat-form-field>
             <div>
                 <mat-checkbox [checked]="comparison.needHighestVegetation" [disabled]="loadingStart()"
@@ -40,12 +40,47 @@
                     Most Differences
                 </mat-checkbox>
             </div>
+            <div class="grid-definition-card">
+                <h4 class="grid-title">Grid Definition</h4>
+
+                @if(comparison.grid) {
+                <div class="grid-info">
+                    <span>
+                        <strong>Cell Width:</strong> {{ comparison.grid.cellWidth }} m
+                    </span>
+                    <span>
+                        <strong>Cell Height:</strong> {{ comparison.grid.cellHeight }} m
+                    </span>
+                </div>
+
+                <div class="grid-coords">
+                    <div class="coord-column">
+                        <p>X<sub style="font-size: 0.6em;">min</sub>: {{ comparison.grid.xMin }}</p>
+                        <p>Y<sub style="font-size: 0.6em;">min</sub>: {{ comparison.grid.yMin }}</p>
+                    </div>
+                    <div class="coord-column">
+                        <p>
+                            <mat-icon>east</mat-icon>
+                        </p>
+                        <p>
+                            <mat-icon>east</mat-icon>
+                        </p>
+                    </div>
+                    <div class="coord-column">
+                        <p>X<sub style="font-size: 0.6em;">max</sub>: {{ comparison.grid.xMax }}</p>
+                        <p>Y<sub style="font-size: 0.6em;">max</sub>: {{ comparison.grid.yMax }}</p>
+                    </div>
+                </div>
+                }
+                @else {
+                <p style="font-style: italic; color: gray;">No grid defined yet.</p>
+                }
+            </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0px;">
                 <button mat-raised-button color="secondary" (click)="defineGrid()" [disabled]="loadingStart()">
                     Define Grid
                 </button>
-                <button mat-raised-button color="primary" (click)="startComparison()"
-                    style="width: 180px;"
+                <button mat-raised-button color="primary" (click)="openConfirmationDialog()" style="width: 180px;"
                     [disabled]="startComparisonDisabled() || loadingStart()">
                     @if (loadingStart()) {
                     <mat-spinner diameter="20" color="accent"></mat-spinner>

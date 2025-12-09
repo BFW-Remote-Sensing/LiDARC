@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { FileMetadataDTO } from '../dto/fileMetadata';
+import { FileMetadataDTO } from '../../dto/fileMetadata';
 
 @Component({
   selector: 'app-grid-definition-dialog',
@@ -24,7 +24,6 @@ export class GridDefinitionDialogComponent implements OnInit {
   cellWidth: number = 1;
   cellHeight: number = 1;
 
-
   xMin: number | null = null;
   xMax: number | null = null;
   yMin: number | null = null;
@@ -36,9 +35,7 @@ export class GridDefinitionDialogComponent implements OnInit {
   ) {
   }
 
-
   ngOnInit() {
-    console.log('File passed to dialog:', this.file);
     this.file = this.data.file;
     this.xMin = this.file.minX;
     this.xMax = this.file.maxX;

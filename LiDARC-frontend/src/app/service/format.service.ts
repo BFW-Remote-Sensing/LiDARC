@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { FileMetadataDTO } from '../dto/fileMetadata';
 
 @Injectable({
   providedIn: 'root'
@@ -6,6 +7,7 @@ import { Injectable } from '@angular/core';
 export class FormatService {
 
   formatBytes(bytes: number, decimals = 2): string {
+    if(bytes === undefined || bytes === null) return 'N/A';
     if (bytes === 0) return '0 Bytes';
 
     const k = 1024;
@@ -14,5 +16,12 @@ export class FormatService {
 
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  }
+
+  formatMetadata(metadata: FileMetadataDTO): FileMetadataDTO {
+    return {
+      ...metadata,
+      systemIdentifier: 'EPSG 31256',
+    };
   }
 }
