@@ -33,6 +33,7 @@ import { FormatService } from '../../service/format.service';
   styleUrl: './file-details-card.scss',
 })
 export class FileDetailsCard implements OnInit {
+  @Input() index: string = '';
   @Input() metadataId: number | null = null;
   private metadataService = inject(MetadataService);
   @Input() metadata: FileMetadataDTO | null = null;
