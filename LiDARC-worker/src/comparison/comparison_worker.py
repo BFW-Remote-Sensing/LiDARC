@@ -71,6 +71,8 @@ def validate_request(json_req):
         logging.warning(f"The comparison job request is invalid")
         return False
 
+
+
 def compare_files(path_a: str, path_b: str) -> dict:
     #TODO handle errors
     df_a = pd.read_csv(path_a)
@@ -101,6 +103,13 @@ def compare_files(path_a: str, path_b: str) -> dict:
         on=["x0", "x1", "y0", "y1"],
         suffixes=("_a", "_b")
     )
+
+    # TODO double check if just remove cells where values are -inf, inf is OK?
+    valid_mask = (
+            np.isfinite(merged["veg_height_max_a"]) &
+            np.isfinite(merged["veg_height_max_b"])
+    )
+    merged = merged[valid_mask]
 
     merged["delta_z"] = merged["veg_height_max_b"] - merged["veg_height_max_a"]
 
@@ -200,6 +209,7 @@ def compare_files(path_a: str, path_b: str) -> dict:
         }
     }
     return result
+
 
 
 def process_req(ch, method, props, body):
