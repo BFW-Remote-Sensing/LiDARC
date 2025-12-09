@@ -224,4 +224,76 @@
         </section>
     </div>
 </div>
+
+<!-- ===== HARDCODED COMPARISON VISUALIZATION ===== -->
+<div class="file-details-container">
+  <mat-divider style="margin: 40px 0;"></mat-divider>
+  <h2><mat-icon>analytics</mat-icon>Comparison Results</h2>
+  <div class="comparison-container">
+
+    <!-- ===== File Metrics Section ===== -->
+    <mat-card class="section-card">
+      <mat-card-title>File Specific Metrics of Highest Vegetational Points</mat-card-title>
+      <mat-divider></mat-divider>
+      <mat-card-content>
+        <div class="metrics-list">
+          <mat-list>
+            <h4>File A</h4>
+            <mat-list-item>Mean: {{vegetationStats.fileA_metrics.mean}}</mat-list-item>
+            <mat-list-item>Median: {{vegetationStats.fileA_metrics.median}}</mat-list-item>
+            <mat-list-item>Std: {{vegetationStats.fileA_metrics.std}}</mat-list-item>
+            <mat-list-item>Min: {{vegetationStats.fileA_metrics.min}}</mat-list-item>
+            <mat-list-item>Max: {{vegetationStats.fileA_metrics.max}}</mat-list-item>
+          </mat-list>
+
+          <mat-list>
+            <h4>File B</h4>
+            <mat-list-item>Mean: {{vegetationStats.fileB_metrics.mean}}</mat-list-item>
+            <mat-list-item>Median: {{vegetationStats.fileB_metrics.median}}</mat-list-item>
+            <mat-list-item>Std: {{vegetationStats.fileB_metrics.std}}</mat-list-item>
+            <mat-list-item>Min: {{vegetationStats.fileB_metrics.min}}</mat-list-item>
+            <mat-list-item>Max: {{vegetationStats.fileB_metrics.max}}</mat-list-item>
+          </mat-list>
+        </div>
+
+        <div class="charts-grid">
+          <div echarts [options]="scatterOption" class="chart"></div>
+          <div echarts [options]="boxplotOption" class="chart"></div>
+          <div echarts [options]="fileDistributionOption" class="chart"></div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- ===== Difference Metrics Section ===== -->
+    <mat-card class="section-card">
+      <mat-card-title>Difference Metrics (B - A)</mat-card-title>
+      <mat-divider></mat-divider>
+      <mat-card-content>
+        <p>The difference metrics show how much the maximum vegetational height of File B differs from the one of File A for each cell.</p>
+
+        <mat-list>
+          <mat-list-item>Mean: {{vegetationStats.difference_metrics.mean}}</mat-list-item>
+          <mat-list-item>Median: {{vegetationStats.difference_metrics.median}}</mat-list-item>
+          <mat-list-item>Std: {{vegetationStats.difference_metrics.std}}</mat-list-item>
+          <mat-list-item>Most Negative: {{vegetationStats.difference_metrics.mostNegative}}</mat-list-item>
+          <mat-list-item>Least Negative: {{vegetationStats.difference_metrics.leastNegative}}</mat-list-item>
+          <mat-list-item>Smallest Positive: {{vegetationStats.difference_metrics.smallestPositive}}</mat-list-item>
+          <mat-list-item>Largest Positive: {{vegetationStats.difference_metrics.largestPositive}}</mat-list-item>
+        </mat-list>
+
+        <div class="charts-grid">
+          <div echarts [options]="diffDistributionOption" class="chart"></div>
+          <div echarts [options]="diffHistogramOption" class="chart"></div>
+          <div echarts [options]="categoryBarChart" class="chart"></div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+  </div>
+
+</div>
+
+
+
+
 }
