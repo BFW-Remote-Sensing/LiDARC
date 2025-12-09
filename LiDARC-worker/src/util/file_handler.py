@@ -88,7 +88,10 @@ def upload_json(destination_file, json_obj):
         length=len(json_bytes),
         content_type="application/json"
     )
-    return BASE_URL + destination_file
+    return {
+        "bucket": BUCKET_NAME,
+        "objectKey": destination_file
+    }
 
 def upload_df_as_json(destination_file, df):
     client = minio_client()

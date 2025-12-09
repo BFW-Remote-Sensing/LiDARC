@@ -44,6 +44,12 @@ public class Comparison {
     //@Column(name = "result_report_url")
     //private String resultReportUrl;
 
+    @Column(name = "result_bucket")
+    private String resultBucket;
+
+    @Column(name = "result_object_key")
+    private String resultObjectKey;
+
     @OneToMany(mappedBy = "comparison")
     private List<Report> reports;
 

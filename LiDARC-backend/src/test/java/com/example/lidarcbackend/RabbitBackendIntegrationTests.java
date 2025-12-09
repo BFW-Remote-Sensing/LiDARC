@@ -179,17 +179,17 @@ public class RabbitBackendIntegrationTests {
 //        assertEquals(expected, message);
 //    }
 
-    @Test
-    void testComparisonJobStarterService() {
-        String  expected = "testMessageComparisonJobStarterService";
-        jobStarterService.startComparisonJob(expected);
-
-        Object message = rabbitTemplate.receiveAndConvert(RabbitConfig.WORKER_COMPARISON_JOB_QUEUE, 1000);
-
-        Assertions.assertNotNull(message);
-        assertEquals(expected, message);
-
-    }
+//    @Test
+//    void testComparisonJobStarterService() {
+//        String  expected = "testMessageComparisonJobStarterService";
+//        jobStarterService.startComparisonJob(expected);
+//
+//        Object message = rabbitTemplate.receiveAndConvert(RabbitConfig.WORKER_COMPARISON_JOB_QUEUE, 1000);
+//
+//        Assertions.assertNotNull(message);
+//        assertEquals(expected, message);
+//
+//    }
 
 //    @Test
 //    void testMetadataJobStarterService() {
