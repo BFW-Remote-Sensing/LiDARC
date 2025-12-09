@@ -14,6 +14,7 @@ import { MatIcon } from '@angular/material/icon';
 import { TextCard } from '../text-card/text-card';
 import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
 import { FormatService } from '../../service/format.service';
+import { ReferenceFileService } from '../../service/referenceFile.service';
 
 @Component({
   selector: 'app-file-details-card',
@@ -40,7 +41,13 @@ export class FileDetailsCard implements OnInit {
   public loading: WritableSignal<boolean> = signal(true);
   public errorMessage = signal<string | null>(null);
 
-  constructor(private formatService: FormatService) { }
+  constructor(private formatService: FormatService, public refService: ReferenceFileService) { }
+
+  selectCard(): void {
+    if (this.metadata) {
+      this.refService.setSelectedIndex(this.metadata);
+    }
+  }
 
   ngOnInit(): void {
     if (this.metadataId) {

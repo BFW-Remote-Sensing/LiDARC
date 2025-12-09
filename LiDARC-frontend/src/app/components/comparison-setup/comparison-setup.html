@@ -73,11 +73,15 @@
                 </div>
                 }
                 @else {
-                <p style="font-style: italic; color: gray;">No grid defined yet.</p>
+                <p style="font-style: italic; color: gray;">
+                    No grid defined yet.<br/><br/>
+                    1) Click on a File Details Card to choose a reference file.<br/>
+                    2) Click "Define Grid" to set up the grid for comparison.
+                </p>
                 }
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0px;">
-                <button mat-raised-button color="secondary" (click)="defineGrid()" [disabled]="loadingStart()">
+                <button mat-raised-button color="secondary" (click)="defineGrid()" [disabled]="loadingStart() || !refService.selectedFile()">
                     Define Grid
                 </button>
                 <button mat-raised-button color="primary" (click)="openConfirmationDialog()" style="width: 180px;"

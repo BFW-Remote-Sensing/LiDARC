@@ -1,6 +1,16 @@
-/* Container and Card Styling */
+
 .metadata-card-material {
+    cursor: pointer !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid transparent;
+    border-radius: 8px;
     max-width: 600px;
+    border: 2px solid transparent;
+}
+
+.metadata-card-material.selected-card {
+    border: 2px solid #1976d2;
+    box-shadow: 0 0 8px rgba(25, 118, 210, 0.4);
 }
 
 .flex-center {
@@ -21,9 +31,8 @@
     gap: 100px
 }
 
-/* Header Adjustments */
 mat-card-header {
-    align-items: center;;
+    align-items: center;
     border-bottom: 1px solid var(--mat-card-border-color, #e0e0e0);
     margin-bottom: 10px;
     padding: 10px 20px;
@@ -32,6 +41,7 @@ mat-card-header {
 .status-chip {
     margin-left: auto;
     padding-left: 10px;
+
     .processed {
         background-color: green;
 
@@ -49,10 +59,9 @@ mat-card-header {
 
 mat-icon {
     margin: 0;
-    font-size: 40px;;
+    font-size: 40px;
 }
 
-/* Mat-List styling for Key Info */
 mat-list {
     padding-top: 0;
     padding-bottom: 0;
@@ -61,7 +70,6 @@ mat-list {
 mat-list-item {
     font-size: 0.95em;
     height: 36px !important;
-    /* Slightly denser list items */
 }
 
 mat-list-item .mat-list-item-title {
@@ -74,7 +82,6 @@ mat-list-item .mat-list-item-line {
     font-weight: 500;
 }
 
-/* Mat Expansion Panel for Details */
 .details-panel {
     padding: 10px;
     margin-top: 15px;
@@ -84,7 +91,6 @@ mat-list-item .mat-list-item-line {
     font-weight: 600;
 }
 
-/* Mat Grid List for detailed properties */
 .detail-grid-list {
     margin-bottom: 10px;
 }
@@ -102,7 +108,6 @@ mat-list-item .mat-list-item-line {
     white-space: nowrap;
 }
 
-/* Bounding Box Styling */
 .box-header {
     font-size: 1.05em;
     font-weight: 600;
@@ -127,7 +132,6 @@ mat-list-item .mat-list-item-line {
     font-weight: bold;
     color: var(--mat-primary-color, #3f51b5);
     width: 25px;
-    /* Fixed width for 'X:', 'Y:', 'Z:' */
 }
 
 .coord-min,

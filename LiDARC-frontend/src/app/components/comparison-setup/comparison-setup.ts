@@ -17,6 +17,7 @@ import { GridDefinitionDialogComponent } from '../define-grid/define-grid';
 import { MatCardModule } from '@angular/material/card';
 import { MatIcon } from "@angular/material/icon";
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
+import { ReferenceFileService } from '../../service/referenceFile.service';
 
 @Component({
   selector: 'app-comparison-setup',
@@ -55,6 +56,7 @@ export class ComparisonSetup {
     private router: Router,
     private dialog: MatDialog,
     private cdr: ChangeDetectorRef,
+    public refService: ReferenceFileService
   ) { }
 
   startComparisonDisabled(): boolean {
@@ -77,33 +79,28 @@ export class ComparisonSetup {
   }
 
   defineGrid(): void {
-    // Open the dialog
     const dialogRef = this.dialog.open(GridDefinitionDialogComponent, {
       width: '600px',
       height: 'auto',
       data: {
-        file: this.selectedFilesService.selectedFiles[0] // Pass the first selected file to the dialog
+        file: this.refService.selectedFile()
       }
     });
 
-    // Handle the result when the dialog is closed
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         this.comparison = {
           ...this.comparison,
           grid: {
-            cellWidth: result.cellWidth,
-            cellHeight: result.cellHeight,
-            xMin: result.xMin,
-            xMax: result.xMax,
-            yMin: result.yMin,
-            yMax: result.yMax
+            cellWidth: Number(result.cellWidth.toFixed(2)),
+            cellHeight: Number(result.cellHeight.toFixed(2)),
+            xMin: Number(result.xMin.toFixed(3)),
+            xMax: Number(result.xMax.toFixed(3)),
+            yMin: Number(result.yMin.toFixed(3)),
+            yMax: Number(result.yMax.toFixed(3))
           }
         };
         this.cdr.markForCheck();
-        console.log('Grid defined:', this.comparison.grid);
-      } else {
-        console.log('Grid definition cancelled or no dimensions provided.');
       }
     });
   }
@@ -111,16 +108,12 @@ export class ComparisonSetup {
 
   startComparison(): void {
     this.loadingStart.set(true);
-    console.log('Starting comparison with settings:', this.comparison);
     this.comparisonService.postComparison(this.comparison)
       .pipe(
         finalize(() => this.loadingStart.set(false))
       )
       .subscribe({
-        next: (comparison) => {
-          console.log('Comparison started successfully:', comparison);
-          alert(`Comparison "${comparison.name}" started successfully.`);
-          localStorage.removeItem('selectedFileIds');
+        next: () => {
           this.selectedFilesService.clearSelectedIds();
           this.router.navigate(['/comparisons']);
         },
@@ -150,5 +143,9 @@ export class ComparisonSetup {
         this.startComparison();
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.refService.clearSelected();
   }
 }

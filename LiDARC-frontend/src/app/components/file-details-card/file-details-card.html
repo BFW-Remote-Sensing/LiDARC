@@ -10,8 +10,8 @@
 <app-text-card type="error" message="{{ errorMessage() }}"></app-text-card>
 }
 @else if(metadata) {
-<div class="flex-center">
-    <mat-card class="metadata-card-material">
+<div class="flex-center" >
+    <mat-card class="metadata-card-material" (click)="selectCard()" [ngClass]="{ 'selected-card': refService.isSelected(metadata.id) }">
         <mat-card-header>
             <mat-icon mat-card-avatar>cloud_upload</mat-icon>
             <mat-card-title>File {{ index }}</mat-card-title>
@@ -81,25 +81,25 @@
                 <mat-list-item>
                     <div class="box-coord-row">
                         <span class="coord-label">X:</span>
-                        <span class="coord-min">{{ metadata.minX | number: '1.2-2' }}</span>
+                        <span class="coord-min">{{ metadata.minX | number: '1.6-6' }}</span>
                         <mat-icon class="separator-icon">arrow_right_alt</mat-icon>
-                        <span class="coord-max">{{ metadata.maxX | number: '1.2-2' }}</span>
+                        <span class="coord-max">{{ metadata.maxX | number: '1.6-6' }}</span>
                     </div>
                 </mat-list-item>
                 <mat-list-item>
                     <div class="box-coord-row">
                         <span class="coord-label">Y:</span>
-                        <span class="coord-min">{{ metadata.minY | number: '1.2-2' }}</span>
+                        <span class="coord-min">{{ metadata.minY | number: '1.6-6' }}</span>
                         <mat-icon class="separator-icon">arrow_right_alt</mat-icon>
-                        <span class="coord-max">{{ metadata.maxY | number: '1.2-2' }}</span>
+                        <span class="coord-max">{{ metadata.maxY | number: '1.6-6' }}</span>
                     </div>
                 </mat-list-item>
                 <mat-list-item>
                     <div class="box-coord-row">
                         <span class="coord-label">Z:</span>
-                        <span class="coord-min">{{ metadata.minZ | number: '1.2-2' }}</span>
+                        <span class="coord-min">{{ metadata.minZ | number: '1.6-6' }}</span>
                         <mat-icon class="separator-icon">arrow_right_alt</mat-icon>
-                        <span class="coord-max">{{ metadata.maxZ | number: '1.2-2' }}</span>
+                        <span class="coord-max">{{ metadata.maxZ | number: '1.6-6' }}</span>
                     </div>
                 </mat-list-item>
             </mat-list>
