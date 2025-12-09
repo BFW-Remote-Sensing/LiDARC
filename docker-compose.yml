@@ -75,7 +75,7 @@ services:
     volumes:
       #volume mounts can be tricky ./data/postgresql was always somehow saved in another image
       #maybe we need to change the volume every time we need a fresh db
-      - ${POSTGRES_DATA:-./data}/postgres:/var/lib/postgresql/data
+      - ${DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
     networks:
       - ase-network
 
@@ -106,7 +106,7 @@ services:
       context: ./LiDARC-backend
       dockerfile: Dockerfile
     volumes:
-      - ./backend-reports:/app/uploads
+      - ${DATA_DIR:-./data}/backend:/app/uploads
     container_name: backend
     depends_on:
       minio-mc:

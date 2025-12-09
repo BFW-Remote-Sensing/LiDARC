@@ -39,10 +39,10 @@ def connect_rabbitmq():
 
 
 def calculate_grid(grid: dict):
-    x_min = grid["xmin"]
-    x_max = grid["xmax"]
-    y_min = grid["ymin"]
-    y_max = grid["ymax"]
+    x_min = grid["xMin"]
+    x_max = grid["xMax"]
+    y_min = grid["yMin"]
+    y_max = grid["yMax"]
 
     grid_width = grid["cellWidth"]
     grid_height = grid["cellHeight"]

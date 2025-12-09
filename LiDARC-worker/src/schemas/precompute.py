@@ -16,12 +16,12 @@ schema = {
         },
         "grid": {
             "type": "object",
-            "required": ["xmin", "xmax", "ymin", "ymax", "cellWidth", "cellHeight"],
+            "required": ["xMin", "xMax", "yMin", "yMax", "cellWidth", "cellHeight"],
             "properties": {
-                "xmin": { "type": "number" },
-                "xmax": { "type": "number" },
-                "ymin": { "type": "number" },
-                "ymax": { "type": "number" },
+                "xMin": { "type": "number" },
+                "xMax": { "type": "number" },
+                "yMin": { "type": "number" },
+                "yMax": { "type": "number" },
                 "cellWidth": { "type": "integer", "minimum": 1 },
                 "cellHeight": { "type": "integer", "minimum": 1 },
             },

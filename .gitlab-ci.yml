@@ -9,7 +9,7 @@ deploy_prod:
     - customrunner
   variables:
     LIDAR_DATA_ROOT: "/eodc/private/bfw/lidarc_ws25/dind_data"
-    POSTGRES_DATA: "/dind_data"
+    DATA_DIR: "/dind_data"
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
   script:
