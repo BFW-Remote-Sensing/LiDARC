@@ -90,11 +90,15 @@ def process_points(points, precomp_grid):
     y = points.y
     z = np.array(points.z)
     veg_height = points[precomp_grid["veg_height_key"]]
+    grid_h, grid_w = precomp_grid["veg_height_digest"].shape[:2]
 
     ix = ((x - precomp_grid["x_min"]) / precomp_grid["grid_width"]).astype(np.int32)
     iy = ((y - precomp_grid["y_min"]) / precomp_grid["grid_height"]).astype(np.int32)
 
     valid = (ix >= 0) & (iy >= 0) & (ix < precomp_grid["grid_shape"][1]) & (iy < precomp_grid["grid_shape"][0])
+    if not np.any(valid):
+        return
+
     ix, iy, z, veg_height = ix[valid], iy[valid], z[valid], veg_height[valid]
 
     np.add.at(precomp_grid["count"], (iy, ix), 1)
@@ -104,17 +108,19 @@ def process_points(points, precomp_grid):
     np.maximum.at(precomp_grid["veg_height_max"], (iy, ix), veg_height)
 
     n_rows, n_cols = precomp_grid["count"].shape
-    cell_index = iy * n_cols + ix
+    cell_index = iy * grid_w + ix
+
     order = np.argsort(cell_index)
     cell_index_sorted = cell_index[order]
     veg_sorted = veg_height[order]
+
     change = np.r_[True, cell_index_sorted[1:] != cell_index_sorted[:-1]]
     groups = np.where(change)[0]
 
     for start, end in zip(groups, np.r_[groups[1:], len(cell_index_sorted)]):
         idx = cell_index_sorted[start]
-        r = idx // n_cols
-        c = idx % n_cols
+        r = idx // grid_w
+        c = idx % grid_w
         values = veg_sorted[start:end]
         precomp_grid["veg_height_digest"][r,c].batch_update(values)
 
