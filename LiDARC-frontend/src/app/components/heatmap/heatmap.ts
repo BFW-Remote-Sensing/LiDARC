@@ -23,7 +23,7 @@ echarts.use([TitleComponent, DataZoomComponent, LegacyGridContainLabel, TooltipC
   selector: 'app-heatmap',
   standalone: true,
   imports: [
-     CommonModule
+    CommonModule
   ],
   templateUrl: './heatmap.html',
   styleUrl: './heatmap.scss',
@@ -72,7 +72,7 @@ export class Heatmap implements OnInit, AfterViewInit {
 
 
   private createHeatmapOptionsWithoutDataset(data: number[][], title: string, showVisualMap: boolean): EChartsCoreOption {
-     return {
+    return {
       title: {
         top: 0,
         text: title
@@ -88,32 +88,34 @@ export class Heatmap implements OnInit, AfterViewInit {
           top: 70,
         },
       },xAxis: {
-         type: 'category',
-         data: Array.from({length: this.cols}, (_, i) => i.toString()),
-         splitArea: {show: false},
-       },
-       yAxis: {
-         type: 'category',
-         data: Array.from({length: this.rows}, (_, i) => i.toString()),
-         splitArea: {show: false},
-       },
-       dataZoom: [
-         // Slider unten für X-Achse
-         {
-           type: 'slider',
-           xAxisIndex: 0,
-           bottom: 0,
-           filterMode: 'none', // Daten nicht rausfiltern, nur Ansicht beschneiden
-         },
-         // Slider rechts für Y-Achse
-         {
-           type: 'slider',
-           yAxisIndex: 0,
-           orient: 'vertical',
-           right: 0,
-           filterMode: 'none',
-         },
-       ],
+        type: 'category',
+        data: Array.from({length: this.cols}, (_, i) => i.toString()),
+        splitArea: {show: false},
+      },
+      yAxis: {
+        type: 'category',
+        data: Array.from({length: this.rows}, (_, i) => i.toString()),
+        splitArea: {show: false},
+      },
+      dataZoom: [
+        // Slider unten für X-Achse
+        {
+          type: 'slider',
+          xAxisIndex: 0,
+          bottom: 0,
+          show: showVisualMap,
+          filterMode: 'none', // Daten nicht rausfiltern, nur Ansicht beschneiden
+        },
+        // Slider rechts für Y-Achse
+        {
+          type: 'slider',
+          yAxisIndex: 0,
+          show: showVisualMap,
+          orient: 'vertical',
+          right: 0,
+          filterMode: 'none',
+        },
+      ],
 
       visualMap: {
         min: 0,
@@ -123,21 +125,30 @@ export class Heatmap implements OnInit, AfterViewInit {
         left: 0,
         top: "middle",
         inRange: {
-          color: ['#e5f5e0', '#a6dba0', '#5aae61', '#1b7837', '#00441b'],
-        },
+          color: ["#543005", // deep brown (very low vegetation)
+            "#8c510a",
+            "#bf812d",
+            "#dfc27d",
+            "#f6e8c3",
+            "#c7eae5",
+            "#80cdc1",
+            "#35978f",
+            "#01665e",
+            "#003c30"  // deep green/teal (very high)],
+          ]},
         show: showVisualMap
       }, series: [
-         {
-           type: 'heatmap',
-           data,
-           emphasis: {
-             itemStyle: {
-               borderColor: '#ff000',
-               borderWidth: 2,
-             },
-           },
-         },
-       ]
+        {
+          type: 'heatmap',
+          data,
+          emphasis: {
+            itemStyle: {
+              borderColor: '#ff000',
+              borderWidth: 2,
+            },
+          },
+        },
+      ]
     };
   }
 
