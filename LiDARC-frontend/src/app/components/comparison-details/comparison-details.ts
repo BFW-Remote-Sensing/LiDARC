@@ -16,6 +16,7 @@ import { TextCard } from '../text-card/text-card';
 import { MatIconButton } from '@angular/material/button';
 import { MatTooltip } from '@angular/material/tooltip';
 
+
 import { EChartsCoreOption } from 'echarts/core';
 import * as echarts from 'echarts/core';
 import {provideEchartsCore } from "ngx-echarts";
@@ -27,6 +28,7 @@ import {MatGridListModule} from '@angular/material/grid-list';
 import {MatDividerModule} from '@angular/material/divider';
 import {MatCardModule} from '@angular/material/card';
 import {NgxEchartsDirective} from 'ngx-echarts';
+import {Heatmap} from '../heatmap/heatmap';
 
 //====HARDCODED VIS===//
 echarts.use([
@@ -106,7 +108,8 @@ export interface VegetationStats {
     NgxEchartsDirective,
     MatCardModule,
     MatDividerModule,
-    MatGridListModule
+    MatGridListModule,
+    Heatmap
   ],
   templateUrl: './comparison-details.html',
   styleUrls: ['./comparison-details.scss', '../file-details/file-details.scss'],
