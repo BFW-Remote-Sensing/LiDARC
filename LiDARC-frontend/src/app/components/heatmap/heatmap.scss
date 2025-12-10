@@ -1,5 +1,6 @@
 .heatmap-chart {
   height: 500px; /* oder 800px, je nach Geschmack */
+  max-width: 100%;
 }
 
 .heatmap-comparison {
@@ -11,6 +12,7 @@
 }
 
 .zoom-info-box {
+  margin-top: 15px;
   justify-self: left;
   border-left: 10px;
   background: #f5f7fa;
