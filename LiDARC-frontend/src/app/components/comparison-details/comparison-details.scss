@@ -1,0 +1,39 @@
+.file-name {
+  display: flex;
+  align-items: center; /* vertical center */
+}
+
+.align-center {
+  align-items: center;
+}
+
+//for hardcoded visualizations
+.comparison-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 10px;
+}
+
+.section-card {
+  padding: 10px;
+  margin: 20px;
+}
+
+.metrics-list {
+  display: flex;
+  justify-content: flex-start;
+  gap: 30px;
+  margin-bottom: 20px;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.chart {
+  max-width: 430px;
+  height: 350px;
+}

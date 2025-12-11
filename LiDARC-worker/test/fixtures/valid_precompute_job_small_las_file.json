@@ -1,0 +1,17 @@
+{
+  "file": {
+    "bucket": "basebucket",
+    "objectKey": "test.las"
+  },
+  "grid": {
+    "xMin": 0.0,
+    "xMax": 10.0,
+    "yMin": 0.0,
+    "yMax": 10.0,
+    "cellWidth": 1.0,
+    "cellHeight": 1.0
+  },
+  "jobId": "12345",
+  "comparisonId": 1,
+  "fileId": 2
+}

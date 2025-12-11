@@ -2,65 +2,80 @@ name: lidarc
 
 services:
   rabbitmq:
-    image: rabbitmq:3.12-management
+    build:
+      context: ./rabbitmq
+      dockerfile: Dockerfile
     container_name: rabbitmq
     ports:
-      - "5672:5672"   # für AMQP (Java-Client)
-      - "15672:15672" # für Web UI
-    environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin
+      - "5672:5672"
+      - "15672:15672"
     networks:
       - ase-network
+
   minio:
-      image: quay.io/minio/minio:latest
-      container_name: minio
-      restart: unless-stopped
-      ports:
-        - "9000:9000"   # API port
-        - "9001:9001"   # Console port
-      environment:
-        MINIO_ROOT_USER: admin
-        MINIO_ROOT_PASSWORD: aseWS25LiDARC  
-      volumes:
-        - ./data:/data
-        #minio_data:/data
-      command: server /data --console-address ":9001"
+    image: quay.io/minio/minio:latest
+    container_name: minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000" # API port
+      - "9001:9001" # Console port
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: aseWS25LiDARC
+    volumes:
+      - ${LIDAR_DATA_ROOT:-./data}/minio:/data
+      #minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - ase-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
   redis:
-    image: redis:latest
+    image: redis:8.4
     container_name: redis_cache
     ports:
       - "6379:6379"
     volumes:
-      - ./data:/data
+      - ${LIDAR_DATA_ROOT:-./data}/redis:/data
     restart: unless-stopped
+    networks:
+      - ase-network
+
   minio-mc:
     image: quay.io/minio/mc:latest
     container_name: minio_initializer
     depends_on:
       minio:
-        condition: service_started
-        restart: true
+        condition: service_healthy
     entrypoint: >
       /bin/sh -c "
       /usr/bin/mc alias set myminio http://minio:9000 admin aseWS25LiDARC &&
       /usr/bin/mc mb myminio/basebucket || true
       "
     networks:
-      - default
+      - ase-network
+    restart: on-failure
 
   postgres:
-    image: postgres:16
+    build:
+      context: ./postgres
+      dockerfile: Dockerfile
     container_name: postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
-      POSTGRES_DB: lidarc_db
     ports:
       - "5432:5432"
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
+      #volume mounts can be tricky ./data/postgresql was always somehow saved in another image
+      #maybe we need to change the volume every time we need a fresh db
+      - ${DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
     networks:
       - ase-network
 
@@ -68,6 +83,18 @@ services:
     build:
       context: ./LiDARC-frontend
       dockerfile: Dockerfile
+    depends_on:
+      minio-mc:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_started
+        restart: true
+      postgres:
+        condition: service_started
+        restart: true
+      backend:
+        condition: service_started
+        restart: true
     container_name: frontend
     ports:
       - "8081:8081"
@@ -78,17 +105,80 @@ services:
     build:
       context: ./LiDARC-backend
       dockerfile: Dockerfile
+    volumes:
+      - ${DATA_DIR:-./data}/backend:/app/uploads
     container_name: backend
+    depends_on:
+      minio-mc:
+        condition: service_completed_successfully
+
+      rabbitmq:
+        condition: service_started
+        restart: true
+      postgres:
+        condition: service_started
+        restart: true
     ports:
       - "8080:8080"
+    environment:
+      - POSTGRES_HOST=postgres
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin
+      - APP_UPLOAD_DIR=/app/uploads
+    healthcheck:
+      test: "curl --fail --silent localhost:8080/actuator/health | grep UP || exit 1"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     networks:
       - ase-network
+
   preprocess-worker:
     image: preprocess-lidarc-worker
     build:
       context: ./LiDARC-worker
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile-preprocess-worker
     container_name: preprocess-worker
+    depends_on:
+      minio:
+        condition: service_started
+        restart: true
+      rabbitmq:
+        condition: service_started
+        restart: true
+    networks:
+      - ase-network
+  comparison-worker:
+    image: comparison-lidarc-worker
+    build:
+      context: ./LiDARC-worker
+      dockerfile: Dockerfile-comparison-worker
+    container_name: comparison-worker
+    depends_on:
+      minio:
+        condition: service_started
+        restart: true
+      rabbitmq:
+        condition: service_started
+        restart: true
+      postgres:
+        condition: service_started
+        restart: true
+    networks:
+      - ase-network
+
+
+
+
+
+  metadata-worker:
+    image: metadata-lidarc-worker
+    build:
+      context: ./LiDARC-worker
+      dockerfile: Dockerfile-metadata-worker
+    container_name: metadata-worker
     depends_on:
       minio:
         condition: service_started
@@ -105,8 +195,7 @@ services:
 networks:
   ase-network:
     driver: bridge
-
 #possible volume on host
-#volumes: 
-#  minio_data: 
+#volumes:
+#  minio_data:
 #  - ./data:/data

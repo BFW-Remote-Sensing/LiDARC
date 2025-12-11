@@ -1,0 +1,48 @@
+.heatmap-chart {
+  height: 500px; /* oder 800px, je nach Geschmack */
+  max-width: 100%;
+}
+
+.heatmap-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  //gap: 1rem;
+  height: 600px;
+}
+
+.zoom-info-box {
+  margin-top: 15px;
+  justify-self: left;
+  border-left: 10px;
+  background: #f5f7fa;
+  padding: 16px 20px;
+  border-radius: 10px;
+  border-left: 4px solid #4c9aff;
+  font-family: Arial, sans-serif;
+  max-width: 450px;
+  margin-bottom: 16px;
+  color: #333;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+}
+
+.zoom-info-box h4 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: #2e5aac;
+  font-size: 1.1rem;
+}
+
+.zoom-info-box p {
+  margin: 6px 0;
+  line-height: 1.5;
+}
+
+.zoom-info-box ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.zoom-info-box li {
+  margin-bottom: 4px;
+}

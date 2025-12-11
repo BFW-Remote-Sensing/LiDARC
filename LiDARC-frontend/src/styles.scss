@@ -1,1 +1,24 @@
-/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
+@use '@angular/material/prebuilt-themes/indigo-pink.css';
+
+html {
+  color-scheme: light;
+  @include mat.theme(
+    (
+      color: mat.$azure-palette,
+      typography: Roboto,
+    )
+  );
+
+  height: 100%;
+}
+
+h1, h2, h3, h4, h5, h6, p, span, div {
+  font-family: 'Roboto', sans-serif;
+}
+
+body {
+  color: var(--mat-sys-on-surface);
+  margin: 0;
+  height: 100%;
+}

@@ -1,0 +1,203 @@
+@if (loading()) {
+<div class="flex-center">
+    <mat-spinner></mat-spinner>
+</div>
+}
+@else if (!loading() && !metadata && !errorMessage()) {
+<app-text-card type="info" message="No file found."></app-text-card>
+}
+@else if (errorMessage()) {
+<app-text-card type="error" message="{{ errorMessage() }}"></app-text-card>
+}
+@else if(metadata) {
+<div class="file-details-container">
+
+    <header class="metadata-header mat-elevation-z2">
+        <mat-icon class="header-icon">description</mat-icon>
+        <h1>File Details: {{ metadata.originalFilename }}</h1>
+    </header>
+
+    <div class="content-wrapper">
+
+        <section class="general-info-section">
+            <h2><mat-icon>info</mat-icon> General Information</h2>
+            <mat-list role="list">
+
+                <mat-list-item role="listitem">
+                    <mat-icon matListItemIcon>adjust</mat-icon>
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span>
+                            Status
+                        </span>
+                        <span>
+                            {{ metadata.status | titlecase }}
+                        </span>
+                    </div>
+                </mat-list-item>
+                <mat-divider></mat-divider>
+
+                <mat-list-item role="listitem">
+                    <mat-icon matListItemIcon>aspect_ratio</mat-icon>
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span>
+                            Size
+                        </span>
+                        <span>
+                            {{ metadata.sizeBytes | formatBytes }}
+                        </span>
+                    </div>
+                </mat-list-item>
+                <mat-divider></mat-divider>
+
+                <mat-list-item role="listitem">
+                    <mat-icon matListItemIcon>data_usage</mat-icon>
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span>
+                            Point Count
+                        </span>
+                        <span>
+                            {{ metadata.pointCount ?? 'N/A' }}
+                        </span>
+                    </div>
+                </mat-list-item>
+                <mat-divider></mat-divider>
+
+                <mat-list-item role="listitem">
+                    <mat-icon matListItemIcon>calendar_today</mat-icon>
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span>
+                            Capture Year
+                        </span>
+                        <span>
+                            {{ metadata.captureYear ?? 'N/A' }}
+                        </span>
+                    </div>
+                </mat-list-item>
+                <mat-divider></mat-divider>
+
+                <mat-list-item role="listitem">
+                    <mat-icon matListItemIcon>cloud_upload</mat-icon>
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span>
+                            Uploaded At
+                        </span>
+                        <span>
+                            {{ metadata.uploadedAt ? (metadata.uploadedAt | date:'medium') : 'N/A' }}
+                        </span>
+                    </div>
+                </mat-list-item>
+                <mat-divider></mat-divider>
+
+                <mat-list-item role="listitem">
+                    <mat-icon matListItemIcon>add_circle</mat-icon>
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span>
+                            File Created At
+                        </span>
+                        <span>
+                            {{ metadata.fileCreationDate ? (metadata.fileCreationDate | date:'medium') : 'N/A' }}
+                        </span>
+                    </div>
+                </mat-list-item>
+            </mat-list>
+            <mat-divider></mat-divider>
+
+            <mat-list-item role="listitem">
+                <mat-icon matListItemIcon>keyboard</mat-icon>
+                <div matListItemTitle class="mat-list-item-row">
+                    <span>
+                        Capture Software
+                    </span>
+                    <span>
+                        {{ metadata.captureSoftware ?? 'N/A' }}
+                    </span>
+                </div>
+            </mat-list-item>
+            <mat-divider></mat-divider>
+
+            <mat-list-item role="listitem">
+                <mat-icon matListItemIcon>update</mat-icon>
+                <div matListItemTitle class="mat-list-item-row">
+                    <span>
+                        Las Version
+                    </span>
+                    <span>
+                        {{ metadata.lasVersion ?? 'N/A' }}
+                    </span>
+                </div>
+            </mat-list-item>
+            <mat-divider></mat-divider>
+
+            <mat-list-item role="listitem">
+                <mat-icon matListItemIcon>vpn_key</mat-icon>
+                <div matListItemTitle class="mat-list-item-row">
+                    <span>
+                        System Identifier
+                    </span>
+                    <span>
+                        {{ metadata.systemIdentifier ?? 'N/A' }}
+                    </span>
+                </div>
+            </mat-list-item>
+        </section>
+
+        <mat-divider vertical="true"></mat-divider>
+
+        <section class="technical-info-section">
+            <h2><mat-icon>settings</mat-icon>Coordinate Data</h2>
+
+            <div class="bounding-box-flex">
+                <div style="width: 45%">
+                    <h3>Minimum</h3>
+                    <mat-divider></mat-divider>
+                    <h4>
+                        X<sub style="font-size: 0.6em;">min</sub>:
+                        <span class="coordinate">
+                            {{ metadata.minX != null ? (metadata.minX | number:'1.2-6') : 'N/A' }}
+                        </span>
+                    </h4>
+                    <mat-divider></mat-divider>
+                    <h4>
+                        Y<sub style="font-size: 0.6em;">min</sub>:
+                        <span class="coordinate">
+                            {{ metadata.minY != null ? (metadata.minY | number:'1.2-6') : 'N/A' }}
+                        </span>
+                    </h4>
+                    <mat-divider></mat-divider>
+                    <h4>
+                        Z<sub style="font-size: 0.6em;">min</sub>:
+                        <span class="coordinate">
+                            {{ metadata.minZ != null ? (metadata.minZ | number:'1.2-6') : 'N/A' }}
+                        </span>
+                    </h4>
+                </div>
+                <mat-icon>east</mat-icon>
+                <div style="width: 45%">
+                    <h3>Maximum</h3>
+                    <mat-divider></mat-divider>
+                    <h4>
+                        X<sub style="font-size: 0.6em;">max</sub>:
+                        <span class="coordinate">
+                            {{ metadata.maxX != null ? (metadata.maxX | number:'1.2-6') : 'N/A' }}
+                        </span>
+                    </h4>
+                    <mat-divider></mat-divider>
+                    <h4>
+                        Y<sub style="font-size: 0.6em;">max</sub>:
+                        <span class="coordinate">
+                            {{ metadata.maxY != null ? (metadata.maxY | number:'1.2-6') : 'N/A' }}
+                        </span>
+                    </h4>
+                    <mat-divider></mat-divider>
+                    <h4>
+                        Z<sub style="font-size: 0.6em;">max</sub>:
+                        <span class="coordinate">
+                            {{ metadata.maxZ != null ? (metadata.maxZ | number:'1.2-6') : 'N/A' }}
+                        </span>
+                    </h4>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+}

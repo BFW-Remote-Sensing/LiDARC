@@ -1,0 +1,21 @@
+.navbar {
+    display: flex;
+    column-gap: 20px;
+    width: 100%;
+    border-bottom: 1px solid #ccc;
+    padding: 10px;
+
+    .active-button {
+        background-color: #e0e0e0;
+    }
+
+    .logo {
+        height: 38px;
+        margin-right: 10px;
+        cursor: pointer;
+    }
+}
+
+mat-toolbar {
+    padding: 0;
+}

@@ -1,0 +1,35 @@
+<h2 mat-dialog-title>Create Report for: {{ data.comparison.name }}</h2>
+
+<mat-dialog-content>
+  <form (ngSubmit)="onCreate()">
+    <div class="metadata-display">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Report Title</mat-label>
+        <input matInput [(ngModel)]="report.title" name="title" required placeholder="Enter report title">
+      </mat-form-field>
+    </div>
+    <h3>Include Visualizations</h3>
+    <div class="selection-list">
+      <mat-selection-list #chartsList (selectionChange)="onSelectionChange($event)">
+          @for (item of data.availableCharts; track item.fileName) {
+            <mat-list-option  [value]="item" selected>
+              <mat-icon matListItemIcon>insert_chart</mat-icon>
+              <span matListItemLine>{{ item.name }}</span>
+              <span matListItemLine class="sub-text">Chart Visualization</span>
+            </mat-list-option>
+          } @empty {
+            <div class="empty-state">
+              <p>No visualizations detected from the parent view.</p>
+            </div>
+          }
+      </mat-selection-list>
+    </div>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary"  (click)="onCreate()" [disabled]="!report.title || isProcessing">
+    {{ isProcessing ? 'Generating PDF...' : 'Create & Download' }}
+  </button>
+</mat-dialog-actions>

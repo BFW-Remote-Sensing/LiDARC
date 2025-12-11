@@ -1,0 +1,15 @@
+{
+  "jobId": "0001",
+  "file": {},
+  "grid": {
+    "xMin": -77220.71,
+    "xMax": -76820.938,
+    "yMin": 189553.953,
+    "yMax": 189953.718,
+    "cellWidth": 10,
+    "cellHeight": 10,
+    "offset": 1
+  },
+  "comparisonId": 1,
+  "fileId": 2
+}
