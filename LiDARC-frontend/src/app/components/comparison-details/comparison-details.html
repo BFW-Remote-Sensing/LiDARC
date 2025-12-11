@@ -15,6 +15,9 @@
     <header class="metadata-header mat-elevation-z2">
         <mat-icon class="header-icon">description</mat-icon>
         <h1>Comparison Details: {{ comparison.name }}</h1>
+        <button mat-raised-button color="primary" (click)="createReport()" style="width: 180px;">
+          Create Report
+        </button>
     </header>
 
     <div class="content-wrapper">
@@ -191,10 +194,10 @@
                 </h4>
             </div>
             <h2 style="margin-top: 10px;"><mat-icon>assignment</mat-icon>Reports</h2>
-            <mat-list role="list">
+            <mat-nav-list role="navigation">
                 @for (report of reports; track report.id; let last = $last) {
 
-                <mat-list-item role="listitem">
+                <a mat-list-item role="listitem" [href]="this.globals.backendUri + '/reports/' + report.id + '/download'" target="_blank" rel="noopener noreferrer" download>
                     <mat-icon matListItemIcon>insert_drive_file</mat-icon>
 
                     <div matListItemTitle class="mat-list-item-row">
@@ -206,7 +209,7 @@
                             {{ report.fileName | titlecase }}
                         </span>
                     </div>
-                </mat-list-item>
+                </a>
 
                 @if (!last) {
                 <mat-divider></mat-divider>
@@ -220,7 +223,7 @@
                     </div>
                 </mat-list-item>
                 }
-            </mat-list>
+            </mat-nav-list>
         </section>
     </div>
 </div>
@@ -257,7 +260,7 @@
         </div>
 
         <div class="charts-grid">
-          <div echarts [options]="scatterOption" class="chart"></div>
+          <div echarts [options]="scatterOption" class="chart" (chartInit)="onScatterInit($event)"></div>
           <div echarts [options]="boxplotOption" class="chart"></div>
           <div echarts [options]="fileDistributionOption" class="chart"></div>
         </div>

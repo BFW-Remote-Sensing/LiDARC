@@ -4,6 +4,7 @@ import { defaultComparisonPath, Globals } from "../globals/globals";
 import { Observable } from "rxjs";
 import { ComparisonDTO, CreateComparison } from "../dto/comparison";
 import { ComparisonReport } from "../dto/comparisonReport";
+import {CreateReportDto} from '../dto/report';
 
 const headers = new HttpHeaders({
     'Content-Type': 'application/json',
@@ -60,5 +61,22 @@ export class ComparisonService {
             this.globals.backendUri + defaultComparisonPath + `/${id}`,
             { headers }
         );
+    }
+
+    createReport(id: number, report: CreateReportDto, files: File[]): Observable<Blob> {
+      const formData = new FormData();
+      formData.append(
+        'report',
+        new Blob([JSON.stringify(report)], { type: 'application/json' })
+      );
+      files.forEach(file => {
+        formData.append('files', file, file.name);
+      });
+
+      return this.httpClient.post(
+        this.globals.backendUri + defaultComparisonPath + `/${id}/reports`,
+        formData,
+        { responseType: 'blob' },
+      );
     }
 }

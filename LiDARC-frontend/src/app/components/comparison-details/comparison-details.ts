@@ -13,7 +13,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
 import { TextCard } from '../text-card/text-card';
-import { MatIconButton } from '@angular/material/button';
+import {MatButton, MatIconButton} from '@angular/material/button';
 import { MatTooltip } from '@angular/material/tooltip';
 
 
@@ -29,6 +29,12 @@ import {MatDividerModule} from '@angular/material/divider';
 import {MatCardModule} from '@angular/material/card';
 import {NgxEchartsDirective} from 'ngx-echarts';
 import {Heatmap} from '../heatmap/heatmap';
+import {GridDefinitionDialogComponent} from '../define-grid/define-grid';
+import {ReportCreationDialogComponent} from '../report-creation-dialog-component/report-creation-dialog-component';
+import {MatDialog} from '@angular/material/dialog';
+import {ChartData} from '../../dto/report';
+import {ECharts} from 'echarts';
+import {Globals} from '../../globals/globals';
 
 //====HARDCODED VIS===//
 echarts.use([
@@ -109,7 +115,8 @@ export interface VegetationStats {
     MatCardModule,
     MatDividerModule,
     MatGridListModule,
-    Heatmap
+    Heatmap,
+    MatButton
   ],
   templateUrl: './comparison-details.html',
   styleUrls: ['./comparison-details.scss', '../file-details/file-details.scss'],
@@ -121,14 +128,20 @@ export class ComparisonDetails implements OnInit {
   @Input() reports: ComparisonReport[] = [];
   public loading: WritableSignal<boolean> = signal(true);
   public errorMessage = signal<string | null>(null);
+  private scatterInstance!: ECharts;
 
   constructor(
     private comparisonService: ComparisonService,
     private route: ActivatedRoute,
+    private dialog: MatDialog,
+    public globals: Globals
   ) {
     this.comparisonId = Number(this.route.snapshot.paramMap.get('id'));
   }
 
+  onScatterInit(ec: any): void {
+    this.scatterInstance = ec;
+  }
   //==== HARDCODED DATA====//
   vegetationStats: VegetationStats = {
     cells: [
@@ -249,6 +262,42 @@ export class ComparisonDetails implements OnInit {
           }
         });
     }
+  }
+
+  createReport(): void {
+    const chartImages: ChartData[] = [];
+    console.log('Scatter Instance:', this.scatterInstance);
+    if (this.scatterInstance) {
+      const dataUrl = this.scatterInstance.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff', excludeComponents: ['toolbox'] });
+      chartImages.push({
+        name: 'Vegetation Scatter Plot',
+        fileName: 'scatter_plot.png',
+        blob: this.dataURItoBlob(dataUrl)
+      });
+    }
+
+    //TODO: Implement other charts as well
+    console.log('Sending Charts to Dialog:', chartImages);
+
+    this.dialog.open(ReportCreationDialogComponent, {
+      width: '600px',
+      height: 'auto',
+      data: {
+        comparison: this.comparison,
+        availableCharts: chartImages
+      }
+    });
+  }
+
+  dataURItoBlob(dataURI: string): Blob {
+    const byteString = atob(dataURI.split(',')[1]);
+    const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([ab], { type: mimeString });
   }
 
   //=====HARDCODED ECHARTS OPTIONS====//
