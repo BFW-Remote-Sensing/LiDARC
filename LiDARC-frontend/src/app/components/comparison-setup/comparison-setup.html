@@ -1,10 +1,102 @@
 <h2 style="text-align: center; margin-bottom: 0">Comparison Setup</h2>
 <div style="display:flex">
     <div style="width: 70%">
-        <h3 style="text-align: center; margin-bottom: 20px;">Selected Files for Comparison:</h3>
-        <div class="file-details-cards-container">
+        <h3 class="selected-items-title">Selected Items for Comparison:</h3>
+        <!-- <div class="file-details-cards-container">
             <app-file-details-card [metadataId]="comparison.fileMetadataIds[0]" index="1"></app-file-details-card>
             <app-file-details-card [metadataId]="comparison.fileMetadataIds[1]" index="2"></app-file-details-card>
+        </div> -->
+        <div class="selected-items-container">
+            <table mat-table [dataSource]="dataSource" class="mat-elevation-z8" style="width: 100%;">
+
+                <!-- Select Column (Checkbox) -->
+                <ng-container matColumnDef="select">
+                    <th mat-header-cell *matHeaderCellDef></th>
+                    <td mat-cell *matCellDef="let element">
+                        <mat-checkbox [disabled]="element.status !== 'PROCESSED'"
+                            [checked]="refService.isSelectedComparableItemId(`${element.id}-${element.type}`)"
+                            (change)="refService.setSelectedComparableItemId(`${element.id}-${element.type}`)">
+                        </mat-checkbox>
+                    </td>
+                </ng-container>
+
+
+                <ng-container matColumnDef="name">
+                    <th mat-header-cell *matHeaderCellDef>Name</th>
+                    <td mat-cell *matCellDef="let element">{{ element.name }}</td>
+                </ng-container>
+
+                <!-- Folder Name Column
+        <ng-container matColumnDef="folderName">
+            <th mat-header-cell *matHeaderCellDef>Folder Name</th>
+            <td mat-cell *matCellDef="let element">{{ element.folderName }}</td>
+        </ng-container>
+
+         File Name Column
+        <ng-container matColumnDef="filename">
+            <th mat-header-cell *matHeaderCellDef>File Name</th>
+            <td mat-cell *matCellDef="let element">{{ element.originalFilename }}</td>
+        </ng-container> -->
+
+                <ng-container matColumnDef="type">
+                    <th mat-header-cell *matHeaderCellDef>Type</th>
+                    <td mat-cell *matCellDef="let element">{{ element.type }}</td>
+                </ng-container>
+
+                <!-- Status Column -->
+                <ng-container matColumnDef="status">
+                    <th mat-header-cell *matHeaderCellDef>Status</th>
+                    <td mat-cell *matCellDef="let element" [ngClass]="{
+        'status-ready': element.status === 'PROCESSED',
+        'status-error': element.status === 'FAILED',
+        'status-default': element.status === 'UPLOADED' || element.status === 'PROCESSING'
+    }">
+                        <div style="display: flex; column-gap: 10px;">
+                            <span>{{ element.status }}</span>
+                            @if (element.status === 'PROCESSING')
+                            {
+                            <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+                            }
+                        </div>
+                    </td>
+                </ng-container>
+
+                <!-- Capture Year Column -->
+                <ng-container matColumnDef="captureYear">
+                    <th mat-header-cell *matHeaderCellDef>Capture Year</th>
+                    <td mat-cell *matCellDef="let element">{{ element.captureYear ?? '-' }}</td>
+                </ng-container>
+
+                <!-- Size Bytes Column -->
+                <ng-container matColumnDef="sizeBytes">
+                    <th mat-header-cell *matHeaderCellDef>Size</th>
+                    <td mat-cell *matCellDef="let element">{{ element.sizeBytes != null ? (element.sizeBytes |
+                        formatBytes)
+                        :
+                        '-' }}</td>
+                </ng-container>
+
+                <!-- Uploaded At Column -->
+                <ng-container matColumnDef="uploadedAt">
+                    <th mat-header-cell *matHeaderCellDef>Uploaded/Created At</th>
+                    <td mat-cell *matCellDef="let element">{{ element.uploadedAt | date: 'medium' }}</td>
+                </ng-container>
+
+                <!-- Actions Column -->
+                <ng-container matColumnDef="actions">
+                    <th mat-header-cell *matHeaderCellDef></th>
+                    <td mat-cell *matCellDef="let element" style="text-align: right">
+                        <a [routerLink]="[element.type === 'File' ? '/stored-files' : '/folders', element.id]">
+                            <button mat-icon-button matTooltip="View Details" matTooltipPosition="right">
+                                <mat-icon>visibility</mat-icon>
+                            </button>
+                        </a>
+                    </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+            </table>
         </div>
     </div>
     <mat-divider role="separator" [vertical]="true"></mat-divider>
@@ -74,14 +166,15 @@
                 }
                 @else {
                 <p style="font-style: italic; color: gray;">
-                    No grid defined yet.<br/><br/>
-                    1) Click on a File Details Card to choose a reference file.<br/>
+                    No grid defined yet.<br /><br />
+                    1) Click on a File Details Card to choose a reference file.<br />
                     2) Click "Define Grid" to set up the grid for comparison.
                 </p>
                 }
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0px;">
-                <button mat-raised-button color="secondary" (click)="defineGrid()" [disabled]="loadingStart() || !refService.selectedFile()">
+                <button mat-raised-button color="secondary" (click)="defineGrid()"
+                    [disabled]="loadingStart() || !refService.selectedFile()">
                     Define Grid
                 </button>
                 <button mat-raised-button color="primary" (click)="openConfirmationDialog()" style="width: 180px;"

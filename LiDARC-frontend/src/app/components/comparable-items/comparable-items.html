@@ -4,7 +4,7 @@
         <mat-spinner></mat-spinner>
     </div>
     }@else if (!loading() && dataSource.data.length === 0 && !errorMessage()) {
-    <app-text-card type="info" message="No unassigned files found."></app-text-card>
+    <app-text-card type="info" message="No comparable items found."></app-text-card>
     }
     @else if (errorMessage()) {
     <app-text-card type="error" message="{{ errorMessage() }}"></app-text-card>
@@ -12,11 +12,13 @@
     @else {
     <div class="upper-section">
         <div class="upper-action-section">
-            <button mat-raised-button color="primary" (click)="createFolder()" [disabled]="selectedFileIds.size === 0">
-                Create a Folder
+            <button mat-raised-button color="primary" (click)="goToComparison()"
+                [disabled]="selectedComparableItemIds.size < 2">
+                Compare
             </button>
         </div>
-        <button mat-raised-button color="warn" (click)="deleteSelectedFiles()" [disabled]="selectedFileIds.size === 0">
+        <button mat-raised-button color="warn" (click)="deleteSelectedFiles()"
+            [disabled]="selectedComparableItemIds.size === 0">
             Delete
         </button>
     </div>
@@ -27,23 +29,34 @@
         <ng-container matColumnDef="select">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let element">
-                <mat-checkbox
-                    [disabled]="(selectedFileIds.size === 2 && !selectedFileIds.has(element.id)) || element.status !== 'PROCESSED'"
-                    [checked]="isSelected(element.id)" (change)="toggleSelection(element.id, $event)">
+                <mat-checkbox [disabled]="element.status !== 'PROCESSED'"
+                    [checked]="isSelected(`${element.id}-${element.type}`)"
+                    (change)="toggleSelection(`${element.id}-${element.type}`, $event)">
                 </mat-checkbox>
             </td>
         </ng-container>
 
-        <!-- Folder Name Column -->
+
+        <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Name</th>
+            <td mat-cell *matCellDef="let element">{{ element.name }}</td>
+        </ng-container>
+
+        <!-- Folder Name Column
         <ng-container matColumnDef="folderName">
             <th mat-header-cell *matHeaderCellDef>Folder Name</th>
             <td mat-cell *matCellDef="let element">{{ element.folderName }}</td>
         </ng-container>
 
-        <!-- File Name Column -->
+         File Name Column
         <ng-container matColumnDef="filename">
             <th mat-header-cell *matHeaderCellDef>File Name</th>
             <td mat-cell *matCellDef="let element">{{ element.originalFilename }}</td>
+        </ng-container> -->
+
+        <ng-container matColumnDef="type">
+            <th mat-header-cell *matHeaderCellDef>Type</th>
+            <td mat-cell *matCellDef="let element">{{ element.type }}</td>
         </ng-container>
 
         <!-- Status Column -->
@@ -79,7 +92,7 @@
 
         <!-- Uploaded At Column -->
         <ng-container matColumnDef="uploadedAt">
-            <th mat-header-cell *matHeaderCellDef>Uploaded At</th>
+            <th mat-header-cell *matHeaderCellDef>Uploaded/Created At</th>
             <td mat-cell *matCellDef="let element">{{ element.uploadedAt | date: 'medium' }}</td>
         </ng-container>
 
@@ -87,7 +100,7 @@
         <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let element" style="text-align: right">
-                <a [routerLink]="['/stored-files', element.id]">
+                <a [routerLink]="[element.type === 'File' ? '/stored-files' : '/folders', element.id]">
                     <button mat-icon-button matTooltip="View Details" matTooltipPosition="right">
                         <mat-icon>visibility</mat-icon>
                     </button>

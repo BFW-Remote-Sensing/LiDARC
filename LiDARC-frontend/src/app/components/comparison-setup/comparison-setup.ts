@@ -11,31 +11,40 @@ import { CreateComparison } from '../../dto/comparison';
 import { MatProgressSpinner, MatSpinner } from '@angular/material/progress-spinner';
 import { ComparisonService } from '../../service/comparison.service';
 import { finalize } from 'rxjs';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { GridDefinitionDialogComponent } from '../define-grid/define-grid';
 import { MatCardModule } from '@angular/material/card';
 import { MatIcon } from "@angular/material/icon";
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
 import { ReferenceFileService } from '../../service/referenceFile.service';
+import { ComparableListItem } from '../../dto/comparableItem';
+import { MatTableDataSource, MatTableModule } from '@angular/material/table';
+import { MatSelectModule } from '@angular/material/select';
+import { CommonModule } from '@angular/common';
+import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
 
 @Component({
   selector: 'app-comparison-setup',
   imports: [
-    FileDetailsCard,
     MatAnchor,
     MatButtonModule,
+    MatTableModule,
+    MatSelectModule,
     FormsModule,
+    CommonModule,
     MatInputModule,
     MatFormFieldModule,
     MatDivider,
     MatCheckbox,
+    RouterModule,
     MatProgressSpinner,
     MatCardModule,
-    MatIcon
+    MatIcon,
+    FormatBytesPipe
   ],
   templateUrl: './comparison-setup.html',
-  styleUrl: './comparison-setup.scss',
+  styleUrls: ['./comparison-setup.scss', '../comparable-items/comparable-items.scss'],
 })
 export class ComparisonSetup {
   @Input() comparison: CreateComparison = {
@@ -49,6 +58,9 @@ export class ComparisonSetup {
   };
   public loadingStart: WritableSignal<boolean> = signal(false);
   public errorMessage: WritableSignal<string | null> = signal(null);
+
+  displayedColumns: string[] = ['select', 'name', 'type', 'status', 'captureYear', 'sizeBytes', 'uploadedAt', 'actions'];
+  dataSource = new MatTableDataSource<ComparableListItem>([]);
 
   constructor(
     private selectedFilesService: SelectedFilesService,
@@ -71,10 +83,11 @@ export class ComparisonSetup {
   }
 
   ngOnInit(): void {
-    if (this.selectedFilesService.selectedIds.length >= 2) {
-      this.comparison.fileMetadataIds = [
-        ...this.selectedFilesService.selectedIds
-      ];
+    if (this.selectedFilesService.selectedComparableItemIds.length >= 2) {
+      // this.comparison.fileMetadataIds = [
+      //   ...this.selectedFilesService.selectedComparableItemIds.map(item => Number(item.split('-')[0]))
+      // ];
+      this.dataSource.data = this.selectedFilesService.selectedComparableItems;
     }
   }
 
@@ -114,7 +127,7 @@ export class ComparisonSetup {
       )
       .subscribe({
         next: () => {
-          this.selectedFilesService.clearSelectedIds();
+          this.selectedFilesService.clearSelectedFileIds();
           this.router.navigate(['/comparisons']);
         },
         error: (error) => {

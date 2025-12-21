@@ -1,0 +1,22 @@
+<h2 mat-dialog-title>Creating Folder</h2>
+<mat-dialog-content>
+    <form (ngSubmit)="onCreate()">
+        <mat-form-field appearance="fill" class="input-field">
+            <mat-label>Folder Name</mat-label>
+            <input matInput type="text" [(ngModel)]="folder.name" name="name" required maxlength="40">
+        </mat-form-field>
+    </form>
+</mat-dialog-content>
+<mat-dialog-actions>
+    <div class="actions">
+        <button mat-button (click)="onCancel()">Cancel</button>
+        <button mat-raised-button color="primary" (click)="onCreate()" style="width: 180px;"
+            [disabled]="loading() || !folder.name.trim()">
+            @if (loading()) {
+            <mat-spinner diameter="20" color="accent"></mat-spinner>
+            } @else {
+            Start Comparison
+            }
+        </button>
+    </div>
+</mat-dialog-actions>

@@ -4,6 +4,13 @@ CREATE DATABASE "lidarc_db";
 -- Connect to the new database and create tables
 \c lidarc_db
 
+CREATE TABLE IF NOT EXISTS folders (
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    name TEXT NOT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'UPLOADED' CHECK (status in ('UPLOADED', 'PROCESSING', 'PROCESSED', 'FAILED')),
+    created_at TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS files (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     filename TEXT NOT NULL UNIQUE,
@@ -24,7 +31,9 @@ CREATE TABLE IF NOT EXISTS files (
     file_creation_date DATE,
     status VARCHAR(32) NOT NULL DEFAULT 'UPLOADED' CHECK (status in ('UPLOADED', 'PROCESSING', 'PROCESSED', 'FAILED')),
     uploaded BOOLEAN DEFAULT FALSE,
-    uploaded_at TIMESTAMP
+    uploaded_at TIMESTAMP,
+    folder_id INTEGER,
+    CONSTRAINT fk_folder_id FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS urls (
@@ -88,3 +97,20 @@ ADD CONSTRAINT fk_files_coordinate_system FOREIGN KEY (coordinate_system) REFERE
 
 ALTER TABLE urls
 ADD CONSTRAINT fk_url_files FOREIGN KEY (file_id) REFERENCES files(id);
+
+
+-- Indexes to optimize queries for listing files and folders:
+-- 1. Index on files.folder_id for EXISTS and IS NULL checks
+CREATE INDEX idx_files_folder_id ON files(folder_id);
+
+-- 2. Index on folders.created_at for sorting
+CREATE INDEX idx_folders_created_at ON folders(created_at DESC);
+
+-- 3. Index on files.uploaded_at for sorting orphan files
+CREATE INDEX idx_files_uploaded_at ON files(uploaded_at DESC);
+
+-- 4. Partial index for files with no folder (orphan files)
+CREATE INDEX idx_files_uploaded_at_null_folder
+ON files(uploaded_at DESC)
+WHERE folder_id IS NULL;
+

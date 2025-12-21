@@ -1,6 +1,7 @@
 package com.example.lidarcbackend.service.files;
 
 import com.example.lidarcbackend.configuration.RabbitConfig;
+import com.example.lidarcbackend.service.comparisons.IComparisonService;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 

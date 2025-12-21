@@ -1,0 +1,18 @@
+.actions {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.input-field {
+    width: 100%;
+}
+
+mat-dialog-content {
+    width: 350px;
+    padding-bottom: 0 !important;
+}
+
+mat-dialog-actions {
+    padding: 0 24px;
+}
