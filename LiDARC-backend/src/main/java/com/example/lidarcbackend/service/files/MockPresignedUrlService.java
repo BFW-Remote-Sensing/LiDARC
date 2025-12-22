@@ -1,7 +1,5 @@
 package com.example.lidarcbackend.service.files;
 
-import com.example.lidarcbackend.configuration.MinioProperties;
-import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import io.minio.BucketExistsArgs;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
@@ -15,16 +13,17 @@ import jakarta.annotation.PostConstruct;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-import org.springframework.web.ErrorResponseException;
-
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.springframework.context.annotation.Profile;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.web.ErrorResponseException;
+import com.example.lidarcbackend.configuration.MinioProperties;
+import com.example.lidarcbackend.model.DTO.FileInfoDto;
 
 @Service
 @Profile("development")
@@ -159,7 +158,7 @@ public class MockPresignedUrlService implements IPresignedUrlService {
   }
 
   @Override
-  public Optional<FileInfoDto> fetchUploadUrl(String fileName, String originalFileName) {
+  public Optional<FileInfoDto> fetchUploadUrl(String fileName, String originalFileName, Long folderId) {
 
     GetPresignedObjectUrlArgs presignedObjectUrlArgs = GetPresignedObjectUrlArgs.builder()
         .method(Method.PUT)

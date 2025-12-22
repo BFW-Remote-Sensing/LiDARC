@@ -1,17 +1,22 @@
-import { ChangeDetectorRef, Component, EventEmitter, Output, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIcon } from '@angular/material/icon';
-import { MatTable, MatTableModule } from '@angular/material/table';
-import { MatProgressBar } from '@angular/material/progress-bar';
-import { MatCardModule } from '@angular/material/card';
-import { DataSource } from '@angular/cdk/collections';
-import { UploadService } from '../../service/upload.service';
-import { HttpEventType, HttpResponse } from '@angular/common/http';
-import { ToastrService } from 'ngx-toastr';
-import { debounceTime, map, Observable } from 'rxjs';
-import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import {ChangeDetectorRef, Component,} from '@angular/core';
+import {CommonModule} from '@angular/common';
+import {FormBuilder, FormGroup, ReactiveFormsModule} from '@angular/forms';
+import {MatButtonModule} from '@angular/material/button';
+import {MatIcon} from '@angular/material/icon';
+import {MatTable, MatTableModule} from '@angular/material/table';
+import {MatCardModule} from '@angular/material/card';
+import {DataSource} from '@angular/cdk/collections';
+import {UploadService} from '../../service/upload.service';
+import {HttpEventType, HttpResponse} from '@angular/common/http';
+import {ToastrService} from 'ngx-toastr';
+import {debounceTime, Observable} from 'rxjs';
+import {MatProgressSpinner} from '@angular/material/progress-spinner';
+import {MatDialog, MatDialogModule} from '@angular/material/dialog';
+import {
+  ConfirmationDialogResult,
+  UploadAsFolderDialogComponent
+} from '../upload-as-folder-dialogue/upload-as-folder-dialogue';
+
 
 @Component({
   selector: 'app-upload',
@@ -25,13 +30,14 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
     MatTable,
     MatIcon,
     MatProgressSpinner,
+    MatDialogModule,
   ],
   templateUrl: './upload.component.html',
   styleUrls: ['./upload.component.scss'],
 })
 export class UploadComponent {
   public files: UploadFile[] = [];
-  columnsToDisplay = ['file name', 'status', 'actions'];
+  columnsToDisplay = ['file name', 'status', 'actions', 'folder'];
   public fileToSubscriptionMap: Map<UploadFile, any> = new Map();
   form: FormGroup;
 
@@ -39,7 +45,8 @@ export class UploadComponent {
     private fb: FormBuilder,
     private uploadService: UploadService,
     private cdr: ChangeDetectorRef,
-    private toastr: ToastrService
+    private toastr: ToastrService,
+    private dialog: MatDialog
   ) {
     this.form = this.fb.group({
       // store selected files array in the control; adapt type as needed
@@ -61,7 +68,7 @@ export class UploadComponent {
     for (const f of newFiles) {
       const exists = this.files.some((e) => e.file.name === f.name && e.file.type === f.type);
       if (!exists) {
-        const actualFile: UploadFile = { file: f, hash: '', progress: 0, status: 'idle' };
+        const actualFile: UploadFile = {file: f, hash: '', progress: 0, status: 'idle'};
         this.files.push(actualFile);
         changedFiles.push(actualFile);
         changed = true;
@@ -70,9 +77,57 @@ export class UploadComponent {
 
     if (changed) {
       this.files = [...this.files]; // one immutable update
+      if (changedFiles.length > 1) {
+        const ref = this.dialog.open(UploadAsFolderDialogComponent, {
+          width: '420px',
+          data: {
+            title: 'Uploading multiple files',
+            subtitle: 'Do you want to upload them as a folder?',
+            primaryButtonText: 'Yes',
+            secondaryButtonText: 'No',
+            defaultUploadAsFolder: true,
+            defaultFolderName: 'New folder',
+            showAsFolderOption: true,
+          },
+          disableClose: true,
+        });
+
+
+        ref.afterClosed().subscribe((result?: ConfirmationDialogResult) => {
+          if (!result?.confirmed) {
+            // If user cancels, remove the newly-added files (optional but typical UX)
+            changedFiles.forEach((file) => this.fileToSubscriptionMap.set(file, this.upload(file)));
+            return;
+          }
+
+          if (result.uploadAsFolder) {
+            // pass folder choice to your service however you want
+            // example: store folderName in each UploadFile, or call a service setter
+            const folderName = result.folderName!;
+            // e.g. attach metadata:
+            //fetch a folder from the backend -- and add to files
+            this.uploadService.getEmptyFolder(folderName).subscribe({
+              next: (folder) => {
+                console.log('Created empty folder with name ' + folder.name);
+                changedFiles.forEach(f => (f as any).folderId = folder.id!);
+                changedFiles.forEach(f => (f as any).folderName = folder.name!);
+                changedFiles.forEach((file) => this.fileToSubscriptionMap.set(file, this.upload(file)));
+
+              },
+              error: () => {
+                this.toastr.error('Could not create folder for upload. Uploading files without folder.');
+                changedFiles.forEach((file) => this.fileToSubscriptionMap.set(file, this.upload(file)));
+              }
+            });
+
+          }
+        });
+        return; // prevent uploads starting immediately
+      }
       changedFiles.forEach((file) => this.fileToSubscriptionMap.set(file, this.upload(file)));
     }
   }
+
 
   upload(fileUpload: UploadFile) {
     if (fileUpload.status === 'uploading') return;
@@ -116,9 +171,9 @@ export class UploadComponent {
                     error: (e) => {
                       console.error(
                         'could not notify backend of completed upload for file ' +
-                          fileUpload.file.name +
-                          ' ' +
-                          e.status
+                        fileUpload.file.name +
+                        ' ' +
+                        e.status
                       );
                       file.status = 'error';
                       this.cdr.detectChanges(); //need to detect Changes for some reason
@@ -135,10 +190,10 @@ export class UploadComponent {
               //TODO test this
               this.toastr.error(
                 'Upload failed file with name: ' +
-                  fileUpload.file.name +
-                  ' \n Consider reuploading ' +
-                  'StatusCode: ' +
-                  event.status
+                fileUpload.file.name +
+                ' \n Consider reuploading ' +
+                'StatusCode: ' +
+                event.status
               );
               this.files = this.files.map((file) => {
                 if (file === fileUpload) {
@@ -155,9 +210,9 @@ export class UploadComponent {
         error: (e) => {
           this.toastr.error(
             'Could not upload file with name: ' +
-              fileUpload.file.name +
-              ' \n Consider reuploading ' +
-              e.status
+            fileUpload.file.name +
+            ' \n Consider reuploading ' +
+            e.status
           );
           fileUpload.status = 'error';
           this.cdr.detectChanges(); //need to detect Changes for some reason
@@ -165,6 +220,7 @@ export class UploadComponent {
         },
       });
   }
+
   reUpload(fileUpload: UploadFile) {
     this.fileToSubscriptionMap.set(fileUpload, this.upload(fileUpload));
   }
@@ -208,5 +264,7 @@ class FilesDataSource extends DataSource<UploadFile> {
   connect(): Observable<UploadFile[]> {
     return this.files$;
   }
-  disconnect(): void {}
+
+  disconnect(): void {
+  }
 }

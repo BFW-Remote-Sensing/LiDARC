@@ -1,16 +1,15 @@
 package com.example.lidarcbackend.service.files;
 
-import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import io.minio.BucketExistsArgs;
 import io.minio.MinioAsyncClient;
 import io.minio.errors.MinioException;
 import jakarta.validation.constraints.NotBlank;
 import lombok.NonNull;
-
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import com.example.lidarcbackend.model.DTO.FileInfoDto;
 
 public interface IPresignedUrlService {
 
@@ -45,9 +44,10 @@ public interface IPresignedUrlService {
    *
    * @param fileName         the name of the file to be uploaded as SHA-256 hash
    * @param originalFileName the original name of the file to be uploaded
+   * @param folderId         of the corresponding folder that we wan't to connect this file to
    * @return Optional with FileInfoDto if upload URL is generated
    */
-  Optional<FileInfoDto> fetchUploadUrl(String fileName, String originalFileName);
+  Optional<FileInfoDto> fetchUploadUrl(String fileName, String originalFileName, Long folderId);
 
   /**
    * Marks the upload as finished for the given file name.

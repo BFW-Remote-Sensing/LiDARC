@@ -1,5 +1,18 @@
 package com.example.lidarcbackend;
 
+import io.minio.GetPresignedObjectUrlArgs;
+import io.minio.MinioAsyncClient;
+import io.minio.errors.MinioException;
+import io.minio.http.Method;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import com.example.lidarcbackend.configuration.MinioProperties;
 import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import com.example.lidarcbackend.model.DTO.Mapper.impl.UrlMapperImpl;
@@ -7,21 +20,6 @@ import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.model.entity.Url;
 import com.example.lidarcbackend.service.files.PresignedUrlService;
 import com.example.lidarcbackend.service.files.WorkerStartService;
-import io.minio.GetPresignedObjectUrlArgs;
-import io.minio.MinioAsyncClient;
-import io.minio.errors.MinioException;
-import io.minio.http.Method;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 //this is more or less an integration test since it uses real repositories from AbstractUnitTest
 
@@ -64,7 +62,7 @@ public class PresignedUrlIntegrationTests extends AbstractIntegrationTests {
     assertThat(fileRepository.findFileByFilenameAndUploaded(fileName, true)).isEmpty();
 
     // act
-    Optional<FileInfoDto> result = presignedUrlService.fetchUploadUrl(fileName, "");
+    Optional<FileInfoDto> result = presignedUrlService.fetchUploadUrl(fileName, "", null);
     assertThat(result).isPresent();
     assertThat(result.get().getPresignedURL()).isEqualTo("http://upload-url");
   }
@@ -80,7 +78,7 @@ public class PresignedUrlIntegrationTests extends AbstractIntegrationTests {
     fileRepository.save(f);
 
     // act
-    Optional<FileInfoDto> result = presignedUrlService.fetchUploadUrl(fileName, "");
+    Optional<FileInfoDto> result = presignedUrlService.fetchUploadUrl(fileName, "", null);
 
     // assert
     assertThat(result).isEmpty();
