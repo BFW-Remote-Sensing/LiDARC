@@ -141,13 +141,13 @@ public class ComparisonService implements IComparisonService {
         comparisonFileRepository.saveAll(allFiles);
 
         if (comparisonRequest.getFolderAFiles() != null && !comparisonRequest.getFolderAFiles().isEmpty()) {
-            processFolderGroup(comparisonRequest.getFolderAFiles(), comparisonRequest.getGrid(), savedComparison.getId());
+            processFolderGroup(comparisonRequest.getFolderAFiles(), comparisonRequest.getGrid(), savedComparison.getId(), "A");
         }
         if (comparisonRequest.getFolderBFiles() != null && !comparisonRequest.getFolderBFiles().isEmpty()) {
-            processFolderGroup(comparisonRequest.getFolderBFiles(), comparisonRequest.getGrid(), savedComparison.getId());
+            processFolderGroup(comparisonRequest.getFolderBFiles(), comparisonRequest.getGrid(), savedComparison.getId(), "B");
         }
         if (fileMetadataIds != null && !fileMetadataIds.isEmpty()) {
-            processFolderGroup(fileMetadataIds, comparisonRequest.getGrid(), savedComparison.getId());
+            processFolderGroup(fileMetadataIds, comparisonRequest.getGrid(), savedComparison.getId(), "legacy");
         }
         ComparisonDTO dto = mapper.toDto(savedComparison);
 
@@ -159,7 +159,7 @@ public class ComparisonService implements IComparisonService {
         return dto;
     }
 
-    private void processFolderGroup(List<Long> fileIds, GridParameters grid, Long comparisonId) throws NotFoundException {
+    private void processFolderGroup(List<Long> fileIds, GridParameters grid, Long comparisonId, String groupName) throws NotFoundException {
         List<File> files = new ArrayList<>();
         for (Long fileId : fileIds) {
             files.add(fileRepository.findById(fileId)
@@ -180,8 +180,14 @@ public class ComparisonService implements IComparisonService {
             }
 
             if (!validRegions.isEmpty()) {
+                String uniqueJobId = String.format("c%d_%s_f%d_%s",
+                        comparisonId,
+                        groupName,
+                        fileEntity.getId(),
+                        UUID.randomUUID().toString().substring(0,8)
+                );
                 StartPreProcessJobDto startPreProcessJobDto = StartPreProcessJobDto.builder()
-                        .jobId(UUID.randomUUID().toString().substring(0, 5))
+                        .jobId(uniqueJobId)
                         .grid(grid)
                         .bboxes(validRegions)
                         .comparisonId(comparisonId)
@@ -196,8 +202,6 @@ public class ComparisonService implements IComparisonService {
             //TODO: Check if this is reliable
             //TODO: file1 , file2, file3, ...
         }
-
-
     }
 
     //TODO: Rethink that maybe, currently this implies that if one file already covers a small size of a cell that it will take the whole cell, and unsure if we want that?
