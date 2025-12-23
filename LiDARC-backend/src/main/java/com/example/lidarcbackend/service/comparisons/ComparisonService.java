@@ -6,9 +6,7 @@ import com.example.lidarcbackend.api.comparison.dtos.CreateComparisonRequest;
 import com.example.lidarcbackend.api.metadata.MetadataMapper;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import com.example.lidarcbackend.exception.NotFoundException;
-import com.example.lidarcbackend.model.DTO.MinioObjectDto;
-import com.example.lidarcbackend.model.DTO.StartComparisonJobDto;
-import com.example.lidarcbackend.model.DTO.StartPreProcessJobDto;
+import com.example.lidarcbackend.model.DTO.*;
 import com.example.lidarcbackend.model.entity.Comparison;
 import com.example.lidarcbackend.model.entity.ComparisonFile;
 import com.example.lidarcbackend.model.entity.File;
@@ -22,6 +20,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.checkerframework.checker.units.qual.N;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -123,42 +123,139 @@ public class ComparisonService implements IComparisonService {
     @Override
     @Transactional
     public ComparisonDTO saveComparison(CreateComparisonRequest comparisonRequest, List<Long> fileMetadataIds) throws NotFoundException {
-        //TODO: Is there validation needed?
+        //TODO: Add validation
         Comparison savedComparison = comparisonRepository.save(mapper.toEntityFromRequest(comparisonRequest));
 
-        List<ComparisonFile> comparisonFiles = fileMetadataIds.stream()
-                .map(fileId -> {
-                    ComparisonFile cf = new ComparisonFile();
-                    cf.setComparisonId(savedComparison.getId());
-                    cf.setFileId(fileId);
-                    return cf;
-                })
-                .toList();
+        //TODO: Change to work with multiple files...
+        Set<Long> uniqueFileIds = new HashSet<>();
+        if (fileMetadataIds != null) uniqueFileIds.addAll(fileMetadataIds);
+        if (comparisonRequest.getFolderAFiles() != null) uniqueFileIds.addAll(comparisonRequest.getFolderAFiles());
+        if (comparisonRequest.getFolderBFiles() != null) uniqueFileIds.addAll(comparisonRequest.getFolderBFiles());
 
-        comparisonFileRepository.saveAll(comparisonFiles);
-
-        Random r =  new Random();
-        for (Long fileId : fileMetadataIds) {
-            File toPreprocess = fileRepository.findById(fileId).orElseThrow(() -> new NotFoundException("File for comparison with id: " + fileId + " not found!"));
-            //TODO: Change bucket on some var or column from db?
-            MinioObjectDto file = new MinioObjectDto("basebucket", toPreprocess.getFilename());
-            //TODO: Fix that later on
-            String jobId = UUID.randomUUID().toString().substring(0, 5);
-            StartPreProcessJobDto startPreProcessJobDto = new StartPreProcessJobDto(jobId, file, comparisonRequest.getGrid(), savedComparison.getId(), fileId);
-            //TODO: Handle traceability in BE
-            workerStartService.startPreprocessingJob(startPreProcessJobDto);
+        List<ComparisonFile> allFiles = new ArrayList<>();
+        for (Long fileId : uniqueFileIds) {
+            ComparisonFile comparisonFile = new ComparisonFile();
+            comparisonFile.setComparisonId(savedComparison.getId());
+            comparisonFile.setFileId(fileId);
+            allFiles.add(comparisonFile);
         }
+        comparisonFileRepository.saveAll(allFiles);
 
+        if (comparisonRequest.getFolderAFiles() != null && !comparisonRequest.getFolderAFiles().isEmpty()) {
+            processFolderGroup(comparisonRequest.getFolderAFiles(), comparisonRequest.getGrid(), savedComparison.getId());
+        }
+        if (comparisonRequest.getFolderBFiles() != null && !comparisonRequest.getFolderBFiles().isEmpty()) {
+            processFolderGroup(comparisonRequest.getFolderBFiles(), comparisonRequest.getGrid(), savedComparison.getId());
+        }
+        if (fileMetadataIds != null && !fileMetadataIds.isEmpty()) {
+            processFolderGroup(fileMetadataIds, comparisonRequest.getGrid(), savedComparison.getId());
+        }
         ComparisonDTO dto = mapper.toDto(savedComparison);
 
         List<FileMetadataDTO> fileMetadataDTOs = metadataService.getMetadataList(
-                fileMetadataIds.stream().map(String::valueOf).toList()
+                uniqueFileIds.stream().map(String::valueOf).toList()
         );
         dto.setFiles(fileMetadataDTOs);
 
         return dto;
     }
 
+    private void processFolderGroup(List<Long> fileIds, GridParameters grid, Long comparisonId) throws NotFoundException {
+        List<File> files = new ArrayList<>();
+        for (Long fileId : fileIds) {
+            files.add(fileRepository.findById(fileId)
+                    .orElseThrow(() -> new NotFoundException("File for comparison with id: " + fileId + " not found!")));
+        }
+
+        List<BoundingBox> restrictedZones = new ArrayList<>();
+        Random r =  new Random();
+        for (File fileEntity : files) {
+            BoundingBox rawBox = new BoundingBox(fileEntity.getMinX(), fileEntity.getMaxX(), fileEntity.getMinY(), fileEntity.getMaxY());
+            BoundingBox snappedBox = snapToGrid(rawBox, grid);
+            List<BoundingBox> validRegions = new ArrayList<>();
+            validRegions.add(snappedBox);
+
+            for (BoundingBox restrictedZone : restrictedZones) {
+                validRegions = subtractRectangleFromList(validRegions, restrictedZone);
+                if (validRegions.isEmpty()) break;
+            }
+
+            if (!validRegions.isEmpty()) {
+                StartPreProcessJobDto startPreProcessJobDto = StartPreProcessJobDto.builder()
+                        .jobId(UUID.randomUUID().toString().substring(0, 5))
+                        .grid(grid)
+                        .bboxes(validRegions)
+                        .comparisonId(comparisonId)
+                        .file(new MinioObjectDto("basebucket", fileEntity.getFilename()))
+                        .fileId(fileEntity.getId())
+                        .build();
+                workerStartService.startPreprocessingJob(startPreProcessJobDto);
+                restrictedZones.add(snappedBox);
+            }
+            //TODO: Change bucket on some var or column from db?
+            //TODO: Handle traceability in BE
+            //TODO: Check if this is reliable
+            //TODO: file1 , file2, file3, ...
+        }
+
+
+    }
+
+    //TODO: Rethink that maybe, currently this implies that if one file already covers a small size of a cell that it will take the whole cell, and unsure if we want that?
+    private BoundingBox snapToGrid(BoundingBox rawBox, GridParameters grid) {
+        double cellW = grid.getCellWidth().doubleValue();
+        double cellH = grid.getCellHeight().doubleValue();
+        double gridOriginX = grid.getxMin();
+        double gridOriginY = grid.getyMin();
+
+        //Snap Min (FLOOR)
+        double newXMin = gridOriginX + Math.floor((rawBox.getxMin() - gridOriginX) / cellW) * cellW;
+        double newYMin = gridOriginY + Math.floor((rawBox.getyMin() - gridOriginY) / cellH) * cellH;
+
+        double newXMax = gridOriginX + Math.ceil((rawBox.getxMax() - gridOriginX) / cellW) * cellW;
+        double newYMax = gridOriginY + Math.ceil((rawBox.getyMax() - gridOriginY) / cellH) * cellH;
+        return new BoundingBox(newXMin, newXMax, newYMin, newYMax);
+    }
+
+    private List<BoundingBox> subtractRectangleFromList(List<BoundingBox> currentRegions, BoundingBox obstacle) {
+        List<BoundingBox> nextRegions = new ArrayList<>();
+        for (BoundingBox region : currentRegions) {
+            if (!intersects(region, obstacle)) {
+                nextRegions.add(region);
+            } else {
+                nextRegions.addAll(shatterBox(region, obstacle));
+            }
+        }
+        return nextRegions;
+    }
+
+    private List<BoundingBox> shatterBox(BoundingBox a, BoundingBox b) {
+        List<BoundingBox> parts =  new ArrayList<>();
+
+        double interXMin = Math.max(a.getxMin(), b.getxMin());
+        double interXMax = Math.min(a.getxMax(), b.getxMax());
+        double interYMin = Math.max(a.getyMin(), b.getyMin());
+        double interYMax = Math.min(a.getyMax(), b.getyMax());
+
+        if (a.getyMax() > interYMax) {
+            parts.add(new BoundingBox(a.getxMin(), a.getxMax(), interYMax, a.getyMax()));
+        }
+        if (a.getyMin() < interYMin) {
+            parts.add(new BoundingBox(a.getxMin(), a.getxMax(), a.getyMin(), interYMin));
+        }
+        if (a.getxMin() < interXMin) {
+            parts.add(new BoundingBox(a.getxMin(), interXMin, interYMin, interYMax));
+        }
+        if (a.getxMax() > interXMax) {
+            parts.add(new BoundingBox(interXMax, a.getxMax(), interYMin, interYMax));
+        }
+        return parts;
+    }
+
+    private boolean intersects(BoundingBox a, BoundingBox b) {
+        return a.getxMin() < b.getxMax() && a.getxMax() > b.getxMin() &&
+                a.getyMin() < b.getyMax() && a.getyMax() > b.getyMin();
+    }
 
     @Override
     public ComparisonDTO GetComparison(Long comparisonId) {
