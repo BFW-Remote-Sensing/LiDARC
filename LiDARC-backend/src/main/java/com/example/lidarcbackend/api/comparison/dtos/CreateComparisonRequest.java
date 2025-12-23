@@ -18,7 +18,11 @@ public class CreateComparisonRequest {
 
     private Boolean needMostDifferences;
 
+    //TODO: Should we remove that?
     private List<Long> fileMetadataIds;
+
+    private List<Long> folderAFiles;
+    private List<Long> folderBFiles;
 
     private GridParameters grid;
 }

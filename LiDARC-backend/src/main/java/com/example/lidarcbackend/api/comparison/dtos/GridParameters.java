@@ -1,7 +1,9 @@
 package com.example.lidarcbackend.api.comparison.dtos;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 
+@NoArgsConstructor
 public class GridParameters {
     private Integer cellWidth;
 
