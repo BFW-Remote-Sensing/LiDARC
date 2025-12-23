@@ -84,12 +84,27 @@ def validate_request(json_req):
         return False #TODO: Might be an exception here as well
     return True
 
-def process_points(points, precomp_grid):
+def process_points(points, precomp_grid, bboxes):
     logging.debug("Processing points: {}".format(points))
     x = points.x
     y = points.y
     z = np.array(points.z)
+
     veg_height = points[precomp_grid["veg_height_key"]]
+    bbox_mask = np.zeros(x.shape, dtype=bool)
+    for bbox in bboxes:
+        in_box = (
+            (x >= bbox["xMin"]) & (x < bbox["xMax"]) &
+            (y >= bbox["yMin"]) & (y < bbox["yMax"])
+        )
+        bbox_mask |= in_box
+    if not np.any(bbox_mask):
+        return
+    x = x[bbox_mask]
+    y = y[bbox_mask]
+    z = z[bbox_mask]
+    veg_height = veg_height[bbox_mask]
+
     grid_h, grid_w = precomp_grid["veg_height_digest"].shape[:2]
 
     ix = ((x - precomp_grid["x_min"]) / precomp_grid["grid_width"]).astype(np.int32)
@@ -201,6 +216,7 @@ def process_req(ch, method, properties, body):
     #Process request
     las_file = request["file"]
     grid = request["grid"]
+    bboxes = request["bboxes"]
 
     temp_dir = tempfile.mkdtemp()
     try:
@@ -211,19 +227,19 @@ def process_req(ch, method, properties, body):
 
         with laspy.open(downloaded_file_fn) as f:
             if "ndsm" in  f.header.point_format.extra_dimension_names:
-                logging.info("File to process is using ndsm for vegetational height of trees")
+                logging.info("Using 'ndsm' dimension for vegetation height")
                 precomp_grid["veg_height_key"] = "ndsm"
-            logging.info("Processing point cloud from file: {}".format(downloaded_file_fn))
+
+            logging.info(f"Processing file: {downloaded_file_fn} with {len(bboxes)} bounding regions")
             for points in f.chunk_iterator(500_000):
-                process_points(points, precomp_grid)
+                process_points(points, precomp_grid, bboxes)
                 del points
 
         df = create_result_df(precomp_grid)
         upload_result = file_handler.upload_file_by_type(f"pre-process-job-{job_id}-output.csv", df)
 
         processing_time = int((time.time() - start_time) * 1000)
-        logging.info("Worker took {} ms to process the request".format(processing_time))
-
+        logging.info(f"Job {job_id} finished in {processing_time} ms")
         response = BaseMessage(type="preprocessing",
                                job_id=job_id,
                                status="success",
@@ -242,6 +258,9 @@ def process_req(ch, method, properties, body):
                                                            job_id=job_id,
                                                            payload=mk_error_msg(error_msg="Couldn't download file from: {}, precompute job cancelled".format(las_file))))
         return
+    except Exception as e:
+        logging.exception(f"Error processing job {job_id}")
+        publisher.publish_preprocessing_result(BaseMessage(type="preprocessing", status="error", job_id=job_id, payload=mk_error_msg(str(e))))
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
