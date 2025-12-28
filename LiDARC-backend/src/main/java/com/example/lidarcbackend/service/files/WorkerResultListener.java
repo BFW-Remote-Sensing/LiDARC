@@ -18,6 +18,7 @@ public class WorkerResultListener {
         this.comparisonService = comparisonService;
     }
 
+    //TODO: HANDLE EXCEPTIONS CORRECTLY FOR EXAMPLE METADATA -> Capture Year < 1900 --> Exception
     //TODO
     // set Input Parameter for every method
     @RabbitListener(queues = RabbitConfig.WORKER_PREPROCESSING_RESULT_QUEUE)

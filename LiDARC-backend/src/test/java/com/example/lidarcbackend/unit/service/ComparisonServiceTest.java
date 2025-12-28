@@ -4,7 +4,9 @@ import com.example.lidarcbackend.api.comparison.ComparisonMapper;
 import com.example.lidarcbackend.api.comparison.dtos.ComparisonDTO;
 import com.example.lidarcbackend.api.comparison.dtos.CreateComparisonRequest;
 import com.example.lidarcbackend.api.comparison.dtos.GridParameters;
+import com.example.lidarcbackend.api.comparison.dtos.PreProcessJobsReadyEvent;
 import com.example.lidarcbackend.exception.NotFoundException;
+import com.example.lidarcbackend.exception.ValidationException;
 import com.example.lidarcbackend.model.DTO.BoundingBox;
 import com.example.lidarcbackend.model.DTO.StartPreProcessJobDto;
 import com.example.lidarcbackend.model.entity.Comparison;
@@ -22,6 +24,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -47,7 +50,8 @@ public class ComparisonServiceTest {
 
     @Mock
     private ComparisonMapper comparisonMapper;
-
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
     @InjectMocks
     private ComparisonService comparisonService;
 
@@ -62,6 +66,8 @@ public class ComparisonServiceTest {
         defaultGrid.setCellHeight(2);
         defaultGrid.setxMin(0.0);
         defaultGrid.setyMin(0.0);
+        defaultGrid.setxMax(3.0);
+        defaultGrid.setyMax(3.0);
 
         createRequest = new CreateComparisonRequest();
         createRequest.setGrid(defaultGrid);
@@ -71,6 +77,17 @@ public class ComparisonServiceTest {
         lenient().when(comparisonMapper.toEntityFromRequest(any())).thenReturn(savedComparison);
         lenient().when(comparisonRepository.save(any())).thenReturn(savedComparison);
         lenient().when(comparisonMapper.toDto(any())).thenReturn(new ComparisonDTO());
+
+    }
+
+    private List<StartPreProcessJobDto> captureJobs() {
+        ArgumentCaptor<PreProcessJobsReadyEvent> eventCaptor = ArgumentCaptor.forClass(PreProcessJobsReadyEvent.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+
+        // Ensure the service didn't cheat and call the worker directly!
+        verifyNoInteractions(workerStartService);
+
+        return eventCaptor.getValue().jobsToStart();
     }
 
     private File createFile(Long id, double xMin, double xMax, double yMin, double yMax) {
@@ -85,7 +102,7 @@ public class ComparisonServiceTest {
     }
 
     @Test
-    void saveComparison_NoOverlap_ShouldStartTwoFullJobs() throws NotFoundException {
+    void saveComparison_NoOverlap_ShouldStartTwoFullJobs() throws NotFoundException, ValidationException {
         Long fileId1 = 1L;
         Long fileId2 = 2L;
         File file1 = createFile(fileId1, 0.0, 10.0, 0.0, 10.0);   // 0-10
@@ -97,11 +114,8 @@ public class ComparisonServiceTest {
         createRequest.setFileMetadataIds(List.of(fileId1, fileId2));
         comparisonService.saveComparison(createRequest, List.of(fileId1, fileId2));
 
-        ArgumentCaptor<StartPreProcessJobDto> captor = ArgumentCaptor.forClass(StartPreProcessJobDto.class);
-
-        // We expect exactly 2 jobs to be started
-        verify(workerStartService, times(2)).startPreprocessingJob(captor.capture());
-        List<StartPreProcessJobDto> jobs = captor.getAllValues();
+        List<StartPreProcessJobDto> jobs = captureJobs();
+        assertEquals(2, jobs.size());
 
         // Validate Job 1 (File 1)
         StartPreProcessJobDto job1 = jobs.getFirst();
@@ -117,7 +131,7 @@ public class ComparisonServiceTest {
     }
 
     @Test
-    void saveComparison_PartialOverlap_ShouldClipSecondFile() throws NotFoundException {
+    void saveComparison_PartialOverlap_ShouldClipSecondFile() throws NotFoundException, ValidationException {
         Long fileId1 = 1L;
         Long fileId2 = 2L;
 
@@ -129,9 +143,8 @@ public class ComparisonServiceTest {
         createRequest.setFileMetadataIds(List.of(fileId1, fileId2));
         comparisonService.saveComparison(createRequest, List.of(fileId1, fileId2));
 
-        ArgumentCaptor<StartPreProcessJobDto> captor = ArgumentCaptor.forClass(StartPreProcessJobDto.class);
-        verify(workerStartService, times(2)).startPreprocessingJob(captor.capture());
-        List<StartPreProcessJobDto> jobs = captor.getAllValues();
+        List<StartPreProcessJobDto> jobs = captureJobs();
+        assertEquals(2, jobs.size());
 
         StartPreProcessJobDto job2 = jobs.get(1);
         assertEquals(fileId2, job2.getFileId());
@@ -142,7 +155,7 @@ public class ComparisonServiceTest {
     }
 
     @Test
-    void saveComparison_FullOverlap_ShouldSkipSecondFile() throws NotFoundException {
+    void saveComparison_FullOverlap_ShouldSkipSecondFile() throws NotFoundException, ValidationException {
         Long fileId1 = 1L;
         Long fileId2 = 2L;
         File file1 = createFile(fileId1, 0.0, 100.0, 0.0, 100.0);
@@ -152,10 +165,9 @@ public class ComparisonServiceTest {
         createRequest.setFileMetadataIds(List.of(fileId1, fileId2));
         comparisonService.saveComparison(createRequest, List.of(fileId1, fileId2));
 
-        ArgumentCaptor<StartPreProcessJobDto> captor = ArgumentCaptor.forClass(StartPreProcessJobDto.class);
-
-        verify(workerStartService, times(1)).startPreprocessingJob(captor.capture());
-        StartPreProcessJobDto job = captor.getValue();
+        List<StartPreProcessJobDto> jobs = captureJobs();
+        assertEquals(1, jobs.size());
+        StartPreProcessJobDto job = jobs.getFirst();
         assertEquals(fileId1, job.getFileId(), "Only File 1 should be processed");
 
         assertEquals(1, job.getBboxes().size());
@@ -163,7 +175,7 @@ public class ComparisonServiceTest {
     }
 
     @Test
-    void saveComparison_CenterHoleOverlap_ShouldSplitIntoFour() throws NotFoundException {
+    void saveComparison_CenterHoleOverlap_ShouldSplitIntoFour() throws NotFoundException, ValidationException {
         Long fileId1 = 1L;
         Long fileId2 = 2L;
         File file1 = createFile(fileId1, 40.0, 60.0, 40.0, 60.0);
@@ -175,16 +187,15 @@ public class ComparisonServiceTest {
         createRequest.setFileMetadataIds(List.of(fileId1, fileId2));
         comparisonService.saveComparison(createRequest, List.of(fileId1, fileId2));
 
-        ArgumentCaptor<StartPreProcessJobDto> captor = ArgumentCaptor.forClass(StartPreProcessJobDto.class);
-        verify(workerStartService, times(2)).startPreprocessingJob(captor.capture());
-        List<StartPreProcessJobDto> jobs = captor.getAllValues();
+        List<StartPreProcessJobDto> jobs = captureJobs();
+        assertEquals(2, jobs.size());
 
         StartPreProcessJobDto job2 = jobs.get(1);
         List<BoundingBox> regions = job2.getBboxes();
 
         assertEquals(4, regions.size(), "Should be split into Top, Bottom, Left, Right");
         // 1. Top Strip (Full Width, above hole) -> Y: 60-100, X: 0-100
-        assertTrue(regions.stream().anyMatch(b -> isApprox(b, 0,100,60,100)), "Missing Top Strip");
+        assertTrue(regions.stream().anyMatch(b -> isApprox(b, 0, 100, 60, 100)), "Missing Top Strip");
 
         // 2. Bottom Strip (Full Width, below hole) -> Y: 0-40, X: 0-100
         assertTrue(regions.stream().anyMatch(b -> isApprox(b, 0, 100, 0, 40)), "Missing Bottom Strip");
@@ -193,11 +204,11 @@ public class ComparisonServiceTest {
         assertTrue(regions.stream().anyMatch(b -> isApprox(b, 0, 40, 40, 60)), "Missing Left Strip");
 
         // 4. Right Strip (Height constrained to hole) -> X: 60-100, Y: 40-60
-        assertTrue(regions.stream().anyMatch(b -> isApprox(b, 60, 100, 40, 60)),  "Missing Right Strip");
+        assertTrue(regions.stream().anyMatch(b -> isApprox(b, 60, 100, 40, 60)), "Missing Right Strip");
     }
 
     @Test
-    void saveComparison_EdgeOverlap_ShouldSplitIntoThree() throws NotFoundException {
+    void saveComparison_EdgeOverlap_ShouldSplitIntoThree() throws NotFoundException, ValidationException {
         Long fileId1 = 1L;
         Long fileId2 = 2L;
         File file1 = createFile(fileId1, 40.0, 60.0, 50.0, 100.0);
@@ -208,10 +219,9 @@ public class ComparisonServiceTest {
         createRequest.setFileMetadataIds(List.of(fileId1, fileId2));
         comparisonService.saveComparison(createRequest, List.of(fileId1, fileId2));
 
-        ArgumentCaptor<StartPreProcessJobDto> captor = ArgumentCaptor.forClass(StartPreProcessJobDto.class);
-        verify(workerStartService, times(2)).startPreprocessingJob(captor.capture());
-
-        StartPreProcessJobDto job2 = captor.getAllValues().get(1);
+        List<StartPreProcessJobDto> jobs = captureJobs();
+        assertEquals(2, jobs.size());
+        StartPreProcessJobDto job2 = jobs.get(1);
         List<BoundingBox> regions = job2.getBboxes();
 
         assertEquals(3, regions.size(), "Should form a U-shape (Left, Right, Bottom)");
@@ -227,7 +237,7 @@ public class ComparisonServiceTest {
     }
 
     @Test
-    void saveComparison_TopHalfOverlap_ShouldReturnBottomHalf() throws NotFoundException {
+    void saveComparison_TopHalfOverlap_ShouldReturnBottomHalf() throws NotFoundException, ValidationException {
         Long fileId1 = 1L;
         Long fileId2 = 2L;
         File file1 = createFile(fileId1, 0.0, 100.0, 50.0, 100.0);
@@ -236,10 +246,9 @@ public class ComparisonServiceTest {
         when(fileRepository.findById(fileId2)).thenReturn(Optional.of(file2));
         createRequest.setFileMetadataIds(List.of(fileId1, fileId2));
         comparisonService.saveComparison(createRequest, List.of(fileId1, fileId2));
-        ArgumentCaptor<StartPreProcessJobDto> captor = ArgumentCaptor.forClass(StartPreProcessJobDto.class);
-        verify(workerStartService, times(2)).startPreprocessingJob(captor.capture());
-
-        StartPreProcessJobDto job2 = captor.getAllValues().get(1);
+        List<StartPreProcessJobDto> jobs = captureJobs();
+        assertEquals(2, jobs.size());
+        StartPreProcessJobDto job2 = jobs.get(1);
         List<BoundingBox> regions = job2.getBboxes();
 
         assertEquals(1, regions.size());
@@ -248,7 +257,7 @@ public class ComparisonServiceTest {
     }
 
     @Test
-    void saveComparison_GridLargerThanFile_ShouldSnapToSingleCell() throws NotFoundException {
+    void saveComparison_GridLargerThanFile_ShouldSnapToSingleCell() throws NotFoundException, ValidationException {
         Long fileId = 1L;
         // File is small (0-10)
         File file = createFile(fileId, 0.0, 10.0, 0.0, 10.0);
@@ -259,6 +268,8 @@ public class ComparisonServiceTest {
         hugeGrid.setCellHeight(100);
         hugeGrid.setxMin(0.0);
         hugeGrid.setyMin(0.0);
+        hugeGrid.setxMax(100.0);
+        hugeGrid.setyMax(100.0);
 
         createRequest.setGrid(hugeGrid);
         createRequest.setFileMetadataIds(List.of(fileId));
@@ -267,16 +278,16 @@ public class ComparisonServiceTest {
 
         comparisonService.saveComparison(createRequest, List.of(fileId));
 
-        ArgumentCaptor<StartPreProcessJobDto> captor = ArgumentCaptor.forClass(StartPreProcessJobDto.class);
-        verify(workerStartService).startPreprocessingJob(captor.capture());
+        List<StartPreProcessJobDto> jobs = captureJobs();
+        assertEquals(1, jobs.size());
 
         // Expect: 0-10 snapped to 0-100 (One full cell)
-        assertBoundingBox(captor.getValue().getBboxes().getFirst(), 0.0, 100.0, 0.0, 100.0);
+        assertBoundingBox(jobs.getFirst().getBboxes().getFirst(), 0.0, 100.0, 0.0, 100.0);
     }
 
     @Test
-    void saveComparison_MultipleFilesStaircase_ShouldAccumulateCuts() throws NotFoundException {
-        Long id1 = 1L,  id2 = 2L, id3 = 3L,  id4 = 4L;
+    void saveComparison_MultipleFilesStaircase_ShouldAccumulateCuts() throws NotFoundException, ValidationException {
+        Long id1 = 1L, id2 = 2L, id3 = 3L, id4 = 4L;
         File f1 = createFile(id1, 0.0, 20.0, 0.0, 10.0);
         File f2 = createFile(id2, 10.0, 40.0, 0.0, 10.0);
         File f3 = createFile(id3, 30.0, 60.0, 0.0, 10.0);
@@ -291,9 +302,8 @@ public class ComparisonServiceTest {
         createRequest.setFileMetadataIds(fileIds);
 
         comparisonService.saveComparison(createRequest, fileIds);
-        ArgumentCaptor<StartPreProcessJobDto> captor = ArgumentCaptor.forClass(StartPreProcessJobDto.class);
-        verify(workerStartService, times(4)).startPreprocessingJob(captor.capture());
-        List<StartPreProcessJobDto> jobs = captor.getAllValues();
+        List<StartPreProcessJobDto> jobs = captureJobs();
+        assertEquals(4, jobs.size());
 
         StartPreProcessJobDto job1 = jobs.getFirst();
         assertEquals(id1, job1.getFileId());
@@ -313,7 +323,7 @@ public class ComparisonServiceTest {
     }
 
     @Test
-    void saveComparison_GridSnapping_ShouldPushStartToNextEvenNumber() throws NotFoundException {
+    void saveComparison_GridSnapping_ShouldPushStartToNextEvenNumber() throws NotFoundException, ValidationException {
         Long fileId1 = 1L;
         Long fileId2 = 2L;
 
@@ -322,6 +332,8 @@ public class ComparisonServiceTest {
         gridWidth2.setCellHeight(2); // Height doesn't matter here
         gridWidth2.setxMin(0.0);
         gridWidth2.setyMin(0.0);
+        gridWidth2.setxMax(3.0);
+        gridWidth2.setyMax(3.0);
         createRequest.setGrid(gridWidth2);
 
         File file1 = createFile(fileId1, 0.0, 101.0, 0.0, 10.0);
@@ -332,9 +344,8 @@ public class ComparisonServiceTest {
         createRequest.setFileMetadataIds(List.of(fileId1, fileId2));
         comparisonService.saveComparison(createRequest, List.of(fileId1, fileId2));
 
-        ArgumentCaptor<StartPreProcessJobDto> captor = ArgumentCaptor.forClass(StartPreProcessJobDto.class);
-        verify(workerStartService, times(2)).startPreprocessingJob(captor.capture());
-        List<StartPreProcessJobDto> jobs = captor.getAllValues();
+        List<StartPreProcessJobDto> jobs = captureJobs();
+        assertEquals(2, jobs.size());
 
         // Check File 2
         StartPreProcessJobDto job2 = jobs.get(1);
@@ -348,7 +359,7 @@ public class ComparisonServiceTest {
     }
 
     @Test
-    void saveComparison_SeparateFolders_ShouldProcessIdenticalFilesIndependently() throws NotFoundException {
+    void saveComparison_SeparateFolders_ShouldProcessIdenticalFilesIndependently() throws NotFoundException, ValidationException {
         Long fileId1 = 1L;
         Long fileId2 = 2L;
 
@@ -363,10 +374,9 @@ public class ComparisonServiceTest {
 
         comparisonService.saveComparison(createRequest, List.of());
 
-        ArgumentCaptor<StartPreProcessJobDto> captor = ArgumentCaptor.forClass(StartPreProcessJobDto.class);
-
-        verify(workerStartService, times(2)).startPreprocessingJob(captor.capture());
-        List<StartPreProcessJobDto> jobs = captor.getAllValues();StartPreProcessJobDto job1 = jobs.stream()
+        List<StartPreProcessJobDto> jobs = captureJobs();
+        assertEquals(2, jobs.size());
+        StartPreProcessJobDto job1 = jobs.stream()
                 .filter(j -> j.getFileId().equals(fileId1))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Job for File 1 missing"));
