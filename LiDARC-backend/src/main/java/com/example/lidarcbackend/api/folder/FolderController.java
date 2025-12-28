@@ -53,7 +53,7 @@ public class FolderController {
     return new ResponseEntity<>(folder, HttpStatus.CREATED);
   }
 
-  @PutMapping("/{id}")
+  @PutMapping
   public ResponseEntity<UploadedFolderDto> folderUploaded(@Valid @RequestBody StatusOfUploadedFolderDto dto) {
     UploadedFolderDto folder = folderService.folderUploaded(dto);
     return new ResponseEntity<>(folder, HttpStatus.CREATED);

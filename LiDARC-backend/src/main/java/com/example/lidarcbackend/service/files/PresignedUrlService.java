@@ -155,8 +155,12 @@ public class PresignedUrlService implements IPresignedUrlService {
       if (folderId != null) {
         Folder folder = folderRepository.findById(folderId).orElse(null);
         file.setFolder(folder);
+        file = fileRepository.save(file);
+        if (folder != null) folder.addFile(file);
+      } else {
+        file = fileRepository.save(file);
+
       }
-      file = fileRepository.save(file);
     }
 
     Optional<FileInfoDto> fOpt = getUrl(presignedObjectUrlArgs, fileName, originalFileName);

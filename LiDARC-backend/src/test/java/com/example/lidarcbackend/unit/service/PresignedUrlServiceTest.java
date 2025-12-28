@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -31,8 +32,10 @@ import com.example.lidarcbackend.configuration.MinioProperties;
 import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import com.example.lidarcbackend.model.DTO.Mapper.UrlMapper;
 import com.example.lidarcbackend.model.entity.File;
+import com.example.lidarcbackend.model.entity.Folder;
 import com.example.lidarcbackend.model.entity.Url;
 import com.example.lidarcbackend.repository.FileRepository;
+import com.example.lidarcbackend.repository.FolderRepository;
 import com.example.lidarcbackend.repository.UrlRepository;
 import com.example.lidarcbackend.service.files.PresignedUrlService;
 import com.example.lidarcbackend.service.files.WorkerStartService;
@@ -45,6 +48,9 @@ public class PresignedUrlServiceTest {
 
   @Mock
   private UrlRepository urlRepository;
+
+  @Mock
+  private FolderRepository folderRepository;
 
 
   @Mock
@@ -165,4 +171,61 @@ public class PresignedUrlServiceTest {
     verify(urlRepository).deleteByFileIdAndMethod(eq(file.getId()), eq(Method.PUT));
     verify(workerStartService).startMetadataJob(any());
   }
+
+  @Test
+  void fetchUploadUrl_saves_file_with_folder_when_folderId_provided() throws Exception {
+    String filename = "file-folder";
+    Long folderId = 9L;
+    Folder folder = new Folder();
+    folder.setId(folderId);
+
+    when(minioProperties.getDefaultExpiryTime()).thenReturn(3600);
+    when(minioProperties.getBucket()).thenReturn("bucket");
+    when(fileRepository.findFileByFilenameAndUploaded(eq(filename), eq(true))).thenReturn(Optional.empty());
+    when(fileRepository.findFileByFilenameAndUploaded(eq(filename), eq(false))).thenReturn(Optional.empty());
+    when(folderRepository.findById(folderId)).thenReturn(Optional.of(folder));
+    when(fileRepository.save(any(File.class))).thenAnswer(inv -> {
+      File f = inv.getArgument(0);
+      f.setId(20L);
+      return f;
+    });
+    when(minioClient.getPresignedObjectUrl(any())).thenReturn("http://put");
+    when(urlRepository.save(any(Url.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<FileInfoDto> res = presignedUrlService.fetchUploadUrl(filename, "orig", folderId);
+
+    assertThat(res).isPresent();
+    assertThat(res.get().getFolderId()).isEqualTo(folderId);
+
+    ArgumentCaptor<File> fileCaptor = ArgumentCaptor.forClass(File.class);
+    verify(fileRepository).save(fileCaptor.capture());
+    assertThat(fileCaptor.getValue().getFolder()).isSameAs(folder);
+  }
+
+  @Test
+  void fetchUploadUrl_saves_file_without_folder_when_folderId_null() throws Exception {
+    String filename = "file-no-folder";
+
+    when(minioProperties.getDefaultExpiryTime()).thenReturn(3600);
+    when(minioProperties.getBucket()).thenReturn("bucket");
+    when(fileRepository.findFileByFilenameAndUploaded(eq(filename), eq(true))).thenReturn(Optional.empty());
+    when(fileRepository.findFileByFilenameAndUploaded(eq(filename), eq(false))).thenReturn(Optional.empty());
+    when(fileRepository.save(any(File.class))).thenAnswer(inv -> {
+      File f = inv.getArgument(0);
+      f.setId(30L);
+      return f;
+    });
+    when(minioClient.getPresignedObjectUrl(any())).thenReturn("http://put");
+    when(urlRepository.save(any(Url.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<FileInfoDto> res = presignedUrlService.fetchUploadUrl(filename, "orig", null);
+
+    assertThat(res).isPresent();
+    assertThat(res.get().getFolderId()).isNull();
+
+    ArgumentCaptor<File> fileCaptor = ArgumentCaptor.forClass(File.class);
+    verify(fileRepository).save(fileCaptor.capture());
+    assertThat(fileCaptor.getValue().getFolder()).isNull();
+  }
+
 }

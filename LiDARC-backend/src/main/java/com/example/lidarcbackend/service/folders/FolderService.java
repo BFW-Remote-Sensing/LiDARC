@@ -137,6 +137,8 @@ public class FolderService implements IFolderService {
   public UploadedFolderDto folderUploaded(StatusOfUploadedFolderDto folderDto) {
     Folder folder = folderRepository.findById(folderDto.getId())
         .orElseThrow(() -> new BadRequestException("Folder with ID " + folderDto.getId() + " not found"));
+    folder.setStatus(folderDto.getStatus());
+    folder = folderRepository.save(folder);
     return folderMapper.folderToDto(folder);
   }
 

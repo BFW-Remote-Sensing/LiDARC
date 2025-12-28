@@ -118,4 +118,5 @@ public class PresignedUrlIntegrationTests extends AbstractIntegrationTests {
     assertThatThrownBy(() -> presignedUrlService.init()).isInstanceOf(MinioException.class);
   }
 
+
 }

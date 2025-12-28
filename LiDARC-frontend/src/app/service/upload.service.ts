@@ -118,8 +118,10 @@ export class UploadService {
   }
 
   markFolderComplete(folderId: number) {
-    return this.httpClient.patch<void>(this.globals.backendUri + defaultFolderPath + `/${folderId}`, {status: 'UPLOADED'});
-    // or whatever your endpoint is
+    return this.httpClient.put<void>(this.globals.backendUri + defaultFolderPath, {
+      id: folderId,
+      status: 'UPLOADED'
+    });
   }
 
   // compute SHA-256 of a File and return Observable<string> (hex)

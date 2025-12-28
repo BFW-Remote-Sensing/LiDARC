@@ -3,14 +3,12 @@ package com.example.lidarcbackend.model.DTO.Mapper.impl;
 import java.util.ArrayList;
 import java.util.List;
 import com.example.lidarcbackend.model.DTO.FileInfoDto;
-import com.example.lidarcbackend.model.DTO.Mapper.FolderMapper;
 import com.example.lidarcbackend.model.DTO.UploadedFolderDto;
 import com.example.lidarcbackend.model.entity.Folder;
 
-public class FolderMapperImpl implements FolderMapper {
+public class FolderMapperImpl {
 
 
-  @Override
   public UploadedFolderDto folderToDto(Folder folder) {
     if (folder == null) {
       return null;
@@ -29,7 +27,5 @@ public class FolderMapperImpl implements FolderMapper {
     uploadedFolderDto.setFiles(files);
 
     return uploadedFolderDto;
-
-
   }
 }

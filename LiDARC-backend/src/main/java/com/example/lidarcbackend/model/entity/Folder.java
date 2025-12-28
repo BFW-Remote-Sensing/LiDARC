@@ -1,12 +1,11 @@
 package com.example.lidarcbackend.model.entity;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -38,11 +37,17 @@ public class Folder {
   @Column(name = "status")
   private String status;
 
-  @OneToMany(fetch = FetchType.EAGER) //possibly change to LAZY
-  @JoinColumn(name = "folder_id")
+  @OneToMany(mappedBy = "folder", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<File> files;
 
   public Folder() {
 
+  }
+
+  public void addFile(File file) {
+    if (file != null) {
+      files.add(file);
+      file.setFolder(this);
+    }
   }
 }
