@@ -37,3 +37,14 @@
   max-width: 430px;
   height: 350px;
 }
+
+.reports-scroll-container {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}

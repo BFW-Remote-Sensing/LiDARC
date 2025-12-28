@@ -14,5 +14,5 @@ public interface IReportService {
 
     ReportInfoDto getReport(Long reportId) throws NotFoundException;
 
-    List<ReportInfoDto> getReportsOfComparsion(Long comparisonId) throws NotFoundException;
+    List<ReportInfoDto> getReportsOfComparsion(Long comparisonId, Integer limit) throws NotFoundException;
 }

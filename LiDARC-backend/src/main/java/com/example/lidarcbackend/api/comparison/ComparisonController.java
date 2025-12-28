@@ -7,7 +7,6 @@ import com.example.lidarcbackend.api.comparison.dtos.CreateComparisonRequest;
 import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.model.DTO.CreateReportDto;
 import com.example.lidarcbackend.model.DTO.ReportInfoDto;
-import com.example.lidarcbackend.service.IImageService;
 import com.example.lidarcbackend.service.files.ComparisonService;
 import com.example.lidarcbackend.service.reports.IReportService;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,15 +18,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -104,10 +103,10 @@ public class ComparisonController {
     }
 
     @GetMapping("/{id}/reports")
-    public ResponseEntity<List<ReportInfoDto>> getReportsOfComparison(@PathVariable Long id) {
+    public ResponseEntity<List<ReportInfoDto>> getReportsOfComparison(@PathVariable Long id, @RequestParam(defaultValue = "4") Integer limit) {
         log.info("GET /api/v1/comparisons/{}/reports", id);
         try {
-            return ResponseEntity.status(HttpStatus.OK).body(reportService.getReportsOfComparsion(id));
+            return ResponseEntity.status(HttpStatus.OK).body(reportService.getReportsOfComparsion(id, limit));
         } catch (NotFoundException e) {
             logClientError(HttpStatus.NOT_FOUND, "Comparison not found for Report", e);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
@@ -115,8 +114,7 @@ public class ComparisonController {
     }
 
 
-
-    @PostMapping(path="/{id}/reports", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(path = "/{id}/reports", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Resource> createReport(
             @PathVariable Long id,
             @Parameter(description = "Report JSON", required = true, content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -135,7 +133,7 @@ public class ComparisonController {
         } catch (IOException e) {
             log.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        } catch(NotFoundException e) {
+        } catch (NotFoundException e) {
             logClientError(HttpStatus.NOT_FOUND, "Comparison not found for Report", e);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
         }
