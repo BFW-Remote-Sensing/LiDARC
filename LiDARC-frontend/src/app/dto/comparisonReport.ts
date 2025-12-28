@@ -3,4 +3,5 @@ export type ComparisonReport = {
   title: string;
   fileName: string;
   creationDate: string;
+  comparisonId?: number;
 }

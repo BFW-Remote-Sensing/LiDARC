@@ -14,4 +14,5 @@ public class ReportInfoDto {
     private String title;
     private String fileName;
     private Instant creationDate;
+    private Long comparisonId;
 }

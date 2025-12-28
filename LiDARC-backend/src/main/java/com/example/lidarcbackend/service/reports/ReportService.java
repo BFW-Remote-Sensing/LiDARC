@@ -13,6 +13,7 @@ import com.itextpdf.text.pdf.PdfWriter;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -84,6 +85,24 @@ public class ReportService implements IReportService {
                         .creationDate(report.getCreationDate())
                         .build())
                 .toList();
+    }
+
+    @Override
+    public Page<ReportInfoDto> getAllReports(Pageable pageable, String search) {
+        log.trace("getAllReports({}, {})", pageable, search);
+        Page<Report> reports;
+        if (search != null && !search.trim().isEmpty()) {
+            reports = reportRepository.findByTitleContainingIgnoreCaseOrFileNameContainingIgnoreCase(search, search, pageable);
+        } else {
+            reports = reportRepository.findAll(pageable);
+        }
+        return reports.map(report -> ReportInfoDto.builder()
+                .id(report.getId())
+                .title(report.getTitle())
+                .fileName(report.getFileName())
+                .creationDate(report.getCreationDate())
+                .comparisonId(report.getComparison() != null ? report.getComparison().getId() : null) //Currently like this for potential that in the future comparison might be null?
+                .build());
     }
 
 
