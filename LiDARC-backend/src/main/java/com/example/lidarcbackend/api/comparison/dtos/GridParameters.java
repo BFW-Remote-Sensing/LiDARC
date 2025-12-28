@@ -1,20 +1,22 @@
 package com.example.lidarcbackend.api.comparison.dtos;
 
-import lombok.AllArgsConstructor;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
 public class GridParameters {
+    @Min(value = 1, message = "Cell width must be at least 1 meter")
     private Integer cellWidth;
-
+    @Min(value = 1, message = "Cell height must be at least 1 meter")
     private Integer cellHeight;
-
+    @NotNull
     private Double xMin;
-
+    @NotNull
     private Double xMax;
-
+    @NotNull
     private Double yMin;
-
+    @NotNull
     private Double yMax;
 
     public Integer getCellWidth() {

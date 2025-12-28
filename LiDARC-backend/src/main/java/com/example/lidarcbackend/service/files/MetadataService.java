@@ -10,16 +10,16 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
-import java.time.LocalDate;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 
 @Service
@@ -82,7 +82,6 @@ public class MetadataService implements IMetadataService {
     }
 
 
-
     @Override
     @Transactional
     public void processMetadata(Map<String, Object> result) {
@@ -139,7 +138,7 @@ public class MetadataService implements IMetadataService {
 
         String csString = (String) metadata.get("coordinate_system");
         CoordinateSystem cs = null;
-        if(csString != null && !csString.isEmpty()) {
+        if (csString != null && !csString.isEmpty()) {
             String[] parts = csString.split(":");
             if (parts.length == 2) {
                 String authority = parts[0].toUpperCase();
@@ -160,7 +159,10 @@ public class MetadataService implements IMetadataService {
         file.setSystemIdentifier((String) metadata.get("system_identifier"));
 
         //numeric
-        file.setCaptureYear(castToShort(metadata.get("capture_year")));
+        short captureYear = castToShort(metadata.get("capture_year"));
+        if (captureYear > 1900) {
+            file.setCaptureYear(captureYear);
+        }
         file.setSizeBytes(castToLong(metadata.get("size_bytes")));
         file.setMinX(castToDouble(metadata.get("min_x")));
         file.setMinY(castToDouble(metadata.get("min_y")));
@@ -181,9 +183,8 @@ public class MetadataService implements IMetadataService {
         }
 
 
-
         Set<ConstraintViolation<File>> violations = validator.validate(file);
-        if(!violations.isEmpty()) {
+        if (!violations.isEmpty()) {
             for (ConstraintViolation<File> v : violations) {
                 log.error("Validation error on {}: {}", v.getPropertyPath(), v.getMessage());
             }
