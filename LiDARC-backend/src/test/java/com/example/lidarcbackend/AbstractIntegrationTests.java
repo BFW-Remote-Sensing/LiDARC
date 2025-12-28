@@ -1,7 +1,5 @@
 package com.example.lidarcbackend;
 
-import com.example.lidarcbackend.repository.FileRepository;
-import com.example.lidarcbackend.repository.UrlRepository;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,6 +10,9 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import com.example.lidarcbackend.repository.FileRepository;
+import com.example.lidarcbackend.repository.FolderRepository;
+import com.example.lidarcbackend.repository.UrlRepository;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -24,6 +25,8 @@ public abstract class AbstractIntegrationTests {
   public FileRepository fileRepository;
   @Autowired
   public UrlRepository urlRepository;
+  @Autowired
+  public FolderRepository folderRepository;
 
   @BeforeAll
   static void setup() {

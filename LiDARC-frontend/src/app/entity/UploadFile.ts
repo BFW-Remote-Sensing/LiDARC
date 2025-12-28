@@ -1,8 +1,10 @@
-interface UploadFile {
+// UploadFile.ts
+export interface UploadFile {
+  id: string;
   file: File;
   hash: string;
-  progress: number; // 0..100
   status: 'idle' | 'uploading' | 'done' | 'error';
+  progress: number;
   folderId?: number;
   folderName?: string;
 }

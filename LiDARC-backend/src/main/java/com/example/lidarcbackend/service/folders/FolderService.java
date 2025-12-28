@@ -16,6 +16,9 @@ import com.example.lidarcbackend.exception.BadRequestException;
 import com.example.lidarcbackend.model.DTO.CreateEmptyFolderDto;
 import com.example.lidarcbackend.model.DTO.EmptyFolderDto;
 import com.example.lidarcbackend.model.DTO.Mapper.EmptyFolderMapper;
+import com.example.lidarcbackend.model.DTO.Mapper.FolderMapper;
+import com.example.lidarcbackend.model.DTO.StatusOfUploadedFolderDto;
+import com.example.lidarcbackend.model.DTO.UploadedFolderDto;
 import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.model.entity.Folder;
 import com.example.lidarcbackend.repository.FileRepository;
@@ -29,6 +32,7 @@ public class FolderService implements IFolderService {
   private final FileRepository fileRepository;
   private final MetadataMapper mapper;
   private final EmptyFolderMapper emptyFolderMapper;
+  private final FolderMapper folderMapper;
 
   public FolderFilesDTO loadFolderWithFiles(Long folderId) {
     Folder folder = folderRepository.findById(folderId).orElseThrow();
@@ -118,7 +122,6 @@ public class FolderService implements IFolderService {
     return folder;
   }
 
-
   @Override
   public EmptyFolderDto createFolderEmpty(CreateEmptyFolderDto emptyDto) {
     Folder folder = Folder.builder()
@@ -128,5 +131,14 @@ public class FolderService implements IFolderService {
     folder = folderRepository.save(folder);
     return emptyFolderMapper.emptyFolderToDto(folder);
   }
+
+
+  @Override
+  public UploadedFolderDto folderUploaded(StatusOfUploadedFolderDto folderDto) {
+    Folder folder = folderRepository.findById(folderDto.getId())
+        .orElseThrow(() -> new BadRequestException("Folder with ID " + folderDto.getId() + " not found"));
+    return folderMapper.folderToDto(folder);
+  }
+
 }
 

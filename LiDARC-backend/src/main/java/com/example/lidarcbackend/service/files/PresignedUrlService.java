@@ -152,8 +152,10 @@ public class PresignedUrlService implements IPresignedUrlService {
       file.setUploaded(false);
       file.setOriginalFilename(originalFileName);
       file.setStatus("UPLOADED");
-      Folder folder = folderRepository.findById(folderId).orElse(null);
-      file.setFolder(folder);
+      if (folderId != null) {
+        Folder folder = folderRepository.findById(folderId).orElse(null);
+        file.setFolder(folder);
+      }
       file = fileRepository.save(file);
     }
 

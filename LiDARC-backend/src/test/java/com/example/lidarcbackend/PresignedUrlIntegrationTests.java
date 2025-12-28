@@ -46,6 +46,7 @@ public class PresignedUrlIntegrationTests extends AbstractIntegrationTests {
         minioProperties,
         urlRepository,
         fileRepository,
+        folderRepository,
         workerStartService,
         urlMapper
     );

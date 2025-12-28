@@ -4,6 +4,7 @@ import {FileInfo} from '../dto/fileInfo';
 import {defaultBucketPath, defaultFolderPath, Globals, headers} from '../globals/globals';
 import {catchError, from, map, Observable, switchMap, throwError} from 'rxjs';
 import {CreateEmptyFolder} from '../dto/createEmptyFolder';
+import {UploadFile} from '../entity/UploadFile';
 
 @Injectable({
   providedIn: 'root',
@@ -74,11 +75,6 @@ export class UploadService {
     });
   }
 
-  addFileToFormData = (formData: FormData, file: File) => {
-    formData.append('file', file);
-
-  }
-
   onComplete?(file: File, hash: string) {
     // callback to signal to backend that upload is complete
     const payload: FileInfo = {
@@ -98,15 +94,32 @@ export class UploadService {
       switchMap((hash) => {
         uploadFile.hash = hash;
         console.log('computed hash for file ' + file.name + ': ' + hash);
-        return this.getPresignedUploadUrl(file, hash, uploadFile.folderId);
+        return this.getPresignedUploadUrl(file, hash, uploadFile.folderId).pipe(
+          catchError((err) => {
+            console.error('getPresignedUploadUrl failed for file ' + file.name, err);
+            return throwError(() => err);
+          })
+        );
       }),
       switchMap((info) => {
         if (!info || !info.presignedURL) {
-          return throwError(() => new Error('Presign request failed: missing presignedUrl'));
+          const error = new Error('Presign request failed: missing presignedUrl');
+          console.error('Presign validation failed for file ' + file.name, error);
+          return throwError(() => error);
         }
-        return this.uploadToPresignedUrl(file, info.presignedURL, 'PUT');
+        return this.uploadToPresignedUrl(file, info.presignedURL, 'PUT').pipe(
+          catchError((err) => {
+            console.error('uploadToPresignedUrl failed for file ' + file.name, err);
+            return throwError(() => err);
+          })
+        );
       })
     );
+  }
+
+  markFolderComplete(folderId: number) {
+    return this.httpClient.patch<void>(this.globals.backendUri + defaultFolderPath + `/${folderId}`, {status: 'UPLOADED'});
+    // or whatever your endpoint is
   }
 
   // compute SHA-256 of a File and return Observable<string> (hex)
@@ -124,4 +137,6 @@ export class UploadService {
       })
     );
   }
+
+
 }

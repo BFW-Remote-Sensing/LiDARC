@@ -9,7 +9,7 @@
         </button>
         <button
           (click)="clear()"
-          [disabled]="files.length === 0"
+          [disabled]="dataSource.data.length === 0"
           color="warn"
           mat-button
           type="button"
@@ -20,10 +20,14 @@
     </mat-card-actions>
 
     <mat-card-content>
-      <table [dataSource]="files" mat-table>
+      <table [dataSource]="dataSource" [trackBy]="trackById" mat-table>
         <ng-container matColumnDef="file name">
           <th *matHeaderCellDef mat-header-cell>Files</th>
-          <td *matCellDef="let f" mat-cell>{{ f.file.name }}</td>
+          <td *matCellDef="let f" mat-cell>
+            @if (f.folderName) {
+              <span class="folder-badge">{{ f.folderName }}/</span>
+            }<span>{{ f.file.name }}</span>
+          </td>
         </ng-container>
 
         <ng-container matColumnDef="status">
