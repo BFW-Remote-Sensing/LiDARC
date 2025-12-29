@@ -104,10 +104,10 @@ public class ComparisonController {
     }
 
     @GetMapping("/{id}/reports")
-    public ResponseEntity<List<ReportInfoDto>> getReportsOfComparison(@PathVariable Long id) {
+    public ResponseEntity<List<ReportInfoDto>> getReportsOfComparison(@PathVariable Long id, @RequestParam(defaultValue = "4") Integer limit) {
         log.info("GET /api/v1/comparisons/{}/reports", id);
         try {
-            return ResponseEntity.status(HttpStatus.OK).body(reportService.getReportsOfComparsion(id));
+            return ResponseEntity.status(HttpStatus.OK).body(reportService.getReportsOfComparsion(id, limit));
         } catch (NotFoundException e) {
             logClientError(HttpStatus.NOT_FOUND, "Comparison not found for Report", e);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);

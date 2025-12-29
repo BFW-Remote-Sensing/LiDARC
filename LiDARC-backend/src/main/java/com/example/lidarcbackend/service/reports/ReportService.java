@@ -8,15 +8,15 @@ import com.example.lidarcbackend.model.entity.Comparison;
 import com.example.lidarcbackend.model.entity.Report;
 import com.example.lidarcbackend.repository.ComparisonRepository;
 import com.example.lidarcbackend.repository.ReportRepository;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Element;
-import com.itextpdf.text.Image;
-import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.PdfWriter;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -24,11 +24,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 
 @Slf4j
@@ -42,11 +39,12 @@ public class ReportService implements IReportService {
     @Value("${app.upload.dir:/app/uploads}")
     private String UPLOAD_DIRECTORY;
 
-    public ReportService(ReportComponentFactory reportComponentFactory,  ReportRepository reportRepository, ComparisonRepository comparisonRepository) {
+    public ReportService(ReportComponentFactory reportComponentFactory, ReportRepository reportRepository, ComparisonRepository comparisonRepository) {
         this.reportComponentFactory = reportComponentFactory;
         this.reportRepository = reportRepository;
         this.comparisonRepository = comparisonRepository;
     }
+
     @Override
     @Transactional
     public ReportInfoDto createReport(Long id, CreateReportDto report, MultipartFile[] files) throws IOException, NotFoundException {
@@ -73,19 +71,44 @@ public class ReportService implements IReportService {
     }
 
     @Override
-    public List<ReportInfoDto> getReportsOfComparsion(Long comparisonId) throws NotFoundException {
-        List<Report> reports =  this.reportRepository.findAllByComparisonId(comparisonId).orElseThrow(() -> new NotFoundException("No comparison found with id: " + comparisonId));
-        List<ReportInfoDto> reportInfoDtos = new ArrayList<>();
-        for  (Report report : reports) {
-            reportInfoDtos.add(ReportInfoDto.builder().id(report.getId()).title(report.getTitle()).fileName(report.getFileName()).build());
+    public List<ReportInfoDto> getReportsOfComparsion(Long comparisonId, Integer limit) throws NotFoundException {
+        Pageable pageable = PageRequest.of(0, limit, Sort.by("creationDate").descending());
+        List<Report> reports = this.reportRepository.findByComparisonId(comparisonId, pageable);
+        if (reports.isEmpty()) {
+            return Collections.emptyList();
         }
-        return reportInfoDtos;
+        return reports.stream()
+                .map(report -> ReportInfoDto.builder()
+                        .id(report.getId())
+                        .title(report.getTitle())
+                        .fileName(report.getFileName())
+                        .creationDate(report.getCreationDate())
+                        .build())
+                .toList();
+    }
+
+    @Override
+    public Page<ReportInfoDto> getAllReports(Pageable pageable, String search) {
+        log.trace("getAllReports({}, {})", pageable, search);
+        Page<Report> reports;
+        if (search != null && !search.trim().isEmpty()) {
+            reports = reportRepository.findByTitleContainingIgnoreCaseOrFileNameContainingIgnoreCase(search, search, pageable);
+        } else {
+            reports = reportRepository.findAll(pageable);
+        }
+        return reports.map(report -> ReportInfoDto.builder()
+                .id(report.getId())
+                .title(report.getTitle())
+                .fileName(report.getFileName())
+                .creationDate(report.getCreationDate())
+                .comparisonId(report.getComparison() != null ? report.getComparison().getId() : null) //Currently like this for potential that in the future comparison might be null?
+                .build());
     }
 
 
     private Document assembleReport(CreateReportDto reportDto, String uniqueName, MultipartFile[] files) throws IOException {
         List<ReportComponentDto> components = reportDto.getComponents();
-        Map<String, byte[]> fileToComponent =  new HashMap<>();
+        Map<String, byte[]> fileToComponent = new HashMap<>();
 
         if (files != null) {
             for (MultipartFile file : files) {
@@ -97,7 +120,7 @@ public class ReportService implements IReportService {
             for (ReportComponentDto component : components) {
                 IReportComponent componentInstance = reportComponentFactory.getReportComponent(component.getType());
                 if (component.getFileName() != null && !component.getFileName().isBlank()
-                    && !fileToComponent.isEmpty() && fileToComponent.containsKey(component.getFileName())) {
+                        && !fileToComponent.isEmpty() && fileToComponent.containsKey(component.getFileName())) {
                     document = componentInstance.render(document, fileToComponent.get(component.getFileName()));
                 } else {
                     document = componentInstance.render(document);
@@ -124,7 +147,7 @@ public class ReportService implements IReportService {
 
         Path imagePath = Path.of(LOGO_PATH);
         Image image = Image.getInstance(imagePath.toAbsolutePath().toString());
-        image.scaleToFit(120,60);
+        image.scaleToFit(120, 60);
         image.setAlignment(Element.ALIGN_CENTER);
         document.add(image);
 
