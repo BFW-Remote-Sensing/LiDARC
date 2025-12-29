@@ -1,0 +1,30 @@
+.actions {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.spinner-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 20px;
+}
+
+.input-field {
+    width: 100%;
+}
+
+mat-dialog-content {
+    width: 100%;
+    padding-bottom: 0 !important;
+}
+
+mat-form-field {
+    width: 100%;
+}
+
+mat-dialog-actions {
+    padding: 0 24px 12px 24px;
+}

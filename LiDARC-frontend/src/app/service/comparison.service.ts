@@ -1,15 +1,10 @@
-import { HttpClient, HttpHeaders } from "@angular/common/http";
+import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { defaultComparisonPath, Globals } from "../globals/globals";
+import { defaultComparisonPath, Globals, headers } from "../globals/globals";
 import { Observable } from "rxjs";
 import { ComparisonDTO, CreateComparison } from "../dto/comparison";
 import { ComparisonReport } from "../dto/comparisonReport";
-import {CreateReportDto} from '../dto/report';
-
-const headers = new HttpHeaders({
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-});
+import { CreateReportDto } from '../dto/report';
 
 @Injectable({
     providedIn: 'root',
@@ -64,19 +59,19 @@ export class ComparisonService {
     }
 
     createReport(id: number, report: CreateReportDto, files: File[]): Observable<Blob> {
-      const formData = new FormData();
-      formData.append(
-        'report',
-        new Blob([JSON.stringify(report)], { type: 'application/json' })
-      );
-      files.forEach(file => {
-        formData.append('files', file, file.name);
-      });
+        const formData = new FormData();
+        formData.append(
+            'report',
+            new Blob([JSON.stringify(report)], { type: 'application/json' })
+        );
+        files.forEach(file => {
+            formData.append('files', file, file.name);
+        });
 
-      return this.httpClient.post(
-        this.globals.backendUri + defaultComparisonPath + `/${id}/reports`,
-        formData,
-        { responseType: 'blob' },
-      );
+        return this.httpClient.post(
+            this.globals.backendUri + defaultComparisonPath + `/${id}/reports`,
+            formData,
+            { responseType: 'blob' },
+        );
     }
 }

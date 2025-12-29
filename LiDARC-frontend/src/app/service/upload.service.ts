@@ -1,14 +1,8 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpEvent, HttpHeaders, HttpRequest } from '@angular/common/http';
+import { HttpClient, HttpEvent } from '@angular/common/http';
 import { FileInfo } from '../dto/fileInfo';
-import { defaultBucketPath, Globals } from '../globals/globals';
-import { Observable, switchMap, throwError, from, map, catchError, tap } from 'rxjs';
-import { HttpEventType, HttpResponse } from '@angular/common/http';
-
-const headers = new HttpHeaders({
-  'Content-Type': 'application/json',
-  Accept: 'application/json',
-});
+import { defaultBucketPath, Globals, headers } from '../globals/globals';
+import { Observable, switchMap, throwError, from, map, catchError } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -17,7 +11,7 @@ export class UploadService {
   constructor(
     private httpClient: HttpClient,
     private globals: Globals,
-  ) {}
+  ) { }
 
   // Ask your backend for a presigned URL (adapt endpoint/payload)
   getPresignedUploadUrl(file: File, hash: string): Observable<FileInfo> {

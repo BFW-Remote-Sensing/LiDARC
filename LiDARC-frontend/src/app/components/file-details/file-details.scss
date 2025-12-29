@@ -11,7 +11,8 @@
 
 /* Container for the entire layout */
 .file-details-container {
-    padding: 20px 40px; /* Generous padding for laptop viewing */
+    padding: 20px 40px;
+    /* Generous padding for laptop viewing */
 }
 
 /* Header Banner Styling */
@@ -26,7 +27,8 @@
 .metadata-header h1 {
     margin: 0 0 0 15px;
     font-size: 1.8em;
-    flex-grow: 1; /* Pushes the status chip to the right */
+    flex-grow: 1;
+    /* Pushes the status chip to the right */
 }
 
 .header-icon {
@@ -38,6 +40,7 @@
 .status-chip {
     margin-left: auto;
     padding-left: 10px;
+
     .processed {
         background-color: green;
 
@@ -57,12 +60,14 @@
 /* Two-Column Layout for the Content */
 .content-wrapper {
     display: flex;
-    gap: 30px; /* Space between columns */
+    gap: 30px;
+    /* Space between columns */
 }
 
 .general-info-section,
 .technical-info-section {
-    flex: 1; /* Each section takes equal width */
+    flex: 1;
+    /* Each section takes equal width */
 }
 
 /* Section Headings */
@@ -88,7 +93,8 @@ mat-list {
 /* Material List Customization */
 mat-list-item {
     padding: 10px 0;
-    height: auto !important; /* Override default fixed height */
+    height: auto !important;
+    /* Override default fixed height */
 }
 
 .mat-list-item-row {
@@ -116,7 +122,6 @@ mat-expansion-panel {
     gap: 5px;
     font-size: 1.1em;
     color: #444;
-    border-bottom: 1px solid #eee;
     padding-bottom: 5px;
     margin-top: 0;
 }

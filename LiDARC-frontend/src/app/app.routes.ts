@@ -6,12 +6,16 @@ import { Comparisons } from './components/comparisons/comparisons';
 import { FileDetails } from './components/file-details/file-details';
 import { ComparisonDetails } from './components/comparison-details/comparison-details';
 import { ComparisonSetup } from './components/comparison-setup/comparison-setup';
+import { ComparableItems } from './components/comparable-items/comparable-items';
+import { FolderDetails } from './components/folder-details/folder-details';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'upload', pathMatch: 'full' },
   { path: 'upload', component: UploadComponent },
-  { path: 'stored-files', component: StoredFiles },
+  { path: 'unassigned-files', component: StoredFiles },
+  { path: 'comparable-items', component: ComparableItems },
   { path: 'stored-files/:id', component: FileDetails },
+  { path: 'folders/:id', component: FolderDetails },
   { path: 'comparisons', component: Comparisons },
   { path: 'comparisons/:id', component: ComparisonDetails },
   { path: 'comparison-setup', component: ComparisonSetup },

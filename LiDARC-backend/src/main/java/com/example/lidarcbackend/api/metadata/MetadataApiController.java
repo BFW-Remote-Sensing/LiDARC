@@ -1,8 +1,7 @@
 package com.example.lidarcbackend.api.metadata;
 
-import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
-import com.example.lidarcbackend.api.metadata.dtos.MetadataRequest;
-import com.example.lidarcbackend.api.metadata.dtos.MetadataResponse;
+import com.example.lidarcbackend.api.metadata.dtos.FolderFilesDTO;
+import com.example.lidarcbackend.api.metadata.dtos.*;
 import com.example.lidarcbackend.service.files.CoordinateSystemService;
 import com.example.lidarcbackend.service.files.MetadataService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,15 +51,15 @@ class MetadataApiController {
     }
 
     /**
-     * List metadata paged
+     * List all file metadata without a folder
      *
-     * @return list of all metadata
+     * @return list of metadata
      */
-    @GetMapping("/all")
-    public ResponseEntity<List<FileMetadataDTO>> getAllMetadata() {
+    @GetMapping("/unassigned/all")
+    public ResponseEntity<List<FileMetadataDTO>> getAllMetadataWithoutFolder() {
         try {
-            List<FileMetadataDTO> all = metadataService.getAllMetadata();
-            List<FileMetadataDTO> content = all.stream()
+            List<FileMetadataDTO> metadata = metadataService.getAllMetadataWithoutFolder();
+            List<FileMetadataDTO> content = metadata.stream()
                     .map(entity -> objectMapper.convertValue(entity, FileMetadataDTO.class))
                     .toList();
             return ResponseEntity.ok(content);
@@ -71,20 +70,20 @@ class MetadataApiController {
     }
 
     /**
-     * List metadata paged
+     * List metadata without folder paged
      *
      * @param request MetadataRequest(page, size, sortBy, ascending)
-     * @return list of all metadata
+     * @return list of metadata
      */
-    @GetMapping("/paged")
-    public ResponseEntity<MetadataResponse> getPagedMetadata(@Valid @ModelAttribute MetadataRequest request) {
+    @GetMapping("/unassigned/paged")
+    public ResponseEntity<MetadataResponse> getPagedMetadataWithoutFolder(@Valid @ModelAttribute MetadataRequest request) {
         try {
             Sort sort = request.isAscending() ?
                     Sort.by(request.getSortBy()).ascending() :
                     Sort.by(request.getSortBy()).descending();
 
             Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
-            Page<FileMetadataDTO> result = metadataService.getPagedMetadata(pageable);
+            Page<FileMetadataDTO> result = metadataService.getPagedMetadataWithoutFolder(pageable);
 
             MetadataResponse response = new MetadataResponse(
                     result.getContent(),
@@ -101,33 +100,34 @@ class MetadataApiController {
         }
     }
 
-    /**
-     *
-     * @param metadata metadata object to store
-     * @return newly created metadata object
-     */
-//    @PostMapping
-//    public ResponseEntity<FileMetadataDTO> createMetadata(
-//            @Valid @RequestBody CreateFileMetadataRequest metadata) {
-//        try {
-//            boolean coordSystemExists = coordinateSystemService.existsWithId(Long.valueOf(metadata.getCoordinateSystem()));
-//            if (!coordSystemExists) {
-//                return new ResponseEntity<FileMetadataDTO>(HttpStatus.NOT_FOUND);
-//            }
-//
-//            File entity = objectMapper.convertValue(metadata, File.class);
-//
-//            File savedEntity = metadataService.saveMetadata(entity);
-//
-//            File savedDTO = objectMapper.convertValue(savedEntity, FileMetadataDTO.class);
-//
-//            return ResponseEntity
-//                    .status(HttpStatus.CREATED)
-//                    .body(savedDTO);
-//        } catch (Exception e) {
-//            return ResponseEntity.status(500).build();
-//        }
-//    }
+    @GetMapping("/assigned/grouped-by-folder/all")
+    public ResponseEntity<List<FolderFilesDTO>> getMetadataGroupedByFolder() {
+        try {
+            return ResponseEntity.ok(metadataService.getMetadataGroupedByFolder());
+        } catch (Exception e) {
+            log.error("Failed to list metadata grouped by folder", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/all/grouped-by-folder/paged")
+    public ResponseEntity<ComparableResponse> getAllMetadataGroupedByFolderPaged(
+            @Valid @ModelAttribute ComparableRequest request
+    ) {
+        try {
+            Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), Sort.unsorted());
+            Page<ComparableItemDTO> result = metadataService.getAllMetadataGroupedByFolderPaged(pageable);
+            return ResponseEntity.ok(
+                    new ComparableResponse(
+                            result.getContent(),
+                            result.getTotalElements()
+                    )
+            );
+        } catch (Exception e) {
+            log.error("Failed to list metadata grouped by folder", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 
     /**
      * Delete metadata by ID
@@ -149,4 +149,12 @@ class MetadataApiController {
         return ResponseEntity.noContent().build();
     }
 
+    @PutMapping("/assign-folder")
+    public ResponseEntity<Void> assignFolder(
+            @RequestParam Long folderId,
+            @RequestBody List<Long> metadataIds
+    ) {
+        metadataService.assignFolder(metadataIds, folderId);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -19,6 +19,9 @@ public class CreateComparisonRequest {
     private Boolean needMostDifferences;
 
     private List<Long> fileMetadataIds;
+    //TODO: ADD NOT EMPTY / NOT NULL TO EITHER
+    private List<Long> folderAFiles;
+    private List<Long> folderBFiles;
 
     private GridParameters grid;
 }

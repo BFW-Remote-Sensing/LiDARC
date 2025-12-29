@@ -1,11 +1,18 @@
 package com.example.lidarcbackend.service.files;
 
 import com.example.lidarcbackend.api.metadata.MetadataMapper;
+import com.example.lidarcbackend.api.metadata.dtos.ComparableItemDTO;
+import com.example.lidarcbackend.api.metadata.dtos.ComparableProjection;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
+import com.example.lidarcbackend.api.metadata.dtos.FolderFilesDTO;
 import com.example.lidarcbackend.model.entity.CoordinateSystem;
 import com.example.lidarcbackend.model.entity.File;
+import com.example.lidarcbackend.model.entity.Folder;
 import com.example.lidarcbackend.repository.CoordinateSystemRepository;
 import com.example.lidarcbackend.repository.FileRepository;
+import com.example.lidarcbackend.repository.FolderRepository;
+import com.example.lidarcbackend.service.folders.IFolderService;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -13,10 +20,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -28,12 +34,22 @@ public class MetadataService implements IMetadataService {
 
     private final FileRepository fileRepository;
     private final CoordinateSystemRepository coordinateSystemRepository;
+    private final FolderRepository folderRepository;
     private final Validator validator;
     private final MetadataMapper mapper;
+    private final IFolderService folderService;
 
-    public MetadataService(FileRepository fileRepository, CoordinateSystemRepository coordinateSystemRepository, Validator validator, MetadataMapper mapper) {
+    public MetadataService(
+            FileRepository fileRepository,
+            CoordinateSystemRepository coordinateSystemRepository,
+            FolderRepository folderRepository,
+            IFolderService folderService,
+            Validator validator,
+            MetadataMapper mapper) {
         this.fileRepository = fileRepository;
         this.coordinateSystemRepository = coordinateSystemRepository;
+        this.folderRepository = folderRepository;
+        this.folderService = folderService;
         this.validator = validator;
         this.mapper = mapper;
     }
@@ -57,19 +73,71 @@ public class MetadataService implements IMetadataService {
         return fileRepository.existsById(id);
     }
 
-    public Page<FileMetadataDTO> getPagedMetadata(Pageable pageable) {
-        return fileRepository.findAll(pageable)
+    public Page<FileMetadataDTO> getPagedMetadataWithoutFolder(Pageable pageable) {
+        return fileRepository.findPagedByFolderIsNull(pageable)
                 .map(mapper::toDto);
     }
 
-    public List<FileMetadataDTO> getAllMetadata() {
-        return fileRepository.findAll(Sort.by(Sort.Direction.DESC, "uploadedAt")).stream()
+    public List<FileMetadataDTO> getAllMetadataWithoutFolder() {
+        return fileRepository.findAllByFolderIsNull(Sort.by(Sort.Direction.DESC, "uploadedAt")).stream()
                 .map(mapper::toDto)
                 .toList();
     }
 
-    public File saveMetadata(File metadata) {
-        return fileRepository.save(metadata);
+    public List<FolderFilesDTO> getMetadataGroupedByFolder() {
+
+        List<File> entities =
+                fileRepository.findAllByFolderIsNotNull(
+                        Sort.by(Sort.Direction.DESC, "uploadedAt")
+                );
+
+        Map<Folder, List<File>> grouped =
+                entities.stream()
+                        .collect(Collectors.groupingBy(File::getFolder));
+
+        return grouped.entrySet().stream()
+                .sorted(Comparator.comparing(
+                        entry -> entry.getKey().getCreatedAt(),
+                        Comparator.reverseOrder()))
+                .map(entry -> new FolderFilesDTO(
+                        entry.getKey().getId(),
+                        entry.getKey().getName(),
+                        entry.getKey().getCreatedAt(),
+                        entry.getKey().getStatus(),
+                        entry.getValue().stream()
+                                .map(mapper::toDto)
+                                .toList()
+                ))
+                .toList();
+    }
+
+    public Page<ComparableItemDTO> getAllMetadataGroupedByFolderPaged(Pageable pageable) {
+        Page<ComparableProjection> page = fileRepository.findComparables(pageable);
+
+        List<Long> folderIds =
+                page.stream()
+                        .map(ComparableProjection::getFolderId)
+                        .filter(Objects::nonNull)
+                        .toList();
+
+        List<Long> fileIds =
+                page.stream()
+                        .map(ComparableProjection::getFileId)
+                        .filter(Objects::nonNull)
+                        .toList();
+
+        Map<Long, FolderFilesDTO> folders =
+                folderService.loadFoldersWithFiles(folderIds);
+
+        Map<Long, FileMetadataDTO> files =
+                this.loadFiles(fileIds);
+
+
+        return page.map(row -> {
+            if (row.getFolderId() != null)
+                return folders.get(row.getFolderId());
+            return files.get(row.getFileId());
+        });
     }
 
     @Transactional
@@ -81,7 +149,18 @@ public class MetadataService implements IMetadataService {
         fileRepository.deleteById(id);
     }
 
+    public Map<Long, FileMetadataDTO> loadFiles(List<Long> fileIds) {
 
+        if (fileIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return fileRepository.findAllById(fileIds).stream()
+                .collect(Collectors.toMap(
+                        File::getId,
+                        mapper::toDto
+                ));
+    }
 
     @Override
     @Transactional
@@ -129,6 +208,20 @@ public class MetadataService implements IMetadataService {
         }
     }
 
+    @Transactional
+    public void assignFolder(List<Long> metadataIds, Long folderId) {
+        if (metadataIds == null || metadataIds.isEmpty()) {
+            throw new IllegalArgumentException("Metadata ID list cannot be empty");
+        }
+
+        Folder folder = folderRepository.findById(folderId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Folder not found with id: " + folderId
+                ));
+
+        fileRepository.updateFolderForMetadata(metadataIds, folder);
+    }
+
     private File parseMetadata(Map<String, Object> metadata) {
         Optional<File> old = fileRepository.findFileByFilename(metadata.get("filename").toString());
         if (old.isEmpty()) {
@@ -139,7 +232,7 @@ public class MetadataService implements IMetadataService {
 
         String csString = (String) metadata.get("coordinate_system");
         CoordinateSystem cs = null;
-        if(csString != null && !csString.isEmpty()) {
+        if (csString != null && !csString.isEmpty()) {
             String[] parts = csString.split(":");
             if (parts.length == 2) {
                 String authority = parts[0].toUpperCase();
@@ -181,9 +274,8 @@ public class MetadataService implements IMetadataService {
         }
 
 
-
         Set<ConstraintViolation<File>> violations = validator.validate(file);
-        if(!violations.isEmpty()) {
+        if (!violations.isEmpty()) {
             for (ConstraintViolation<File> v : violations) {
                 log.error("Validation error on {}: {}", v.getPropertyPath(), v.getMessage());
             }
