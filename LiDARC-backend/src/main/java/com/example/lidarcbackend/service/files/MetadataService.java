@@ -10,7 +10,9 @@ import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.model.entity.Folder;
 import com.example.lidarcbackend.repository.CoordinateSystemRepository;
 import com.example.lidarcbackend.repository.FileRepository;
+import com.example.lidarcbackend.repository.FolderRepository;
 import com.example.lidarcbackend.service.folders.IFolderService;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -32,13 +34,21 @@ public class MetadataService implements IMetadataService {
 
     private final FileRepository fileRepository;
     private final CoordinateSystemRepository coordinateSystemRepository;
+    private final FolderRepository folderRepository;
     private final Validator validator;
     private final MetadataMapper mapper;
     private final IFolderService folderService;
 
-    public MetadataService(FileRepository fileRepository, CoordinateSystemRepository coordinateSystemRepository, IFolderService folderService, Validator validator, MetadataMapper mapper) {
+    public MetadataService(
+            FileRepository fileRepository,
+            CoordinateSystemRepository coordinateSystemRepository,
+            FolderRepository folderRepository,
+            IFolderService folderService,
+            Validator validator,
+            MetadataMapper mapper) {
         this.fileRepository = fileRepository;
         this.coordinateSystemRepository = coordinateSystemRepository;
+        this.folderRepository = folderRepository;
         this.folderService = folderService;
         this.validator = validator;
         this.mapper = mapper;
@@ -196,6 +206,20 @@ public class MetadataService implements IMetadataService {
             fileRepository.save(file);
             log.info("Saved FileMetadata for file: {}", file.getFilename());
         }
+    }
+
+    @Transactional
+    public void assignFolder(List<Long> metadataIds, Long folderId) {
+        if (metadataIds == null || metadataIds.isEmpty()) {
+            throw new IllegalArgumentException("Metadata ID list cannot be empty");
+        }
+
+        Folder folder = folderRepository.findById(folderId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Folder not found with id: " + folderId
+                ));
+
+        fileRepository.updateFolderForMetadata(metadataIds, folder);
     }
 
     private File parseMetadata(Map<String, Object> metadata) {

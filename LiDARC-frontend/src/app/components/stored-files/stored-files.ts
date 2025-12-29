@@ -16,6 +16,7 @@ import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirma
 import { MatDialog } from '@angular/material/dialog';
 import { MetadataResponse } from '../../dto/metadataResponse';
 import { CreateFolderDialog } from '../create-folder-dialog/create-folder-dialog';
+import { AssignFolderDialog } from '../assign-folder-dialog/assign-folder-dialog';
 
 @Component({
   selector: 'app-stored-files',
@@ -172,6 +173,20 @@ export class StoredFiles {
       width: 'auto',
       height: 'auto',
       data: this.dataSource.data.filter(file => this.selectedFileIds.has(file.id))
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.selectedFileIds.clear();
+        this.router.navigate([`/folders/${result.id}`]);
+      }
+    });
+  }
+
+  assignFolder() {
+    const dialogRef = this.dialog.open(AssignFolderDialog, {
+      width: '400px',
+      data: Array.from(this.selectedFileIds)
     });
 
     dialogRef.afterClosed().subscribe(result => {

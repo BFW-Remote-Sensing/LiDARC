@@ -1,6 +1,7 @@
 package com.example.lidarcbackend.service.folders;
 
 import com.example.lidarcbackend.api.folder.dtos.CreateFolderDTO;
+import com.example.lidarcbackend.api.folder.dtos.FolderDTO;
 import com.example.lidarcbackend.api.metadata.dtos.FolderFilesDTO;
 import com.example.lidarcbackend.model.entity.Folder;
 
@@ -13,4 +14,6 @@ public interface IFolderService {
     Map<Long, FolderFilesDTO> loadFoldersWithFiles(List<Long> folderIds);
 
     Folder createFolder(CreateFolderDTO dto);
+
+    List<FolderDTO> getFolders();
 }

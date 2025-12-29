@@ -1,4 +1,4 @@
-import { HttpClient } from "@angular/common/http";
+import { HttpClient, HttpParams } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { defaultMetadataPath, Globals, headers } from "../globals/globals";
 import { Observable } from "rxjs";
@@ -55,6 +55,15 @@ export class MetadataService {
         return this.httpClient.delete<void>(
             this.globals.backendUri + defaultMetadataPath + `/${id}`,
             { headers }
+        );
+    }
+
+    assignFolder(metadataIds: number[], folderId: number): Observable<void> {
+        const params = new HttpParams().set('folderId', folderId.toString());
+        return this.httpClient.put<void>(
+            `${this.globals.backendUri + defaultMetadataPath}/assign-folder`,
+            metadataIds,
+            { params }
         );
     }
 }

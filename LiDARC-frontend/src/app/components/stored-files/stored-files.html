@@ -15,6 +15,9 @@
             <button mat-raised-button color="primary" (click)="createFolder()" [disabled]="selectedFileIds.size === 0">
                 Create a Folder
             </button>
+            <button mat-raised-button color="primary" (click)="assignFolder()" [disabled]="selectedFileIds.size === 0">
+                Assign a Folder
+            </button>
         </div>
         <button mat-raised-button color="warn" (click)="deleteSelectedFiles()" [disabled]="selectedFileIds.size === 0">
             Delete

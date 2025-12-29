@@ -1,6 +1,7 @@
 package com.example.lidarcbackend.service.folders;
 
 import com.example.lidarcbackend.api.folder.dtos.CreateFolderDTO;
+import com.example.lidarcbackend.api.folder.dtos.FolderDTO;
 import com.example.lidarcbackend.api.metadata.MetadataMapper;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import com.example.lidarcbackend.api.metadata.dtos.FolderFilesDTO;
@@ -26,6 +27,13 @@ public class FolderService implements IFolderService {
     private final FolderRepository folderRepository;
     private final FileRepository fileRepository;
     private final MetadataMapper mapper;
+
+    public List<FolderDTO> getFolders() {
+        return folderRepository.findAll()
+                .stream()
+                .map(folder -> new FolderDTO(folder.getId(), folder.getName()))
+                .toList();
+    }
 
     public FolderFilesDTO loadFolderWithFiles(Long folderId) {
         Folder folder = folderRepository.findById(folderId).orElseThrow();

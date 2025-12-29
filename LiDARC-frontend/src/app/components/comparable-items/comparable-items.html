@@ -29,7 +29,8 @@
         <ng-container matColumnDef="select">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let element">
-                <mat-checkbox [disabled]="element.status !== 'PROCESSED'"
+                <mat-checkbox
+                    [disabled]="element.status !== 'PROCESSED' || (selectedComparableItemIds.size >= 2 && !isSelected(`${element.id}-${element.type}`))"
                     [checked]="isSelected(`${element.id}-${element.type}`)"
                     (change)="toggleSelection(`${element.id}-${element.type}`, $event)">
                 </mat-checkbox>
@@ -41,18 +42,6 @@
             <th mat-header-cell *matHeaderCellDef>Name</th>
             <td mat-cell *matCellDef="let element">{{ element.name }}</td>
         </ng-container>
-
-        <!-- Folder Name Column
-        <ng-container matColumnDef="folderName">
-            <th mat-header-cell *matHeaderCellDef>Folder Name</th>
-            <td mat-cell *matCellDef="let element">{{ element.folderName }}</td>
-        </ng-container>
-
-         File Name Column
-        <ng-container matColumnDef="filename">
-            <th mat-header-cell *matHeaderCellDef>File Name</th>
-            <td mat-cell *matCellDef="let element">{{ element.originalFilename }}</td>
-        </ng-container> -->
 
         <ng-container matColumnDef="type">
             <th mat-header-cell *matHeaderCellDef>Type</th>

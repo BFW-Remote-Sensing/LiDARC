@@ -4,10 +4,12 @@ import java.util.List;
 import java.util.Optional;
 
 import com.example.lidarcbackend.api.metadata.dtos.ComparableProjection;
+import com.example.lidarcbackend.model.entity.Folder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -80,4 +82,15 @@ public interface FileRepository extends JpaRepository<File, Long> {
             nativeQuery = true
     )
     Page<ComparableProjection> findComparables(Pageable pageable);
+
+    @Modifying
+    @Query("""
+        UPDATE File m
+        SET m.folder = :folder
+        WHERE m.id IN :metadataIds
+    """)
+    void updateFolderForMetadata(
+            @Param("metadataIds") List<Long> metadataIds,
+            @Param("folder") Folder folder
+    );
 }
