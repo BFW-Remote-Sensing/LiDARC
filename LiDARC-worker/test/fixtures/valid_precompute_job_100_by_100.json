@@ -13,5 +13,13 @@
   },
   "jobId": "12345",
   "comparisonId": 1,
-  "fileId": 2
+  "fileId": 2,
+  "bboxes": [
+    {
+      "xMin": 0.0,
+      "xMax": 100.0,
+      "yMin": 0.0,
+      "yMax": 100.0
+    }
+  ]
 }

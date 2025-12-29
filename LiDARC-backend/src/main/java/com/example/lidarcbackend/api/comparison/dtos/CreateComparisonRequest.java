@@ -1,13 +1,17 @@
 package com.example.lidarcbackend.api.comparison.dtos;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
 @Getter
 @Setter
 public class CreateComparisonRequest {
+    @NotBlank
     private String name;
 
     private Boolean needHighestVegetation;
@@ -18,10 +22,13 @@ public class CreateComparisonRequest {
 
     private Boolean needMostDifferences;
 
+    //TODO: Should we remove that?
     private List<Long> fileMetadataIds;
     //TODO: ADD NOT EMPTY / NOT NULL TO EITHER
     private List<Long> folderAFiles;
     private List<Long> folderBFiles;
 
+    @NotNull
+    @Valid
     private GridParameters grid;
 }

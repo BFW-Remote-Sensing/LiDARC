@@ -17,6 +17,9 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -253,7 +256,10 @@ public class MetadataService implements IMetadataService {
         file.setSystemIdentifier((String) metadata.get("system_identifier"));
 
         //numeric
-        file.setCaptureYear(castToShort(metadata.get("capture_year")));
+        short captureYear = castToShort(metadata.get("capture_year"));
+        if (captureYear > 1900) {
+            file.setCaptureYear(captureYear);
+        }
         file.setSizeBytes(castToLong(metadata.get("size_bytes")));
         file.setMinX(castToDouble(metadata.get("min_x")));
         file.setMinY(castToDouble(metadata.get("min_y")));
