@@ -28,11 +28,13 @@
 
         <!-- Select Column (Checkbox) -->
         <ng-container matColumnDef="select">
-            <th mat-header-cell *matHeaderCellDef></th>
+            <th mat-header-cell *matHeaderCellDef>
+                <mat-checkbox [checked]="isAllSelected()" [indeterminate]="isIndeterminate()"
+                    (change)="toggleSelectAll($event)">
+                </mat-checkbox>
+            </th>
             <td mat-cell *matCellDef="let element">
-                <mat-checkbox
-                    [disabled]="(selectedFileIds.size === 2 && !selectedFileIds.has(element.id)) || element.status !== 'PROCESSED'"
-                    [checked]="isSelected(element.id)" (change)="toggleSelection(element.id, $event)">
+                <mat-checkbox [checked]="isSelected(element.id)" (change)="toggleSelection(element.id, $event)">
                 </mat-checkbox>
             </td>
         </ng-container>
@@ -83,7 +85,7 @@
         <!-- Uploaded At Column -->
         <ng-container matColumnDef="uploadedAt">
             <th mat-header-cell *matHeaderCellDef>Uploaded At</th>
-            <td mat-cell *matCellDef="let element">{{ element.uploadedAt | date: 'medium' }}</td>
+            <td mat-cell *matCellDef="let element">{{ element.uploadedAt | date: 'MMM d, y, HH:mm' }}</td>
         </ng-container>
 
         <!-- Actions Column -->

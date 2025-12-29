@@ -45,7 +45,7 @@ import { ComparableResponse } from '../../dto/comparableResponse';
   styleUrl: './comparable-items.scss',
 })
 export class ComparableItems {
-  displayedColumns: string[] = ['select', 'name', 'type', 'status', 'captureYear', 'sizeBytes', 'uploadedAt', 'actions'];
+  displayedColumns: string[] = ['select', 'name', 'type', 'fileCount', 'status', 'captureYear', 'sizeBytes', 'uploadedAt', 'actions'];
   dataSource = new MatTableDataSource<ComparableListItem>([]);
   selectedComparableItemIds: Set<string> = new Set();
   private readonly metadataService = inject(MetadataService);

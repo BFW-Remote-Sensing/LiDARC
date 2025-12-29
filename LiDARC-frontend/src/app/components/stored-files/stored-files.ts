@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, inject, signal, ViewChild, WritableSignal } from '@angular/core';
 import { FormsModule } from '@angular/forms'; import { MatButtonModule } from '@angular/material/button';
-import { MatCheckbox } from '@angular/material/checkbox'; import { MatIconModule } from '@angular/material/icon';
+import { MatCheckbox, MatCheckboxChange } from '@angular/material/checkbox'; import { MatIconModule } from '@angular/material/icon';
 import { MatPaginator, MatPaginatorModule, PageEvent } from '@angular/material/paginator'; import { MatSelectModule } from '@angular/material/select';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table'; import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterModule } from '@angular/router'; import { finalize, interval, Subject, switchMap, takeUntil } from 'rxjs'; import { MatProgressSpinner } from '@angular/material/progress-spinner';
@@ -155,6 +155,46 @@ export class StoredFiles {
     this.stopPolling$.next();   // clean up
     this.stopPolling$.complete();
   }
+
+  toggleSelectAll(event: MatCheckboxChange): void {
+    if (!event.checked) {
+      this.selectedFileIds.clear();
+      return;
+    }
+
+    for (const row of this.dataSource.data) {
+      this.selectedFileIds.add(row.id);
+    }
+  }
+
+  isAllSelected(): boolean {
+    const selectableIds = this.dataSource.data
+      .map(e => e.id);
+
+    return selectableIds.length > 0 &&
+      selectableIds.every(id => this.selectedFileIds.has(id));
+  }
+
+  isIndeterminate(): boolean {
+    const selectableIds = this.dataSource.data
+      .map(e => e.id);
+
+    if (this.selectedFileIds.size === 0) {
+      return false;
+    }
+
+    let hasAtLeastOne = false;
+
+    for (const id of selectableIds) {
+      if (this.selectedFileIds.has(id)) {
+        hasAtLeastOne = true;
+        break;
+      }
+    }
+
+    return hasAtLeastOne && !this.isAllSelected();
+  }
+
 
   toggleSelection(id: number, event: any) {
     if (event.checked) {

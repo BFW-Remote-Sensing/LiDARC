@@ -99,7 +99,7 @@ export class FolderDetails {
   }
 
   getMaxMaxX(): number | null {
-    return getExtremeValue(this.folder?.files, f => f.maxX, 'min');
+    return getExtremeValue(this.folder?.files, f => f.maxX, 'max');
   }
 
   getMaxMaxY(): number | null {
