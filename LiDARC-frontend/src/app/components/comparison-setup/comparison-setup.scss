@@ -1,7 +1,54 @@
-.file-details-cards-container {
-    display: flex;
-    justify-content: space-evenly;
-    width: 100%;
+.no-expand {
+    cursor: default !important;
+}
+
+.element-row {
+    cursor: pointer;
+}
+
+.detail-row {
+    height: 0;
+}
+
+.detail-container {
+    overflow: hidden;
+    padding: 16px 24px;
+    background: #fafafa;
+
+    .inner-table {
+        width: 100%;
+        margin-top: 10px;
+        margin-bottom: 20px;
+    }
+
+    .reorder-info-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.selected-items-title {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.selected-items-container {
+    padding: 20px;
+
+    .expand-column {
+        padding-right: 0 !important;
+    }
+
+    .no-left-padding-col {
+        padding: 0 !important;
+    }
 }
 
 .grid-definition-card {
@@ -25,6 +72,7 @@
 .grid-info {
     display: flex;
     justify-content: space-between;
+
     p {
         margin: 5px 0;
         font-size: 14px;

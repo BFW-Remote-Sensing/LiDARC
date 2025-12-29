@@ -1,5 +1,4 @@
 import { ChangeDetectorRef, Component, Input, signal, WritableSignal } from '@angular/core';
-import { FileDetailsCard } from '../file-details-card/file-details-card';
 import { SelectedFilesService } from '../../service/selectedFile.service';
 import { MatAnchor, MatButtonModule } from "@angular/material/button";
 import { FormsModule } from '@angular/forms';
@@ -8,34 +7,58 @@ import { MatInputModule } from '@angular/material/input';
 import { MatDivider } from '@angular/material/divider';
 import { MatCheckbox } from '@angular/material/checkbox';
 import { CreateComparison } from '../../dto/comparison';
-import { MatProgressSpinner, MatSpinner } from '@angular/material/progress-spinner';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { ComparisonService } from '../../service/comparison.service';
-import { finalize } from 'rxjs';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { GridDefinitionDialogComponent } from '../define-grid/define-grid';
 import { MatCardModule } from '@angular/material/card';
 import { MatIcon } from "@angular/material/icon";
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
 import { ReferenceFileService } from '../../service/referenceFile.service';
+import { ComparableListItem } from '../../dto/comparableItem';
+import { MatTableDataSource, MatTableModule } from '@angular/material/table';
+import { MatSelectModule } from '@angular/material/select';
+import { CommonModule } from '@angular/common';
+import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
+import { trigger, state, style, transition, animate } from '@angular/animations';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { FileMetadataDTO } from '../../dto/fileMetadata';
+import { FolderFilesDTO } from '../../dto/folderFiles';
+import { getExtremeValue } from '../../helpers/extremeValue';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
+import { finalize } from 'rxjs';
 
 @Component({
   selector: 'app-comparison-setup',
   imports: [
-    FileDetailsCard,
     MatAnchor,
     MatButtonModule,
+    MatTableModule,
+    MatSelectModule,
     FormsModule,
+    CommonModule,
     MatInputModule,
     MatFormFieldModule,
     MatDivider,
     MatCheckbox,
+    RouterModule,
     MatProgressSpinner,
     MatCardModule,
-    MatIcon
+    MatIcon,
+    MatTooltipModule,
+    DragDropModule,
+    FormatBytesPipe
   ],
   templateUrl: './comparison-setup.html',
-  styleUrl: './comparison-setup.scss',
+  styleUrls: ['./comparison-setup.scss', '../comparable-items/comparable-items.scss'],
+  animations: [
+    trigger('detailExpand', [
+      state('collapsed', style({ height: '0px', minHeight: '0', visibility: 'hidden' })),
+      state('expanded', style({ height: '*', visibility: 'visible' })),
+      transition('expanded <=> collapsed', animate('200ms ease')),
+    ]),
+  ],
 })
 export class ComparisonSetup {
   @Input() comparison: CreateComparison = {
@@ -44,11 +67,21 @@ export class ComparisonSetup {
     needOutlierDetection: false,
     needStatisticsOverScenery: false,
     needMostDifferences: false,
-    fileMetadataIds: [],
+    folderAFiles: [],
+    folderBFiles: [],
     grid: null
   };
   public loadingStart: WritableSignal<boolean> = signal(false);
   public errorMessage: WritableSignal<string | null> = signal(null);
+
+  displayedColumns: string[] = ['open', 'select', 'name', 'type', 'status',
+    'captureYear', 'sizeBytes',
+    'uploadedAt', 'actions'];
+  innerTableColumns: string[] = ['index', 'filename', 'sizeBytes', 'status', 'captureYear', 'uploadedAt', 'actions'];
+  displayedColumnsWithExpand = [...this.displayedColumns, 'expand'];
+  expandedElement: ComparableListItem | null = null;
+  dataSource = new MatTableDataSource<ComparableListItem>([]);
+  needExpandCol: boolean = false;
 
   constructor(
     private selectedFilesService: SelectedFilesService,
@@ -56,8 +89,38 @@ export class ComparisonSetup {
     private router: Router,
     private dialog: MatDialog,
     private cdr: ChangeDetectorRef,
-    public refService: ReferenceFileService
+    public refService: ReferenceFileService,
+    private route: ActivatedRoute,
   ) { }
+
+  /** Checks whether an element is expanded. */
+  isExpanded(element: ComparableListItem): boolean {
+    return this.expandedElement === element;
+  }
+
+  /** Toggles the expanded state of an element. */
+  toggle(element: ComparableListItem): void {
+    if (element.type === 'File') {
+      return;
+    }
+    this.expandedElement = this.isExpanded(element) ? null : element;
+    this.router.navigate([], {
+      queryParams: { expandedItemId: this.isExpanded(element) ? element.id : null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  private needExpandColumn(): boolean {
+    const needed = this.dataSource.data.some(item => item.type !== 'File');
+    if (!needed) {
+      this.displayedColumns = this.displayedColumns.filter(col => col !== 'open');
+      if (this.expandedElement) {
+        this.expandedElement = null;
+      }
+    }
+    return needed;
+  }
+
 
   startComparisonDisabled(): boolean {
     return this.comparison.name.trim() === '' ||
@@ -71,19 +134,53 @@ export class ComparisonSetup {
   }
 
   ngOnInit(): void {
-    if (this.selectedFilesService.selectedIds.length >= 2) {
-      this.comparison.fileMetadataIds = [
-        ...this.selectedFilesService.selectedIds
-      ];
+    if (this.selectedFilesService.selectedComparableItemIds.length >= 2) {
+      this.dataSource.data = this.selectedFilesService.selectedComparableItems;
     }
+    this.needExpandCol = this.needExpandColumn();
+    this.route.queryParamMap.subscribe(params => {
+      const expandedItemId = params.get('expandedItemId');
+
+      if (!expandedItemId) {
+        this.expandedElement = null;
+        return;
+      }
+
+      const element = this.dataSource.data.find(
+        item => item.id.toString() === expandedItemId
+      );
+
+      if (element && element.type !== 'File') {
+        this.expandedElement = element;
+      }
+    });
   }
 
   defineGrid(): void {
+    if (this.refService.selectedComparableItem() == null) {
+      return;
+    }
+    const item = this.refService.selectedComparableItem()!;
+
     const dialogRef = this.dialog.open(GridDefinitionDialogComponent, {
       width: '600px',
       height: 'auto',
       data: {
-        file: this.refService.selectedFile()
+        item: {
+          name: item.name,
+          minX: item.type === 'File' ?
+            (item as FileMetadataDTO).minX :
+            getExtremeValue((item as FolderFilesDTO).files, f => f.minX, 'min'),
+          maxX: item.type === 'File' ?
+            (item as FileMetadataDTO).maxX :
+            getExtremeValue((item as FolderFilesDTO).files, f => f.maxX, 'max'),
+          minY: item.type === 'File' ?
+            (item as FileMetadataDTO).minY :
+            getExtremeValue((item as FolderFilesDTO).files, f => f.minY, 'min'),
+          maxY: item.type === 'File' ?
+            (item as FileMetadataDTO).maxY :
+            getExtremeValue((item as FolderFilesDTO).files, f => f.maxY, 'max')
+        }
       }
     });
 
@@ -105,21 +202,38 @@ export class ComparisonSetup {
     });
   }
 
+  dropFile(event: CdkDragDrop<any[]>, folder: any) {
+    moveItemInArray(folder.files, event.previousIndex, event.currentIndex);
+
+    folder.files = [...folder.files];
+  }
+
 
   startComparison(): void {
     this.loadingStart.set(true);
+    const firstItem = this.selectedFilesService.selectedComparableItems[0];
+    const secondItem = this.selectedFilesService.selectedComparableItems[1];
+    this.comparison.folderAFiles =
+      firstItem.type === "Folder" ?
+        (firstItem as FolderFilesDTO).files.map(f => f.id) :
+        [firstItem.id];
+    this.comparison.folderBFiles =
+      secondItem.type === "Folder" ?
+        (secondItem as FolderFilesDTO).files.map(f => f.id) :
+        [secondItem.id];
     this.comparisonService.postComparison(this.comparison)
       .pipe(
         finalize(() => this.loadingStart.set(false))
       )
       .subscribe({
         next: () => {
-          this.selectedFilesService.clearSelectedIds();
+          this.selectedFilesService.clearSelectedFileIds();
           this.router.navigate(['/comparisons']);
         },
         error: (error) => {
           console.error('Error starting comparison:', error);
           this.errorMessage.set('Failed to fetch metadata. Please try again later.');
+          alert('Error starting comparison: ' + error.message);
           this.loadingStart.set(false);
         }
       });
@@ -146,6 +260,6 @@ export class ComparisonSetup {
   }
 
   ngOnDestroy(): void {
-    this.refService.clearSelected();
+    this.refService.clearSelectedComparableItem();
   }
 }

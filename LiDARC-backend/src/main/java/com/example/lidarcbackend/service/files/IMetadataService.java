@@ -1,7 +1,8 @@
 package com.example.lidarcbackend.service.files;
 
+import com.example.lidarcbackend.api.metadata.dtos.ComparableItemDTO;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
-import com.example.lidarcbackend.model.entity.File;
+import com.example.lidarcbackend.api.metadata.dtos.FolderFilesDTO;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,11 +12,13 @@ import java.util.Map;
 
 
 public interface IMetadataService {
-    Page<FileMetadataDTO> getPagedMetadata(Pageable pageable);
+    Page<FileMetadataDTO> getPagedMetadataWithoutFolder(Pageable pageable);
 
-    List<FileMetadataDTO> getAllMetadata();
+    List<FileMetadataDTO> getAllMetadataWithoutFolder();
 
-    File saveMetadata(File file);
+    List<FolderFilesDTO> getMetadataGroupedByFolder();
+
+    Page<ComparableItemDTO> getAllMetadataGroupedByFolderPaged(Pageable pageable);
 
     FileMetadataDTO GetMetadata(String metadataId);
 
