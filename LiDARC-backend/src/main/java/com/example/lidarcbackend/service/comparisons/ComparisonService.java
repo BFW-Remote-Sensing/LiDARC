@@ -136,9 +136,6 @@ public class ComparisonService implements IComparisonService {
         Comparison savedComparison = comparisonRepository.save(mapper.toEntityFromRequest(comparisonRequest));
         ComparisonPlan fullPlan = new ComparisonPlan();
 
-        Set<Long> uniqueFileIds = new HashSet<>();
-
-
         if (comparisonRequest.getFolderAFiles() != null && !comparisonRequest.getFolderAFiles().isEmpty()) {
             fullPlan.merge(processFolderGroup(comparisonRequest.getFolderAFiles(), comparisonRequest.getGrid(), savedComparison.getId(), "A"));
         }
@@ -313,7 +310,7 @@ public class ComparisonService implements IComparisonService {
         //TODO proper error handling
 
         log.info("Processing Preprocessing result...");
-
+        log.info("Preprocessing result: {}", result);
         String status = (String) result.get("status");
         String jobId = (String) result.get("job_id");
         Map<String, Object> payload = (Map<String, Object>) result.get("payload");
@@ -324,14 +321,20 @@ public class ComparisonService implements IComparisonService {
             return;
         }
 
-        Integer comparisonId = (Integer) payload.get("comparisonId");
-        Integer fileId = (Integer) payload.get("fileId");
-        if (comparisonId == null) {
+        Number comparisonIdNum = (Number) payload.get("comparisonId");
+        if (comparisonIdNum == null) {
             log.error("Missing comparisonId in preprocessing payload.");
             return;
         }
+        Long comparisonId = comparisonIdNum.longValue();
+        Number fileIdNum = (Number) payload.get("fileId");
+        if (fileIdNum == null) {
+            log.error("Missing fileId in preprocessing payload.");
+            return;
+        }
+        Long fileId = fileIdNum.longValue();
 
-        Optional<Comparison> comparisonOpt = comparisonRepository.findComparisonsById(comparisonId.longValue());
+        Optional<Comparison> comparisonOpt = comparisonRepository.findComparisonsById(comparisonId);
         if (comparisonOpt.isEmpty()) {
             log.error("comparison file entry not found for comparisonId={}", comparisonId);
             return;
@@ -380,7 +383,7 @@ public class ComparisonService implements IComparisonService {
         cf.setBucket(bucket);
         cf.setObjectKey(objectKey);
         comparisonFileRepository.save(cf);
-        checkIfPreprocessingDoneAndStartComparison(comparisonId.longValue(), jobId);
+        checkIfPreprocessingDoneAndStartComparison(comparisonId, jobId);
 
     }
 

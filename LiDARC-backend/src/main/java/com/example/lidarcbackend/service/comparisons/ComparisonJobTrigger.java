@@ -1,7 +1,8 @@
-package com.example.lidarcbackend.service.files;
+package com.example.lidarcbackend.service.comparisons;
 
 import com.example.lidarcbackend.api.comparison.dtos.PreProcessJobsReadyEvent;
 import com.example.lidarcbackend.model.DTO.StartPreProcessJobDto;
+import com.example.lidarcbackend.service.files.WorkerStartService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

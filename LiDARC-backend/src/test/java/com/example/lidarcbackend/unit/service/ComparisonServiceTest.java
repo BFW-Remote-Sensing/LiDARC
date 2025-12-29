@@ -14,7 +14,7 @@ import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.repository.ComparisonFileRepository;
 import com.example.lidarcbackend.repository.ComparisonRepository;
 import com.example.lidarcbackend.repository.FileRepository;
-import com.example.lidarcbackend.service.files.ComparisonService;
+import com.example.lidarcbackend.service.comparisons.IComparisonService;
 import com.example.lidarcbackend.service.files.MetadataService;
 import com.example.lidarcbackend.service.files.WorkerStartService;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,7 +53,7 @@ public class ComparisonServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
     @InjectMocks
-    private ComparisonService comparisonService;
+    private IComparisonService comparisonService;
 
     private CreateComparisonRequest createRequest;
     private Comparison savedComparison;

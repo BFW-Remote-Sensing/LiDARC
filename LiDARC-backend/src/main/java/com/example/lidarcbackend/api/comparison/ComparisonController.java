@@ -8,7 +8,7 @@ import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.exception.ValidationException;
 import com.example.lidarcbackend.model.DTO.CreateReportDto;
 import com.example.lidarcbackend.model.DTO.ReportInfoDto;
-import com.example.lidarcbackend.service.files.ComparisonService;
+import com.example.lidarcbackend.service.comparisons.IComparisonService;
 import com.example.lidarcbackend.service.reports.IReportService;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -39,14 +39,14 @@ import java.util.List;
 @RequestMapping("/api/v1/comparisons")
 @Slf4j
 public class ComparisonController {
-    private final ComparisonService comparisonService;
+    private final IComparisonService comparisonService;
     private final IReportService reportService;
     @Value("${app.upload.dir:uploads}")
     private String UPLOAD_DIRECTORY; //TODO: MAYBE CHANGE TO MINIO BUCKET IF WANTED
 
 
     @Autowired
-    public ComparisonController(ComparisonService comparisonService, IReportService reportService) {
+    public ComparisonController(IComparisonService comparisonService, IReportService reportService) {
         this.comparisonService = comparisonService;
         this.reportService = reportService;
     }

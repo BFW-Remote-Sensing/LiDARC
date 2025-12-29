@@ -5,6 +5,7 @@ import tempfile
 import logging
 import time
 import laspy
+import math
 import sys
 import signal
 import pandas as pd
@@ -145,11 +146,17 @@ def mk_error_msg(error_msg: str):
 def mk_summary(grid_shape, df: pd.DataFrame):
     return {
         "nCells": int(grid_shape[0] * grid_shape[1]),
-        "maxZ": float(df["z_max"].max()),
-        "minZ": float(df["z_min"].min()),
-        "maxVegHeight": float(df["veg_height_max"].max()),
-        "minVegHeight": float(df["veg_height_min"].min())
+        "maxZ": clean_val(df["z_max"].max()),
+        "minZ": clean_val(df["z_min"].min()),
+        "maxVegHeight": clean_val(df["veg_height_max"].max()),
+        "minVegHeight": clean_val(df["veg_height_min"].min())
     }
+
+def clean_val(val, error_val=-1):
+    f_val = float(val)
+    if math.isinf(f_val):
+        return error_val
+    return f_val
 
 def create_result_df(precomp_grid):
     rows_indices, cols_indices = np.indices(precomp_grid["count"].shape)
@@ -231,6 +238,7 @@ def process_req(ch, method, properties, body):
                 precomp_grid["veg_height_key"] = "ndsm"
 
             logging.info(f"Processing file: {downloaded_file_fn} with {len(bboxes)} bounding regions")
+            logging.info(f"Bounding Regions: {bboxes}")
             for points in f.chunk_iterator(500_000):
                 process_points(points, precomp_grid, bboxes)
                 del points
@@ -240,16 +248,16 @@ def process_req(ch, method, properties, body):
 
         processing_time = int((time.time() - start_time) * 1000)
         logging.info(f"Job {job_id} finished in {processing_time} ms")
-        response = BaseMessage(type="preprocessing",
-                               job_id=job_id,
-                               status="success",
-                               payload={
-                                   "result":upload_result,
-                                   "summary": mk_summary(precomp_grid["grid_shape"], df),
-                                   "comparisonId": request["comparisonId"],
-                                   "fileId": request["fileId"]
-                               })
-        publisher.publish_preprocessing_result(response)
+            response = BaseMessage(type="preprocessing",
+                                   job_id=job_id,
+                                   status="success",
+                                   payload={
+                                       "result":upload_result,
+                                       "summary": mk_summary(precomp_grid["grid_shape"], df),
+                                       "comparisonId": request["comparisonId"],
+                                       "fileId": request["fileId"]
+                                   })
+            publisher.publish_preprocessing_result(response)
     #TODO: Add exceptions correctly!
     except HTTPError as e:
         logging.warning("Couldn't download file from: {}, error: {}".format(las_file, e))
