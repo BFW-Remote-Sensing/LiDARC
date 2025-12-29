@@ -248,7 +248,7 @@ def process_req(ch, method, properties, body):
 
         processing_time = int((time.time() - start_time) * 1000)
         logging.info(f"Job {job_id} finished in {processing_time} ms")
-            response = BaseMessage(type="preprocessing",
+        response = BaseMessage(type="preprocessing",
                                    job_id=job_id,
                                    status="success",
                                    payload={
@@ -257,7 +257,7 @@ def process_req(ch, method, properties, body):
                                        "comparisonId": request["comparisonId"],
                                        "fileId": request["fileId"]
                                    })
-            publisher.publish_preprocessing_result(response)
+        publisher.publish_preprocessing_result(response)
     #TODO: Add exceptions correctly!
     except HTTPError as e:
         logging.warning("Couldn't download file from: {}, error: {}".format(las_file, e))
