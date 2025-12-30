@@ -10,11 +10,16 @@ import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.model.entity.Folder;
 import com.example.lidarcbackend.repository.CoordinateSystemRepository;
 import com.example.lidarcbackend.repository.FileRepository;
+import com.example.lidarcbackend.repository.FolderRepository;
 import com.example.lidarcbackend.service.folders.IFolderService;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -32,13 +37,21 @@ public class MetadataService implements IMetadataService {
 
     private final FileRepository fileRepository;
     private final CoordinateSystemRepository coordinateSystemRepository;
+    private final FolderRepository folderRepository;
     private final Validator validator;
     private final MetadataMapper mapper;
     private final IFolderService folderService;
 
-    public MetadataService(FileRepository fileRepository, CoordinateSystemRepository coordinateSystemRepository, IFolderService folderService, Validator validator, MetadataMapper mapper) {
+    public MetadataService(
+            FileRepository fileRepository,
+            CoordinateSystemRepository coordinateSystemRepository,
+            FolderRepository folderRepository,
+            IFolderService folderService,
+            Validator validator,
+            MetadataMapper mapper) {
         this.fileRepository = fileRepository;
         this.coordinateSystemRepository = coordinateSystemRepository;
+        this.folderRepository = folderRepository;
         this.folderService = folderService;
         this.validator = validator;
         this.mapper = mapper;
@@ -198,6 +211,20 @@ public class MetadataService implements IMetadataService {
         }
     }
 
+    @Transactional
+    public void assignFolder(List<Long> metadataIds, Long folderId) {
+        if (metadataIds == null || metadataIds.isEmpty()) {
+            throw new IllegalArgumentException("Metadata ID list cannot be empty");
+        }
+
+        Folder folder = folderRepository.findById(folderId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Folder not found with id: " + folderId
+                ));
+
+        fileRepository.updateFolderForMetadata(metadataIds, folder);
+    }
+
     private File parseMetadata(Map<String, Object> metadata) {
         Optional<File> old = fileRepository.findFileByFilename(metadata.get("filename").toString());
         if (old.isEmpty()) {
@@ -229,7 +256,10 @@ public class MetadataService implements IMetadataService {
         file.setSystemIdentifier((String) metadata.get("system_identifier"));
 
         //numeric
-        file.setCaptureYear(castToShort(metadata.get("capture_year")));
+        short captureYear = castToShort(metadata.get("capture_year"));
+        if (captureYear > 1900) {
+            file.setCaptureYear(captureYear);
+        }
         file.setSizeBytes(castToLong(metadata.get("size_bytes")));
         file.setMinX(castToDouble(metadata.get("min_x")));
         file.setMinY(castToDouble(metadata.get("min_y")));

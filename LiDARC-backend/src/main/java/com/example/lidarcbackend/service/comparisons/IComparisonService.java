@@ -3,6 +3,7 @@ package com.example.lidarcbackend.service.comparisons;
 import com.example.lidarcbackend.api.comparison.dtos.ComparisonDTO;
 import com.example.lidarcbackend.api.comparison.dtos.CreateComparisonRequest;
 import com.example.lidarcbackend.exception.NotFoundException;
+import com.example.lidarcbackend.exception.ValidationException;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,9 +16,9 @@ public interface IComparisonService {
 
     List<ComparisonDTO> getAllComparisons();
 
-    ComparisonDTO saveComparison(CreateComparisonRequest comparison, List<Long> fileMetadataIds) throws NotFoundException;
+    ComparisonDTO saveComparison(CreateComparisonRequest comparison, List<Long> fileMetadataIds) throws NotFoundException, ValidationException;
 
-    ComparisonDTO GetComparison(Long comparisonId);
+    ComparisonDTO getComparison(Long comparisonId);
 
     void processPreprocessingResult(Map<String, Object> result);
 

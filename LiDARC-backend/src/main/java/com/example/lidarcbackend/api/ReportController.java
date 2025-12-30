@@ -1,20 +1,19 @@
 package com.example.lidarcbackend.api;
 
 import com.example.lidarcbackend.exception.NotFoundException;
-import com.example.lidarcbackend.model.DTO.CreateReportDto;
 import com.example.lidarcbackend.model.DTO.ImageInfoDto;
 import com.example.lidarcbackend.model.DTO.ReportInfoDto;
 import com.example.lidarcbackend.service.IImageService;
 import com.example.lidarcbackend.service.reports.IReportService;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -47,9 +46,12 @@ public class ReportController {
     }
 
     @GetMapping
-    public ResponseEntity<?> getReports() {
-        //TODO
-        return null;
+    public ResponseEntity<Page<ReportInfoDto>> getReports(
+            @RequestParam(required = false) String search,
+            @PageableDefault(size = 20, sort = "creationDate", direction = Sort.Direction.DESC) Pageable pageable) {
+        log.info("GET /api/v1/reports");
+        Page<ReportInfoDto> reports = this.reportService.getAllReports(pageable, search);
+        return ResponseEntity.ok(reports);
     }
 
     @PostMapping("/images")
@@ -89,6 +91,29 @@ public class ReportController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
         }
     }
+
+    @GetMapping("/{reportId}/view")
+    public ResponseEntity<Resource> viewReport(@PathVariable Long reportId) {
+        log.info("GET /api/v1/reports/" + reportId + "/view");
+        try {
+            ReportInfoDto createdReport = reportService.getReport(reportId);
+            Resource resource = new UrlResource(Paths.get(UPLOAD_DIRECTORY).resolve(createdReport.getFileName()).toUri());
+            if (resource.exists() || resource.isReadable()) {
+                return ResponseEntity.status(HttpStatus.OK)
+                        .contentType(MediaType.APPLICATION_PDF)
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + createdReport.getFileName() + "\"")
+                        .body(resource);
+            }
+            log.warn("Report Resource does not exist or is not readable");
+            return ResponseEntity.notFound().build();
+        } catch (MalformedURLException e) {
+            log.warn(e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        } catch (NotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+        }
+    }
+
     /**
      * Logs client-side errors with status, message, and exception details.
      *

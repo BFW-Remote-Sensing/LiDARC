@@ -149,4 +149,12 @@ class MetadataApiController {
         return ResponseEntity.noContent().build();
     }
 
+    @PutMapping("/assign-folder")
+    public ResponseEntity<Void> assignFolder(
+            @RequestParam Long folderId,
+            @RequestBody List<Long> metadataIds
+    ) {
+        metadataService.assignFolder(metadataIds, folderId);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import com.example.lidarcbackend.api.folder.dtos.CreateFolderDTO;
+import com.example.lidarcbackend.api.folder.dtos.FolderDTO;
 import com.example.lidarcbackend.api.metadata.MetadataMapper;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import com.example.lidarcbackend.api.metadata.dtos.FolderFilesDTO;
@@ -34,7 +35,12 @@ public class FolderService implements IFolderService {
   private final EmptyFolderMapper emptyFolderMapper;
   private final FolderMapper folderMapper;
 
-  public FolderFilesDTO loadFolderWithFiles(Long folderId) {
+  public List<FolderDTO> getFolders() {
+        return folderRepository.findAll()
+                .stream()
+                .map(folder -> new FolderDTO(folder.getId(), folder.getName()))
+                .toList();
+    }public FolderFilesDTO loadFolderWithFiles(Long folderId) {
     Folder folder = folderRepository.findById(folderId).orElseThrow();
 
     List<File> files =

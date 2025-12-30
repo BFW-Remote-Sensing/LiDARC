@@ -43,7 +43,10 @@ def test_precompute_integration(minio_client, rabbitmq_ch, load_json, very_small
     upload_file(very_small_las_file, object_name="small.las")
 
     def run_worker():
-        preprocess_worker.main()
+        try:
+            preprocess_worker.main()
+        except SystemExit:
+            pass
     worker_thread = threading.Thread(target=run_worker, daemon=True)
     worker_thread.start()
 
@@ -98,7 +101,10 @@ def test_precompute_integration_with_small_las_file(minio_client, rabbitmq_ch, l
     upload_file(small_las_file, object_name="small.las")
 
     def run_worker():
-        preprocess_worker.main()
+        try:
+            preprocess_worker.main()
+        except SystemExit:
+            pass
     worker_thread = threading.Thread(target=run_worker, daemon=True)
     worker_thread.start()
 
@@ -175,3 +181,69 @@ def test_precompute_integration_with_small_las_file(minio_client, rabbitmq_ch, l
                 f"veg_p90 {veg_p90} out of expected range for cell ({expected_x0}, {expected_y0})"
             assert exp["p95_min"] <= veg_p95 <= exp["p95_max"], \
                 f"veg_p95 {veg_p95} out of expected range for cell ({expected_x0}, {expected_y0})"
+
+@pytest.mark.e2e
+def test_precompute_integration_with_disjoint_bboxes(minio_client, rabbitmq_ch, load_json, very_small_las_file):
+    client, upload_file = minio_client
+    assert client.bucket_exists("basebucket")
+    upload_file(very_small_las_file, object_name="small_split.las")
+
+    def run_worker():
+        try:
+            preprocess_worker.main()
+        except SystemExit:
+            pass
+
+    worker_thread = threading.Thread(target=run_worker, daemon=True)
+    worker_thread.start()
+    test_msg = load_json("valid_precompute_job_small_las_file.json")
+    test_msg["file"] = {
+        "bucket": "basebucket",
+        "objectKey": "small_split.las"
+    }
+    test_msg["jobId"] = "bbox-integration-test-1"
+    test_msg["bboxes"] = [
+        {
+            "xMin": 0.0,
+            "xMax": 1.5,
+            "yMin": 0.0,
+            "yMax": 1.5
+        },
+        {
+            "xMin": 9.0,
+            "xMax": 10.0,
+            "yMin": 9.0,
+            "yMax": 10.0
+        }
+    ]
+    publish_message(rabbitmq_ch, WORKER_EXCHANGE, PREPROCESSING_JOB_RK, test_msg)
+    body = consume_single_message(rabbitmq_ch, PREPROCESSING_RESULT_QUEUE)
+    assert body is not None, "Worker did not return a result"
+    response = json.loads(body)
+    check.equal(response["status"], "success", f"Job failed: {response.get('payload')}")
+    check.equal(response["job_id"], "bbox-integration-test-1")
+    payload = response["payload"]
+    summary = payload["summary"]
+
+    result = payload["result"]
+    csv_obj = client.get_object(bucket_name="basebucket", object_name=result['objectKey'])
+    df = pd.read_csv(csv_obj)
+    cell_0_0 = df[(df["x0"] == 0.0) & (df["y0"] == 0.0)]
+    check.equal(len(cell_0_0), 1, "Cell (0,0) missing")
+    if not cell_0_0.empty:
+        check.equal(cell_0_0["count"].iloc[0], 2, "Cell (0,0) should have 2 points (Box 1)")
+
+    cell_9_9 = df[(df["x0"] == 9.0) & (df["y0"] == 9.0)]
+    check.equal(len(cell_9_9), 1, "Cell (9,9) missing")
+    if not cell_9_9.empty:
+        check.equal(cell_9_9["count"].iloc[0], 1, "Cell (9,9) should have 1 point (Box 2)")
+
+    cell_2_2 = df[(df["x0"] == 2.0) & (df["y0"] == 2.0)]
+    if not cell_2_2.empty:
+        count_val = cell_2_2["count"].iloc[0]
+        check.is_true(count_val == 0 or pd.isna(count_val),
+                      f"Cell (2,2) should be empty/zero because it was excluded by bbox! Found count: {count_val}")
+    else:
+        pass
+    total_count_in_df = df["count"].sum()
+    check.equal(total_count_in_df, 3, "Total processed points should be 3 (1 point filtered out)")

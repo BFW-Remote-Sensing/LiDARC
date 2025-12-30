@@ -33,13 +33,15 @@ export class FormatService {
           files: formattedFiles,
           captureYear: min === max ? `${min}` : `${min}-${max}`,
           sizeBytes: formattedFiles.reduce((acc, file) => acc + (file.sizeBytes || 0), 0),
-          uploadedAt: item.createdDate
+          uploadedAt: item.createdDate,
+          fileCount: formattedFiles.length
         };
       } else {
         return {
           ...this.formatMetadata(item),
           name: item.filename,
-          type: 'File'
+          type: 'File',
+          fileCount: 1
         };
       }
     });
@@ -58,6 +60,7 @@ export class FormatService {
       ...metadata,
       status: metadata.status === 'UPLOADED' ? 'PROCESSED' : metadata.status,
       systemIdentifier: 'EPSG 31256',
+      type: 'File'
     };
   }
 }

@@ -11,5 +11,13 @@
     "offset": 1
   },
   "comparisonId": 1,
-  "fileId": 2
+  "fileId": 2,
+  "bboxes": [
+    {
+      "xMin": -77220.71,
+      "xMax": -76820.938,
+      "yMin": 189553.953,
+      "yMax": 189953.718
+    }
+  ]
 }

@@ -1,0 +1,64 @@
+<div style="padding: 30px;">
+  <div class="table-header">
+    <h1>All Reports</h1>
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Filter Reports</mat-label>
+      <input matInput (keyup)="applyFilter($event)" placeholder="Ex. Vegetation Report" #input>
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
+  @if (loading()) {
+    <div class="flex-center">
+      <mat-spinner></mat-spinner>
+    </div>
+  }
+  @if (errorMessage()) {
+    <app-text-card type="error" message="{{ errorMessage() }}"></app-text-card>
+  } @else {
+    <div class="reports-grid">
+      @for (report of dataSource.data; track report.id) {
+
+        <mat-card class="report-card mat-elevation-z2">
+
+          <div class="preview-area" (click)="openPdf(report.id)">
+            <app-pdf-thumbnail
+              [pdfUrl]="globals.backendUri + '/reports/' + report.id + '/download'">
+            </app-pdf-thumbnail>
+
+            <div class="hover-overlay">
+              <mat-icon>visibility</mat-icon>
+            </div>
+          </div>
+
+          <mat-card-header>
+            <mat-card-title>{{ report.title | titlecase }}</mat-card-title>
+            <mat-card-subtitle>{{ report.creationDate | date:'mediumDate' }}</mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-card-actions align="end">
+            @if (report.comparisonId) {
+              <a [routerLink]="['/comparisons', report.comparisonId]" style="text-decoration: none;">
+                <button mat-button color="accent">COMPARISON</button>
+              </a>
+            }
+            <a [href]="globals.backendUri + '/reports/' + report.id + '/download'" target="_blank" download>
+              <button mat-button color="primary">DOWNLOAD</button>
+            </a>
+          </mat-card-actions>
+        </mat-card>
+
+      }
+    </div>
+    <mat-paginator [length]="resultsLength"
+                   [pageSizeOptions]="[5,10,15,20,30,50]"
+                   showFirstLastButtons>
+    </mat-paginator>
+  }
+</div>
+
+
+
+
+
+

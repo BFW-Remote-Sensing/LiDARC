@@ -1,32 +1,19 @@
 import { Injectable, signal } from "@angular/core";
-import { FileMetadataDTO } from "../dto/fileMetadata";
+import { ComparableListItem } from "../dto/comparableItem";
 
 @Injectable({ providedIn: 'root' })
 export class ReferenceFileService {
-    selectedFile = signal<FileMetadataDTO | null>(null);
-    selectedComparableItemId = signal<string | null>(null);
+    selectedComparableItem = signal<ComparableListItem | null>(null);
 
-    setSelectedComparableItemId(id: string): void {
-        this.selectedComparableItemId.set(id);
+    setSelectedComparableItem(item: ComparableListItem): void {
+        this.selectedComparableItem.set(item);
     }
 
-    isSelectedComparableItemId(id: string): boolean {
-        return this.selectedComparableItemId() === id;
+    isSelectedComparableItem(item: ComparableListItem): boolean {
+        return this.selectedComparableItem()?.id === item.id;
     }
 
-    clearSelectedComparableItemId(): void {
-        this.selectedComparableItemId.set(null);
-    }
-
-    setSelectedIndex(file: FileMetadataDTO): void {
-        this.selectedFile.set(file);
-    }
-
-    isSelected(id: number): boolean {
-        return this.selectedFile()?.id === id;
-    }
-
-    clearSelected(): void {
-        this.selectedFile.set(null);
+    clearSelectedComparableItem(): void {
+        this.selectedComparableItem.set(null);
     }
 }

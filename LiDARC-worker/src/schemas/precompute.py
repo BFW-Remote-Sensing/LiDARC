@@ -1,6 +1,6 @@
 schema = {
     "type": "object",
-    "required": ["jobId", "file", "grid"],
+    "required": ["jobId", "file", "grid", "bboxes"],
     "properties": {
         "jobId": {
             "type": "string",
@@ -26,6 +26,21 @@ schema = {
                 "cellHeight": { "type": "integer", "minimum": 1 },
             },
             "additionalProperties": False
+        },
+        "bboxes": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "object",
+                "required": ["xMin", "xMax", "yMin", "yMax"],
+                "properties": {
+                    "xMin": { "type": "number" },
+                    "xMax": { "type": "number" },
+                    "yMin": { "type": "number" },
+                    "yMax": { "type": "number" },
+                },
+                "additionalProperties": False
+            }
         },
         "comparisonId": {
             "type": "integer",

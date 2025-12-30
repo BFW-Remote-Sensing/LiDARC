@@ -6,7 +6,8 @@ export type CreateComparison = {
     needOutlierDetection: boolean;
     needStatisticsOverScenery: boolean;
     needMostDifferences: boolean;
-    fileMetadataIds: number[];
+    folderAFiles: number[];
+    folderBFiles: number[];
     grid: GridParameters | null;
 }
 

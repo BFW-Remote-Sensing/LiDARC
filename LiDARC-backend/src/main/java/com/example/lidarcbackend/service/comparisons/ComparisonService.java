@@ -1,11 +1,12 @@
 package com.example.lidarcbackend.service.comparisons;
 
-import com.example.lidarcbackend.api.comparison.dtos.ComparisonDTO;
 import com.example.lidarcbackend.api.comparison.ComparisonMapper;
-import com.example.lidarcbackend.api.comparison.dtos.CreateComparisonRequest;
+import com.example.lidarcbackend.api.comparison.dtos.*;
 import com.example.lidarcbackend.api.metadata.MetadataMapper;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import com.example.lidarcbackend.exception.NotFoundException;
+import com.example.lidarcbackend.exception.ValidationException;
+import com.example.lidarcbackend.model.DTO.BoundingBox;
 import com.example.lidarcbackend.model.DTO.MinioObjectDto;
 import com.example.lidarcbackend.model.DTO.StartComparisonJobDto;
 import com.example.lidarcbackend.model.DTO.StartPreProcessJobDto;
@@ -23,6 +24,7 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +32,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+
 
 @Service
 @Slf4j
@@ -45,17 +48,20 @@ public class ComparisonService implements IComparisonService {
     private final ObjectMapper objectMapper;
     private final MetadataMapper metadataMapper;
     private final WorkerStartService workerStartService;
+    private final ApplicationEventPublisher eventPublisher;
+
     public ComparisonService(
-        ComparisonRepository comparisonRepository,
-        ComparisonFileRepository comparisonFileRepository, FileRepository fileRepository,
-        IMetadataService metadataService,
-        Validator validator,
-        RabbitTemplate rabbitTemplate,
-        ComparisonMapper mapper,
-        ObjectMapper objectMapper,
-        MetadataMapper metadataMapper,
-        ReportRepository reportRepository,
-        WorkerStartService workerStartService) {
+            ComparisonRepository comparisonRepository,
+            ComparisonFileRepository comparisonFileRepository, FileRepository fileRepository,
+            IMetadataService metadataService,
+            Validator validator,
+            RabbitTemplate rabbitTemplate,
+            ComparisonMapper mapper,
+            ObjectMapper objectMapper,
+            MetadataMapper metadataMapper,
+            ReportRepository reportRepository,
+            WorkerStartService workerStartService,
+            ApplicationEventPublisher eventPublisher) {
         this.comparisonRepository = comparisonRepository;
         this.comparisonFileRepository = comparisonFileRepository;
         this.fileRepository = fileRepository;
@@ -67,6 +73,7 @@ public class ComparisonService implements IComparisonService {
         this.metadataMapper = metadataMapper;
         this.reportRepository = reportRepository;
         this.workerStartService = workerStartService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -122,46 +129,163 @@ public class ComparisonService implements IComparisonService {
 
     @Override
     @Transactional
-    public ComparisonDTO saveComparison(CreateComparisonRequest comparisonRequest, List<Long> fileMetadataIds) throws NotFoundException {
-        //TODO: Is there validation needed?
+    public ComparisonDTO saveComparison(CreateComparisonRequest comparisonRequest, List<Long> fileMetadataIds) throws NotFoundException, ValidationException {
+        //TODO: Add validation
+        validateGrid(comparisonRequest);
+
         Comparison savedComparison = comparisonRepository.save(mapper.toEntityFromRequest(comparisonRequest));
+        ComparisonPlan fullPlan = new ComparisonPlan();
 
-        List<ComparisonFile> comparisonFiles = fileMetadataIds.stream()
-                .map(fileId -> {
-                    ComparisonFile cf = new ComparisonFile();
-                    cf.setComparisonId(savedComparison.getId());
-                    cf.setFileId(fileId);
-                    return cf;
-                })
-                .toList();
-
-        comparisonFileRepository.saveAll(comparisonFiles);
-
-        Random r =  new Random();
-        for (Long fileId : fileMetadataIds) {
-            File toPreprocess = fileRepository.findById(fileId).orElseThrow(() -> new NotFoundException("File for comparison with id: " + fileId + " not found!"));
-            //TODO: Change bucket on some var or column from db?
-            MinioObjectDto file = new MinioObjectDto("basebucket", toPreprocess.getFilename());
-            //TODO: Fix that later on
-            String jobId = UUID.randomUUID().toString().substring(0, 5);
-            StartPreProcessJobDto startPreProcessJobDto = new StartPreProcessJobDto(jobId, file, comparisonRequest.getGrid(), savedComparison.getId(), fileId);
-            //TODO: Handle traceability in BE
-            workerStartService.startPreprocessingJob(startPreProcessJobDto);
+        if (comparisonRequest.getFolderAFiles() != null && !comparisonRequest.getFolderAFiles().isEmpty()) {
+            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderAFiles(), comparisonRequest.getGrid(), savedComparison.getId(), "A"));
+        }
+        if (comparisonRequest.getFolderBFiles() != null && !comparisonRequest.getFolderBFiles().isEmpty()) {
+            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderBFiles(), comparisonRequest.getGrid(), savedComparison.getId(), "B"));
+        }
+        if (fileMetadataIds != null && !fileMetadataIds.isEmpty()) {
+            fullPlan.merge(processFolderGroup(fileMetadataIds, comparisonRequest.getGrid(), savedComparison.getId(), "legacy"));
         }
 
+        //Saving only files that are relevant for comparison
+        comparisonFileRepository.saveAll(fullPlan.getFilesToSave());
+
         ComparisonDTO dto = mapper.toDto(savedComparison);
+        List<Long> activeFileIds = fullPlan.getFilesToSave().stream().map(ComparisonFile::getFileId).toList();
+        dto.setFiles(metadataService.getMetadataList(activeFileIds.stream().map(String::valueOf).toList()));
 
-        List<FileMetadataDTO> fileMetadataDTOs = metadataService.getMetadataList(
-                fileMetadataIds.stream().map(String::valueOf).toList()
-        );
-        dto.setFiles(fileMetadataDTOs);
-
+        eventPublisher.publishEvent(new PreProcessJobsReadyEvent(fullPlan.getJobsToStart()));
         return dto;
     }
 
+    private void validateGrid(CreateComparisonRequest comparisonRequest) throws ValidationException {
+        List<String> validationErrors = new ArrayList<>();
+        GridParameters gridParameters = comparisonRequest.getGrid();
+        double xDist = Math.abs(gridParameters.getxMax() - gridParameters.getxMin());
+        if (xDist < gridParameters.getCellWidth()) {
+            validationErrors.add("Cell width is bigger than area of interest width");
+        }
+        double yDist = Math.abs(gridParameters.getyMax() - gridParameters.getyMin());
+        if (yDist < gridParameters.getCellHeight()) {
+            validationErrors.add("Cell height is bigger than area of interest height");
+        }
+        //TODO Check if grid AOI inside max / min of total files for FolderA & FolderB / File1 & File2
+        if (!validationErrors.isEmpty()) {
+            throw new ValidationException("Validation of Grid for comparison: " + comparisonRequest.getName() + " failed!", validationErrors);
+        }
+    }
+
+    private ComparisonPlan processFolderGroup(List<Long> fileIds, GridParameters grid, Long comparisonId, String groupName) throws NotFoundException {
+        ComparisonPlan plan = new ComparisonPlan();
+        if (fileIds == null || fileIds.isEmpty()) return plan;
+
+        List<File> files = new ArrayList<>();
+        for (Long fileId : fileIds) {
+            files.add(fileRepository.findById(fileId)
+                    .orElseThrow(() -> new NotFoundException("File for comparison with id: " + fileId + " not found!")));
+        }
+        //TODO: Order by newer dates so newer file is higher prio
+        //TODO: Which dates? Upload or capture year?
+        List<BoundingBox> restrictedZones = new ArrayList<>();
+        for (File fileEntity : files) {
+            BoundingBox rawBox = new BoundingBox(fileEntity.getMinX(), fileEntity.getMaxX(), fileEntity.getMinY(), fileEntity.getMaxY());
+            BoundingBox snappedBox = snapToGrid(rawBox, grid);
+
+            List<BoundingBox> validRegions = new ArrayList<>();
+            validRegions.add(snappedBox);
+
+            for (BoundingBox restrictedZone : restrictedZones) {
+                validRegions = subtractRectangleFromList(validRegions, restrictedZone);
+                if (validRegions.isEmpty()) break;
+            }
+
+            if (!validRegions.isEmpty()) {
+                ComparisonFile cf = new ComparisonFile();
+                cf.setComparisonId(comparisonId);
+                cf.setFileId(fileEntity.getId());
+
+                String uniqueJobId = String.format("c%d_%s_f%d_%s",
+                        comparisonId,
+                        groupName,
+                        fileEntity.getId(),
+                        UUID.randomUUID().toString().substring(0, 8)
+                );
+                StartPreProcessJobDto startPreProcessJobDto = StartPreProcessJobDto.builder()
+                        .jobId(uniqueJobId)
+                        .grid(grid)
+                        .bboxes(validRegions)
+                        .comparisonId(comparisonId)
+                        .file(new MinioObjectDto("basebucket", fileEntity.getFilename()))
+                        .fileId(fileEntity.getId())
+                        .build();
+                plan.add(cf, startPreProcessJobDto);
+                restrictedZones.add(snappedBox);
+            }
+            //TODO: Handle traceability in BE
+            //TODO: Check if this is reliable
+            //TODO: file1 , file2, file3, ...
+        }
+        return plan;
+    }
+
+    //TODO: Rethink that maybe, currently this implies that if one file already covers a small size of a cell that it will take the whole cell, and unsure if we want that?
+    private BoundingBox snapToGrid(BoundingBox rawBox, GridParameters grid) {
+        double cellW = grid.getCellWidth().doubleValue();
+        double cellH = grid.getCellHeight().doubleValue();
+        double gridOriginX = grid.getxMin();
+        double gridOriginY = grid.getyMin();
+
+        //Snap Min (FLOOR)
+        double newXMin = gridOriginX + Math.floor((rawBox.getxMin() - gridOriginX) / cellW) * cellW;
+        double newYMin = gridOriginY + Math.floor((rawBox.getyMin() - gridOriginY) / cellH) * cellH;
+
+        //Snap Max (CEIL)
+        double newXMax = gridOriginX + Math.ceil((rawBox.getxMax() - gridOriginX) / cellW) * cellW;
+        double newYMax = gridOriginY + Math.ceil((rawBox.getyMax() - gridOriginY) / cellH) * cellH;
+        return new BoundingBox(newXMin, newXMax, newYMin, newYMax);
+    }
+
+    private List<BoundingBox> subtractRectangleFromList(List<BoundingBox> currentRegions, BoundingBox obstacle) {
+        List<BoundingBox> nextRegions = new ArrayList<>();
+        for (BoundingBox region : currentRegions) {
+            if (!intersects(region, obstacle)) {
+                nextRegions.add(region);
+            } else {
+                nextRegions.addAll(shatterBox(region, obstacle));
+            }
+        }
+        return nextRegions;
+    }
+
+    private List<BoundingBox> shatterBox(BoundingBox a, BoundingBox b) {
+        List<BoundingBox> parts = new ArrayList<>();
+
+        double interXMin = Math.max(a.getxMin(), b.getxMin());
+        double interXMax = Math.min(a.getxMax(), b.getxMax());
+        double interYMin = Math.max(a.getyMin(), b.getyMin());
+        double interYMax = Math.min(a.getyMax(), b.getyMax());
+
+        if (a.getyMax() > interYMax) {
+            parts.add(new BoundingBox(a.getxMin(), a.getxMax(), interYMax, a.getyMax()));
+        }
+        if (a.getyMin() < interYMin) {
+            parts.add(new BoundingBox(a.getxMin(), a.getxMax(), a.getyMin(), interYMin));
+        }
+        if (a.getxMin() < interXMin) {
+            parts.add(new BoundingBox(a.getxMin(), interXMin, interYMin, interYMax));
+        }
+        if (a.getxMax() > interXMax) {
+            parts.add(new BoundingBox(interXMax, a.getxMax(), interYMin, interYMax));
+        }
+        return parts;
+    }
+
+    private boolean intersects(BoundingBox a, BoundingBox b) {
+        return a.getxMin() < b.getxMax() && a.getxMax() > b.getxMin() &&
+                a.getyMin() < b.getyMax() && a.getyMax() > b.getyMin();
+    }
 
     @Override
-    public ComparisonDTO GetComparison(Long comparisonId) {
+    public ComparisonDTO getComparison(Long comparisonId) {
         ComparisonDTO dto = comparisonRepository.findById(comparisonId).map(mapper::toDto).orElse(null);
         if (dto == null) return null;
         reportRepository.findTopByComparisonIdOrderByCreationDateDesc(dto.getId())
@@ -186,7 +310,7 @@ public class ComparisonService implements IComparisonService {
         //TODO proper error handling
 
         log.info("Processing Preprocessing result...");
-
+        log.info("Preprocessing result: {}", result);
         String status = (String) result.get("status");
         String jobId = (String) result.get("job_id");
         Map<String, Object> payload = (Map<String, Object>) result.get("payload");
@@ -197,15 +321,21 @@ public class ComparisonService implements IComparisonService {
             return;
         }
 
-        Integer comparisonId = (Integer) payload.get("comparisonId");
-        Integer fileId = (Integer) payload.get("fileId");
-        if (comparisonId == null) {
+        Number comparisonIdNum = (Number) payload.get("comparisonId");
+        if (comparisonIdNum == null) {
             log.error("Missing comparisonId in preprocessing payload.");
             return;
         }
+        Long comparisonId = comparisonIdNum.longValue();
+        Number fileIdNum = (Number) payload.get("fileId");
+        if (fileIdNum == null) {
+            log.error("Missing fileId in preprocessing payload.");
+            return;
+        }
+        Long fileId = fileIdNum.longValue();
 
-        Optional<Comparison> comparisonOpt = comparisonRepository.findComparisonsById(comparisonId.longValue());
-        if(comparisonOpt.isEmpty()){
+        Optional<Comparison> comparisonOpt = comparisonRepository.findComparisonsById(comparisonId);
+        if (comparisonOpt.isEmpty()) {
             log.error("comparison file entry not found for comparisonId={}", comparisonId);
             return;
         }
@@ -238,7 +368,7 @@ public class ComparisonService implements IComparisonService {
         String objectKey = (String) resultObj.get("objectKey");
 
         Optional<ComparisonFile> cfOpt = comparisonFileRepository.findComparisonFiles(comparisonId, fileId);
-        if(cfOpt.isEmpty()){
+        if (cfOpt.isEmpty()) {
             String errorMsg = String.format(
                     "comparison_file entry not found for comparisonId=%s fileId=%s",
                     comparisonId,
@@ -253,7 +383,7 @@ public class ComparisonService implements IComparisonService {
         cf.setBucket(bucket);
         cf.setObjectKey(objectKey);
         comparisonFileRepository.save(cf);
-        checkIfPreprocessingDoneAndStartComparison(comparisonId.longValue(), jobId);
+        checkIfPreprocessingDoneAndStartComparison(comparisonId, jobId);
 
     }
 
@@ -279,7 +409,7 @@ public class ComparisonService implements IComparisonService {
         }
 
         Optional<Comparison> comparisonOpt = comparisonRepository.findComparisonsById(comparisonId.longValue());
-        if(comparisonOpt.isEmpty()){
+        if (comparisonOpt.isEmpty()) {
             log.error("comparison  entry not found for comparisonId={}", comparisonId);
             return;
         }
@@ -299,7 +429,7 @@ public class ComparisonService implements IComparisonService {
         String bucket = resultLocation.get("bucket");
         String objectKey = resultLocation.get("objectKey");
 
-        if(bucket == null || objectKey == null){
+        if (bucket == null || objectKey == null) {
             log.error("Missing bucket or objectKey in payload.");
             persistComparisonError(comparison, "Missing bucket or objectKey in payload.");
             return;
@@ -316,7 +446,7 @@ public class ComparisonService implements IComparisonService {
 
         boolean allReady = comparisonFiles.stream().allMatch(cf -> cf.getBucket() != null && cf.getObjectKey() != null);
 
-        if(allReady) {
+        if (allReady) {
             log.info("Comparison {}: all preprocessing files contain bucket & objectKey. Starting comparison worker...", comparisonId);
             List<MinioObjectDto> filesDto = comparisonFiles.stream()
                     .map(cf -> new MinioObjectDto(cf.getBucket(), cf.getObjectKey()))
@@ -329,8 +459,7 @@ public class ComparisonService implements IComparisonService {
             );
 
             workerStartService.startComparisonJob(dto);
-        }
-        else {
+        } else {
             log.info("Comparison {} is not ready yet. Waiting for other files.", comparisonId);
         }
     }

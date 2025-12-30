@@ -5,7 +5,14 @@ import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { FileMetadataDTO } from '../../dto/fileMetadata';
+
+export type AOIItem = {
+  name: string;
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+}
 
 @Component({
   selector: 'app-grid-definition-dialog',
@@ -20,6 +27,7 @@ import { FileMetadataDTO } from '../../dto/fileMetadata';
     MatDialogModule
   ]
 })
+
 export class GridDefinitionDialogComponent implements OnInit {
   cellWidth: number = 1;
   cellHeight: number = 1;
@@ -28,19 +36,20 @@ export class GridDefinitionDialogComponent implements OnInit {
   xMax: number | null = null;
   yMin: number | null = null;
   yMax: number | null = null;
-  file!: FileMetadataDTO;
+  item: AOIItem;
+
   constructor(
     public dialogRef: MatDialogRef<GridDefinitionDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: {file: FileMetadataDTO}
+    @Inject(MAT_DIALOG_DATA) public data: { item: AOIItem }
   ) {
+    this.item = this.data.item;
+    this.xMin = this.item.minX;
+    this.xMax = this.item.maxX;
+    this.yMin = this.item.minY;
+    this.yMax = this.item.maxY;
   }
 
   ngOnInit() {
-    this.file = this.data.file;
-    this.xMin = this.file.minX;
-    this.xMax = this.file.maxX;
-    this.yMin = this.file.minY;
-    this.yMax = this.file.maxY;
   }
 
   onCancel(): void {

@@ -189,7 +189,7 @@
             <!-- Uploaded At Column -->
             <ng-container matColumnDef="uploadedAt">
                 <th mat-header-cell *matHeaderCellDef>Uploaded At</th>
-                <td mat-cell *matCellDef="let element">{{ element.uploadedAt | date: 'medium' }}</td>
+                <td mat-cell *matCellDef="let element">{{ element.uploadedAt | date: 'MMM d, y, HH:mm' }}</td>
             </ng-container>
 
             <!-- Actions Column -->
