@@ -242,11 +242,10 @@ export class UploadComponent implements OnInit, OnDestroy {
       if (folderFiles.length === 0) continue;
       if (this.notifiedFolders.has(folderId)) continue;
 
-      const allDone = folderFiles.every(x => x.status === 'done');
-      const anyError = folderFiles.some(x => x.status === 'error');
+      // if count allfiles + any error = folderFiles.length, then all are done (either folder is uploaded)
+      const allFinished = folderFiles.every(x => x.status === 'done' || x.status === 'error');
 
-      // Decide your rule: only notify when all done and no errors
-      if (allDone && !anyError) {
+      if (allFinished && !this.notifiedFolders.has(folderId)) {
         this.notifiedFolders.add(folderId);
 
         // call backend endpoint to set folder status
