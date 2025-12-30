@@ -16,10 +16,9 @@ public interface IFolderService {
 
   Map<Long, FolderFilesDTO> loadFoldersWithFiles(List<Long> folderIds);
 
-    Folder createFolder(CreateFolderDTO dto);
-
-    List<FolderDTO> getFolders();
   Folder createFolder(CreateFolderDTO dto);
+
+  List<FolderDTO> getFolders();
 
   EmptyFolderDto createFolderEmpty(CreateEmptyFolderDto emptyDto);
 

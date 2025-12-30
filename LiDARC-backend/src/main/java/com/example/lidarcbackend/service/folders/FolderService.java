@@ -36,11 +36,13 @@ public class FolderService implements IFolderService {
   private final FolderMapper folderMapper;
 
   public List<FolderDTO> getFolders() {
-        return folderRepository.findAll()
-                .stream()
-                .map(folder -> new FolderDTO(folder.getId(), folder.getName()))
-                .toList();
-    }public FolderFilesDTO loadFolderWithFiles(Long folderId) {
+    return folderRepository.findAll()
+        .stream()
+        .map(folder -> new FolderDTO(folder.getId(), folder.getName()))
+        .toList();
+  }
+
+  public FolderFilesDTO loadFolderWithFiles(Long folderId) {
     Folder folder = folderRepository.findById(folderId).orElseThrow();
 
     List<File> files =
