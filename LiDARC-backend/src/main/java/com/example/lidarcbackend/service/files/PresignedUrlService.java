@@ -1,13 +1,5 @@
 package com.example.lidarcbackend.service.files;
 
-import com.example.lidarcbackend.configuration.MinioProperties;
-import com.example.lidarcbackend.model.DTO.FileInfoDto;
-import com.example.lidarcbackend.model.DTO.Mapper.UrlMapper;
-import com.example.lidarcbackend.model.DTO.StartMetadataJobDto;
-import com.example.lidarcbackend.model.entity.File;
-import com.example.lidarcbackend.model.entity.Url;
-import com.example.lidarcbackend.repository.FileRepository;
-import com.example.lidarcbackend.repository.UrlRepository;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioAsyncClient;
 import io.minio.StatObjectArgs;
@@ -19,16 +11,25 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import com.example.lidarcbackend.configuration.MinioProperties;
+import com.example.lidarcbackend.model.DTO.FileInfoDto;
+import com.example.lidarcbackend.model.DTO.Mapper.UrlMapper;
+import com.example.lidarcbackend.model.DTO.StartMetadataJobDto;
+import com.example.lidarcbackend.model.entity.File;
+import com.example.lidarcbackend.model.entity.Folder;
+import com.example.lidarcbackend.model.entity.Url;
+import com.example.lidarcbackend.repository.FileRepository;
+import com.example.lidarcbackend.repository.FolderRepository;
+import com.example.lidarcbackend.repository.UrlRepository;
 
 
 @Slf4j
@@ -43,6 +44,7 @@ public class PresignedUrlService implements IPresignedUrlService {
   //private final FileDao fileDao;
   private final UrlRepository urlRepository;
   private final FileRepository fileRepository;
+  private final FolderRepository folderRepository;
   private final WorkerStartService workerStartService;
   private final UrlMapper urlMapper;
   //minimum added time to the current time when checking for expiry
@@ -115,7 +117,7 @@ public class PresignedUrlService implements IPresignedUrlService {
   }
 
   @Override
-  public Optional<FileInfoDto> fetchUploadUrl(String fileName, String originalFileName) {
+  public Optional<FileInfoDto> fetchUploadUrl(String fileName, String originalFileName, Long folderId) {
     GetPresignedObjectUrlArgs presignedObjectUrlArgs = getPresignedObjectUrlArgs(fileName, Method.PUT);
     if (presignedObjectUrlArgs == null) {
       return Optional.empty();
@@ -139,6 +141,7 @@ public class PresignedUrlService implements IPresignedUrlService {
         fileInfo = new FileInfoDto(fileOpt.get());
         fileInfo.setPresignedURL(createdUpload.get().getPresignedURL());
         fileInfo.setUploaded(false);
+        fileInfo.setFolderId(fileOpt.get().getFolder() != null ? fileOpt.get().getFolder().getId() : null);
         return Optional.of(fileInfo);
       }
 
@@ -149,7 +152,15 @@ public class PresignedUrlService implements IPresignedUrlService {
       file.setUploaded(false);
       file.setOriginalFilename(originalFileName);
       file.setStatus("UPLOADED");
-      file = fileRepository.save(file);
+      if (folderId != null) {
+        Folder folder = folderRepository.findById(folderId).orElse(null);
+        file.setFolder(folder);
+        file = fileRepository.save(file);
+        if (folder != null) folder.addFile(file);
+      } else {
+        file = fileRepository.save(file);
+
+      }
     }
 
     Optional<FileInfoDto> fOpt = getUrl(presignedObjectUrlArgs, fileName, originalFileName);
@@ -161,6 +172,7 @@ public class PresignedUrlService implements IPresignedUrlService {
       fileInfo.setOriginalFileName(originalFileName);
       fileInfo = fOpt.get();
       fileInfo.setUrlExpiresAt(expiresAt);
+      fileInfo.setFolderId(file.getFolder() != null ? file.getFolder().getId() : null);
       url.setFile(file);
       url.setPresignedURL(fOpt.get().getPresignedURL());
       url.setMethod(Method.PUT);
