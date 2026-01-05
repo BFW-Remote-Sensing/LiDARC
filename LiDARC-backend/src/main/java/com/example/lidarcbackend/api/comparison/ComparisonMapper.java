@@ -31,6 +31,8 @@ public class ComparisonMapper {
                 entity.getGridMaxY()
         );
         dto.setGrid(grid);
+        dto.setResultBucket(entity.getResultBucket());
+        dto.setResultObjectKey(entity.getResultObjectKey());
         return dto;
     }
     public Comparison toEntityFromRequest(CreateComparisonRequest request) {

@@ -27,6 +27,8 @@ public class RabbitConfig {
     public static final String WORKER_METADATA_JOB_QUEUE = "worker.metadata.job";
     public static final String WORKER_PREPROCESSING_JOB_QUEUE = "worker.preprocessing.job";
     public static final String WORKER_COMPARISON_JOB_QUEUE = "worker.comparison.job";
+    public static final String WORKER_CHUNKING_COMPARISON_JOB_QUEUE = "worker.chunking.comparison.job";
+
 
 
     // ============================
@@ -35,6 +37,9 @@ public class RabbitConfig {
     public static final String WORKER_METADATA_RESULT_QUEUE = "worker.metadata.result";
     public static final String WORKER_PREPROCESSING_RESULT_QUEUE = "worker.preprocessing.result";
     public static final String WORKER_COMPARISON_RESULT_QUEUE = "worker.comparison.result";
+    public static final String WORKER_CHUNKING_COMPARISON_RESULT_QUEUE = "worker.chunking.comparison.result";
+
+
 
 
     // ============================
@@ -43,6 +48,8 @@ public class RabbitConfig {
     public static final String WORKER_METADATA_START_ROUTING_KEY = "worker.metadata.job.start";
     public static final String WORKER_PREPROCESSING_START_ROUTING_KEY = "worker.preprocessing.job.start";
     public static final String WORKER_COMPARISON_START_ROUTING_KEY = "worker.comparison.job.start";
+    public static final String WORKER_CHUNKING_COMPARISON_START_ROUTING_KEY = "worker.chunking.comparison.job.start";
+
 
 
     // ============================
@@ -52,6 +59,8 @@ public class RabbitConfig {
     public static final String WORKER_METADATA_RESULT_ROUTING_KEY = "worker.metadata.result.start";
     public static final String WORKER_PREPROCESSING_RESULT_ROUTING_KEY = "worker.preprocessing.result";
     public static final String WORKER_COMPARISON_RESULT_ROUTING_KEY = "worker.comparison.result";
+    public static final String WORKER_CHUNKING_COMPARISON_RESULT_ROUTING_KEY = "worker.chunking.comparison.result";
+
 
 
 

@@ -17,10 +17,12 @@ class RabbitMQConfig:
     # (Java --> Python)
     queue_preprocessing_job: str = "worker.preprocessing.job"
     queue_comparison_job: str = "worker.comparison.job"
+    queue_chunking_comparison_job: str = "worker.chunking.comparison.job"
     queue_metadata_job: str = "worker.metadata.job"
     # listener rk for jobs
     routing_preprocessing_start: str = "worker.preprocessing.job.start"
     routing_comparison_start: str = "worker.comparison.job.start"
+    routing_chunking_comparison_start: str = "worker.chunking.comparison.job.start"
     routing_metadata_start: str = "worker.metadata.job.start"
 
 
@@ -28,10 +30,12 @@ class RabbitMQConfig:
     # (Python --> Java)
     queue_preprocessing_result: str = "worker.preprocessing.result"
     queue_comparison_result: str = "worker.comparison.result"
+    queue_chunking_comparison_result: str = "worker.chunking.comparison.result"
     queue_metadata_result: str = "worker.metadata.result"
 
     routing_preprocessing_result: str = "worker.preprocessing.result"
     routing_comparison_result: str = "worker.comparison.result"
+    routing_chunking_comparison_result: str = "worker.chunking.comparison.result"
     routing_metadata_result: str = "worker.metadata.result"
 
     def __post_init__(self):

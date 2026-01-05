@@ -34,6 +34,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/comparisons")
@@ -82,6 +83,24 @@ public class ComparisonController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(dto);
+    }
+
+    @PostMapping("{id}/chunking")
+    public ResponseEntity<String> postChunkingComparisonStart(@PathVariable Long id, @RequestParam(defaultValue = "16") int chunkSize) {
+        try {
+            comparisonService.startChunkingComparisonJob(id, chunkSize);
+        } catch (NotFoundException e) {
+            logClientError(HttpStatus.NOT_FOUND, "Comparison not found for Report", e);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+        }
+        return ResponseEntity.accepted().build();
+    }
+
+    @GetMapping("{id}/chunking")
+    public ResponseEntity<Object> getChunkingComparison(@PathVariable Long id) {
+        log.info("GET /api/v1/comparisons/{}/chunking", id);
+        Optional<Object> result = comparisonService.pollVisualizationResults(id);
+        return result.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.accepted().build());
     }
 
     @PostMapping
@@ -139,6 +158,7 @@ public class ComparisonController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
         }
     }
+
 
     /**
      * Logs client-side errors with status, message, and exception details.

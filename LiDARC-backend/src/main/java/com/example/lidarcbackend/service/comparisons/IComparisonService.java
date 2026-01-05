@@ -20,6 +20,12 @@ public interface IComparisonService {
 
     ComparisonDTO getComparison(Long comparisonId);
 
+    void startChunkingComparisonJob(Long comparisonId, int chunkSize) throws NotFoundException;
+
+    void saveVisualizationComparison(Map<String, Object> result);
+
+
+
     void processPreprocessingResult(Map<String, Object> result);
 
     void processComparisonResult(Map<String, Object> result);

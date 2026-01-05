@@ -34,6 +34,11 @@ public class ComparisonDTO {
 
     private List<FileMetadataDTO> files;
 
+    private String resultBucket;
+
+    private String resultObjectKey;
+
+
     public ComparisonDTO() {
 
     }
