@@ -1,9 +1,9 @@
-import {HttpClient, HttpHeaders} from "@angular/common/http";
-import {Injectable} from "@angular/core";
-import {defaultComparisonPath, Globals} from "../globals/globals";
-import {Observable} from "rxjs";
-import {ComparisonDTO, CreateComparison} from "../dto/comparison";
-import {ComparisonReport} from "../dto/comparisonReport";
+import { HttpClient, HttpHeaders, HttpParams, HttpResponse} from "@angular/common/http";
+import { Injectable } from "@angular/core";
+import { defaultComparisonPath, Globals } from "../globals/globals";
+import { Observable } from "rxjs";
+import { ComparisonDTO, CreateComparison } from "../dto/comparison";
+import { ComparisonReport } from "../dto/comparisonReport";
 import {CreateReportDto} from '../dto/report';
 
 const headers = new HttpHeaders({
@@ -80,4 +80,18 @@ export class ComparisonService {
       {responseType: 'blob'},
     );
   }
+
+    startChunkingResult(id: number, chunkSize: number): Observable<void> {
+      const params = new HttpParams()
+        .set('chunkSize', String(chunkSize))
+      return this.httpClient.post<void>(
+        this.globals.backendUri + defaultComparisonPath + `/${id}/chunking`, null, { params }
+      );
+    }
+
+    pollChunkingResult(id: number): Observable<HttpResponse<any>> {
+      return this.httpClient.get<any>(
+        this.globals.backendUri + defaultComparisonPath + `/${id}/chunking`, {observe: 'response'}
+      );
+    }
 }

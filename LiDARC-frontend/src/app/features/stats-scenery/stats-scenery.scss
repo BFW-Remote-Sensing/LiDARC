@@ -1,0 +1,25 @@
+.candlestick{
+  height: 400px;
+}
+
+.comparison{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  //width: 50%;
+  height: 500px;
+}
+
+.controls{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  row-gap: 100px;
+
+}
+
+#groupSize{
+  border: black solid 1px;
+  border-spacing: 10px;
+}
+
+

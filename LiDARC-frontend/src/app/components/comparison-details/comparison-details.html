@@ -17,6 +17,7 @@
       </button>
     </header>
 
+
     <div class="content-wrapper">
 
       <section class="general-info-section">
@@ -264,6 +265,7 @@
       <mat-icon>analytics</mat-icon>
       Comparison Results
     </h2>
+    <app-chunking-settings (visualizationData)="onChunkingSliderChange($event)" [comparisonId]="comparisonId"></app-chunking-settings>
     <div class="comparison-container">
 
       <!-- ===== File Metrics Section ===== -->
@@ -274,27 +276,27 @@
           <div class="metrics-list">
             <mat-list>
               <h4>File A</h4>
-              <mat-list-item>Mean: {{ vegetationStats.fileA_metrics.mean }}</mat-list-item>
-              <mat-list-item>Median: {{ vegetationStats.fileA_metrics.median }}</mat-list-item>
-              <mat-list-item>Std: {{ vegetationStats.fileA_metrics.std }}</mat-list-item>
-              <mat-list-item>Min: {{ vegetationStats.fileA_metrics.min }}</mat-list-item>
-              <mat-list-item>Max: {{ vegetationStats.fileA_metrics.max }}</mat-list-item>
+              <mat-list-item>Mean: {{ vegetationStats().fileA_metrics.mean_veg_height }}</mat-list-item>
+              <mat-list-item>Median: {{ vegetationStats().fileA_metrics.median_veg_height }}</mat-list-item>
+              <mat-list-item>Std: {{ vegetationStats().fileA_metrics.std_veg_height }}</mat-list-item>
+              <mat-list-item>Min: {{ vegetationStats().fileA_metrics.min_veg_height }}</mat-list-item>
+              <mat-list-item>Max: {{ vegetationStats().fileA_metrics.max_veg_height }}</mat-list-item>
             </mat-list>
 
             <mat-list>
               <h4>File B</h4>
-              <mat-list-item>Mean: {{ vegetationStats.fileB_metrics.mean }}</mat-list-item>
-              <mat-list-item>Median: {{ vegetationStats.fileB_metrics.median }}</mat-list-item>
-              <mat-list-item>Std: {{ vegetationStats.fileB_metrics.std }}</mat-list-item>
-              <mat-list-item>Min: {{ vegetationStats.fileB_metrics.min }}</mat-list-item>
-              <mat-list-item>Max: {{ vegetationStats.fileB_metrics.max }}</mat-list-item>
+              <mat-list-item>Mean: {{ vegetationStats().fileB_metrics.mean_veg_height }}</mat-list-item>
+              <mat-list-item>Median: {{ vegetationStats().fileB_metrics.median_veg_height }}</mat-list-item>
+              <mat-list-item>Std: {{ vegetationStats().fileB_metrics.std_veg_height }}</mat-list-item>
+              <mat-list-item>Min: {{ vegetationStats().fileB_metrics.min_veg_height }}</mat-list-item>
+              <mat-list-item>Max: {{ vegetationStats().fileB_metrics.max_veg_height }}</mat-list-item>
             </mat-list>
           </div>
 
           <div class="charts-grid">
-            <div echarts [options]="scatterOption" class="chart" (chartInit)="onScatterInit($event)"></div>
-            <div echarts [options]="boxplotOption" class="chart"></div>
-            <div echarts [options]="fileDistributionOption" class="chart"></div>
+            <div echarts [options]="{}" [merge]="scatterOption" class="chart"></div>
+            <div echarts [options]="{}" [merge]="boxplotOption" class="chart"></div>
+            <div echarts [options]="{}" [merge]="fileDistributionOption" class="chart"></div>
           </div>
         </mat-card-content>
       </mat-card>
@@ -308,19 +310,22 @@
             A for each cell.</p>
 
           <mat-list>
-            <mat-list-item>Mean: {{ vegetationStats.difference_metrics.mean }}</mat-list-item>
-            <mat-list-item>Median: {{ vegetationStats.difference_metrics.median }}</mat-list-item>
-            <mat-list-item>Std: {{ vegetationStats.difference_metrics.std }}</mat-list-item>
-            <mat-list-item>Most Negative: {{ vegetationStats.difference_metrics.mostNegative }}</mat-list-item>
-            <mat-list-item>Least Negative: {{ vegetationStats.difference_metrics.leastNegative }}</mat-list-item>
-            <mat-list-item>Smallest Positive: {{ vegetationStats.difference_metrics.smallestPositive }}</mat-list-item>
-            <mat-list-item>Largest Positive: {{ vegetationStats.difference_metrics.largestPositive }}</mat-list-item>
+            <mat-list-item>Mean: {{ vegetationStats().difference_metrics.mean }}</mat-list-item>
+            <mat-list-item>Median: {{ vegetationStats().difference_metrics.median }}</mat-list-item>
+            <mat-list-item>Std: {{ vegetationStats().difference_metrics.std }}</mat-list-item>
+            <mat-list-item>Most Negative: {{ vegetationStats().difference_metrics.most_negative }}</mat-list-item>
+            <mat-list-item>Least Negative: {{ vegetationStats().difference_metrics.least_negative }}</mat-list-item>
+            <mat-list-item>Smallest Positive: {{ vegetationStats().difference_metrics.smallest_positive }}
+            </mat-list-item>
+            <mat-list-item>Largest Positive: {{ vegetationStats().difference_metrics.largest_positive }}</mat-list-item>
           </mat-list>
 
           <div class="charts-grid">
-            <div echarts [options]="diffDistributionOption" class="chart"></div>
-            <div echarts [options]="diffHistogramOption" class="chart"></div>
+            <div echarts [options]="{}" [merge]="diffDistributionOption" class="chart"></div>
+            <div echarts [options]="{}" [merge]="diffHistogramOption" class="chart"></div>
+            <!-- TODO check if needed
             <div echarts [options]="categoryBarChart" class="chart"></div>
+            -->
           </div>
         </mat-card-content>
       </mat-card>
@@ -329,10 +334,16 @@
         <mat-card-title>Heatmaps of Vegetational Heights</mat-card-title>
         <mat-divider></mat-divider>
         <mat-card-content>
-          <app-heatmap>
+          <app-heatmap [data]="sharedChunkingResult" >
           </app-heatmap>
         </mat-card-content>
       </mat-card>
+
+
     </div>
+
+
   </div>
+
+
 }

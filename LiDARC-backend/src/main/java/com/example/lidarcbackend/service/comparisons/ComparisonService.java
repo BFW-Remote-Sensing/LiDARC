@@ -8,6 +8,7 @@ import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.exception.ValidationException;
 import com.example.lidarcbackend.model.DTO.BoundingBox;
 import com.example.lidarcbackend.model.DTO.MinioObjectDto;
+import com.example.lidarcbackend.model.DTO.StartChunkingJobDto;
 import com.example.lidarcbackend.model.DTO.StartComparisonJobDto;
 import com.example.lidarcbackend.model.DTO.StartPreProcessJobDto;
 import com.example.lidarcbackend.model.entity.Comparison;
@@ -17,6 +18,7 @@ import com.example.lidarcbackend.repository.ComparisonFileRepository;
 import com.example.lidarcbackend.repository.ComparisonRepository;
 import com.example.lidarcbackend.repository.FileRepository;
 import com.example.lidarcbackend.repository.ReportRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.example.lidarcbackend.service.files.IMetadataService;
 import com.example.lidarcbackend.service.files.WorkerStartService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,6 +27,7 @@ import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.boot.configurationprocessor.json.JSONObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +35,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 @Service
@@ -75,6 +79,8 @@ public class ComparisonService implements IComparisonService {
         this.workerStartService = workerStartService;
         this.eventPublisher = eventPublisher;
     }
+
+    private final Map<Long, Object> chunkedComparisonsStorage = new ConcurrentHashMap<>();
 
     @Override
     public Page<ComparisonDTO> getPagedComparisons(Pageable pageable) {
@@ -298,6 +304,66 @@ public class ComparisonService implements IComparisonService {
         dto.setFiles(fileMetadataDTOs);
         return dto;
     }
+
+    @Override
+    public void startChunkingComparisonJob(Long comparisonId, int chunkingSize) throws NotFoundException{
+        ComparisonDTO dto = GetComparison(comparisonId);
+        if(dto == null) {
+            throw new NotFoundException("Comparison with id: " + comparisonId + " not found!");
+        }
+
+        chunkedComparisonsStorage.remove(dto.getId());
+
+        String bucketName = dto.getResultBucket();
+        String objectKey = dto.getResultObjectKey();
+        StartChunkingJobDto chunkingJobDto = new StartChunkingJobDto(comparisonId, chunkingSize, new MinioObjectDto(bucketName, objectKey));
+        workerStartService.startChunkingComparisonJob(chunkingJobDto);
+        log.info("Starting chunking comparison job for comparison with id: {}", comparisonId);
+    }
+
+    @Override
+    public void saveVisualizationComparison(Map<String, Object> result){
+        log.info("Saving visualization comparison with result: {}", result);
+        if(!result.containsKey("payload")) {
+            log.warn("No comparison id or payload found in result of chunking worker");
+            return;
+        }
+        Map<String, Object> payload = (Map<String, Object>) result.get("payload");
+        if(!payload.containsKey("comparisonId")) {
+            log.warn("No comparison id found in result of chunking worker");
+            return;
+        }
+        Object idObj =  payload.get("comparisonId");
+        if (!(idObj instanceof Number )) {
+            log.warn("Invalid comparisonId in result of chunking worker");
+            return;
+        }
+        if (!payload.containsKey("chunked_cells")) {
+            log.warn("No chunked cells found in result of chunking worker");
+            return;
+        }
+        Long comparisonId = ((Number) idObj).longValue();
+
+        //TODO: Eventually fix to real dto / model
+        Map<String, Object> visualizationResult = new HashMap<>();
+        visualizationResult.put("chunked_cells", payload.get("chunked_cells"));
+
+        if(payload.containsKey("statistics")) {
+            visualizationResult.put("statistics", payload.get("statistics"));
+        }
+        chunkedComparisonsStorage.put(comparisonId, visualizationResult);
+    }
+
+    /**
+     * Returns the result once.
+     */
+    public Optional<Object> pollVisualizationResults(Long comparisonId) {
+        Object result = chunkedComparisonsStorage.get(comparisonId);
+        return Optional.ofNullable(result);
+    }
+
+
+
 
     @Override
     @Transactional

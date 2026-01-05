@@ -1,0 +1,69 @@
+export interface ChunkedCell {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+  veg_height_max_a: number;
+  veg_height_max_b: number;
+  delta_z: number;
+}
+
+export interface Percentiles {
+  p10: number;
+  p25: number;
+  p50: number;
+  p75: number;
+  p90: number;
+}
+
+export interface FileMetrics {
+  mean_veg_height: number;
+  median_veg_height: number;
+  std_veg_height: number;
+  min_veg_height: number;
+  max_veg_height: number;
+  percentiles: Percentiles;
+}
+
+export interface DifferenceMetrics {
+  mean: number;
+  median: number;
+  std: number;
+  most_negative: number;
+  least_negative: number;
+  smallest_positive: number;
+  largest_positive: number;
+  pearson_corr: number;
+}
+
+export interface CategorizedCounts {
+  almost_equal: number;
+  slightly_different: number;
+  different: number;
+  highly_different: number;
+}
+
+export interface ChunkingResult {
+  comparisonId: number;
+  chunkingSize: number;
+  chunked_cells: ChunkedCell[][];
+  statistics: {
+    file_a: FileMetrics;
+    file_b: FileMetrics;
+    difference: DifferenceMetrics;
+    categorized: CategorizedCounts;
+  };
+}
+
+export interface CellEntry {
+  A: number;
+  B: number;
+  delta_z: number;
+}
+
+export interface VegetationStats {
+  cells: CellEntry[];
+  fileA_metrics: FileMetrics;
+  fileB_metrics: FileMetrics;
+  difference_metrics: DifferenceMetrics;
+}

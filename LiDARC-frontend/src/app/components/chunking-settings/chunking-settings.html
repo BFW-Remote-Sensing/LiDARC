@@ -1,0 +1,12 @@
+<div class="controls">
+  <h2>Group into blocks of size: {{ groupSize }} </h2>
+  <div class="slider-wrapper">
+    <h3 id="min">min: 1</h3>
+    <mat-slider id="groupSize" min="1" max="30" step="1">
+      <input matSliderThumb value="2" [(ngModel)]="groupSize"
+             (ngModelChange)="onGroupSizeChange($event)">
+    </mat-slider>
+    <h3 id="max">max: 30</h3>
+  </div>
+
+</div>

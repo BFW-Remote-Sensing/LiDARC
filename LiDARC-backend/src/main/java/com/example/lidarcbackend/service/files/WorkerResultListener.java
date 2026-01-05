@@ -13,6 +13,7 @@ public class WorkerResultListener {
     private final IMetadataService metadataService;
     private final IComparisonService comparisonService;
 
+
     public WorkerResultListener(IMetadataService metadataService, IComparisonService comparisonService) {
         this.metadataService = metadataService;
         this.comparisonService = comparisonService;
@@ -34,6 +35,11 @@ public class WorkerResultListener {
     @RabbitListener(queues = RabbitConfig.WORKER_METADATA_RESULT_QUEUE)
     public void handleMetadataResult(Map<String, Object> result) {
         metadataService.processMetadata(result);
+    }
+
+    @RabbitListener(queues = RabbitConfig.WORKER_CHUNKING_COMPARISON_RESULT_QUEUE)
+    public void handleChunkingComparisonResult(Map<String, Object> result) {
+        comparisonService.saveVisualizationComparison(result);
     }
 
 }

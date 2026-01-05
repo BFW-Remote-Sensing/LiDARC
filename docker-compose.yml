@@ -169,10 +169,6 @@ services:
     networks:
       - ase-network
 
-
-
-
-
   metadata-worker:
     image: metadata-lidarc-worker
     build:
@@ -187,6 +183,22 @@ services:
         condition: service_started
         restart: true
       postgres:
+        condition: service_started
+        restart: true
+    networks:
+      - ase-network
+
+  visualization-worker:
+    image: visualization-chunking-lidarc-worker
+    build:
+      context: ./LiDARC-worker
+      dockerfile: Dockerfile-visualization-worker
+    container_name: visualization-worker
+    depends_on:
+      minio:
+        condition: service_started
+        restart: true
+      rabbitmq:
         condition: service_started
         restart: true
     networks:

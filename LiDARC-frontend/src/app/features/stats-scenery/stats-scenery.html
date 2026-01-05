@@ -1,0 +1,38 @@
+<h1 style="justify-self: center">Statistics over scenery</h1>
+<h2 style="justify-self: center">Vegetational height</h2>
+<div style="display: flex; justify-content: center">
+  <img src="assets/quadrantLocations.png" alt="clarification on partitioning of area into quadrants"/>
+</div>
+
+<div class="controls">
+  <h2>Grouped into: {{ groupSize }} parts</h2>
+  <mat-slider id="groupSize" min="16" max="128" step="16">
+    <input matSliderThumb value="16" [(ngModel)]="groupSize"
+           (ngModelChange)="onGroupSizeChange($event)">
+  </mat-slider>
+</div>
+
+<div id="echarts-container">
+
+  <div class="comparison" id="grouping-container">
+
+    <div class="candlestick" id="grouped_1"></div>
+    <div class="candlestick" id="grouped_2"></div>
+  </div>
+
+  <div class="comparison" id="p90-container">
+    <div class="candlestick" id="p90_1"></div>
+    <div class="candlestick" id="p90_2"></div>
+  </div>
+
+
+  <div class="comparison" id="p95-container">
+    <div class="candlestick" id="p95_1"></div>
+    <div class="candlestick" id="p95_2"></div>
+  </div>
+  <div class="comparison" id="scenery">
+    <div class="candlestick" id="scenery_1"></div>
+    <div class="candlestick" id="scenery_2"></div>
+  </div>
+
+</div>

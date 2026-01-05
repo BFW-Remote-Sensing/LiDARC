@@ -1,7 +1,10 @@
-import {Component, Input, OnInit, signal, WritableSignal} from '@angular/core';
+import {Component, inject, Input, OnInit, signal, WritableSignal} from '@angular/core';
 import {ComparisonService} from '../../service/comparison.service';
 import {ActivatedRoute, RouterModule} from '@angular/router';
-import {finalize, forkJoin} from 'rxjs';
+import {FormatService} from '../../service/format.service';
+import {MetadataService} from '../../service/metadata.service';
+import {debounceTime, finalize, forkJoin, map, Subject, Subscription, switchMap, timer} from 'rxjs';
+import {FormatBytesPipe} from '../../pipes/formatBytesPipe';
 import {ComparisonDTO} from '../../dto/comparison';
 import {ComparisonReport} from '../../dto/comparisonReport';
 import {CommonModule} from '@angular/common';
@@ -38,6 +41,17 @@ import {MatDialog} from '@angular/material/dialog';
 import {ChartData} from '../../dto/report';
 import {ECharts} from 'echarts';
 import {Globals} from '../../globals/globals';
+
+import {
+  ChunkingResult,
+  ChunkedCell,
+  VegetationStats,
+  CellEntry
+} from '../../dto/chunking';
+import {filter, takeWhile} from 'rxjs/operators';
+import {HttpResponse} from '@angular/common/http';
+import {ChunkingSettings} from '../chunking-settings/chunking-settings';
+import {FormsModule} from '@angular/forms';
 
 //====HARDCODED VIS===//
 echarts.use([
@@ -124,7 +138,9 @@ export interface VegetationStats {
     MatDividerModule,
     MatGridListModule,
     Heatmap,
-    MatButton
+    MatButton,
+    ChunkingSettings,
+    FormsModule
   ],
   templateUrl: './comparison-details.html',
   styleUrls: ['./comparison-details.scss', '../file-details/file-details.scss'],
@@ -150,91 +166,39 @@ export class ComparisonDetails implements OnInit {
     this.comparisonId = Number(this.route.snapshot.paramMap.get('id'));
   }
 
-  onScatterInit(ec: any): void {
-    this.scatterInstance = ec;
-  }
-
-  //==== HARDCODED DATA====//
-  vegetationStats: VegetationStats = {
-    cells: [
-      {A: 35.529, B: 38.77826, delta_z: 3.24926},
-      {A: 40.822, B: 40.25174, delta_z: -0.57026},
-      {A: 40.344, B: 43.637817, delta_z: 3.293817},
-      {A: 41.517, B: 49.892883, delta_z: 8.375883},
-      {A: 37.746, B: 35.852478, delta_z: -1.893522},
-      {A: 38.451, B: 40.924164, delta_z: 2.473164},
-      {A: 45.112, B: 48.547546, delta_z: 3.435546},
-      {A: 42.307, B: 48.19464, delta_z: 5.88764},
-      {A: 37.578, B: 42.959045, delta_z: 5.381045},
-      {A: 39.579, B: 44.143494, delta_z: 4.564494},
-      {A: 41.816, B: 40.91855, delta_z: -0.89745},
-      {A: 39.84, B: 39.56314, delta_z: -0.27686},
-      {A: 37.285, B: 42.292328, delta_z: 5.007328},
-      {A: 38.396, B: 43.402985, delta_z: 5.006985},
-      {A: 38.466, B: 44.12024, delta_z: 5.65424},
-      {A: 49.576, B: 32.619324, delta_z: -16.956676},
-      {A: 41.394, B: 42.70041, delta_z: 1.30641},
-      {A: 38.745, B: 44.001892, delta_z: 5.256892},
-      {A: 40.332, B: 43.125153, delta_z: 2.793153},
-      {A: 38.655, B: 45.880127, delta_z: 7.225127},
-      {A: 49.576, B: 26.165527, delta_z: -23.410473},
-      {A: 49.576, B: 35.389618, delta_z: -14.186382},
-      {A: 39.97, B: 43.42868, delta_z: 3.45868},
-      {A: 40.804, B: 42.491272, delta_z: 1.687272},
-      {A: 37.767, B: 43.123077, delta_z: 5.356077}
-    ],
+  chunkingResult!: ChunkingResult;
+  vegetationStats = signal<VegetationStats>({
+    cells: [],
     fileA_metrics: {
-      mean: 40.84732,
-      median: 39.97,
-      std: 3.829194331274748,
-      min: 35.529,
-      max: 49.576,
-      percentiles: {
-        p10: 37.6452,
-        p25: 38.451,
-        p50: 39.97,
-        p75: 41.517,
-        p90: 47.7904
-      }
+      min_veg_height: 0,
+      max_veg_height: 0,
+      mean_veg_height: 0,
+      std_veg_height: 0,
+      median_veg_height: 0,
+      percentiles: {p10: 0, p25: 0, p50: 0, p75: 0, p90: 0}
     },
     fileB_metrics: {
-      mean: 41.6961756,
-      median: 42.959045,
-      std: 5.0919100436313185,
-      min: 26.165527,
-      max: 49.892883,
-      percentiles: {
-        p10: 35.574762,
-        p25: 40.25174,
-        p50: 42.959045,
-        p75: 44.001892,
-        p90: 47.2688348
-      }
+      min_veg_height: 0,
+      max_veg_height: 0,
+      mean_veg_height: 0,
+      std_veg_height: 0,
+      median_veg_height: 0,
+      percentiles: {p10: 0, p25: 0, p50: 0, p75: 0, p90: 0}
     },
     difference_metrics: {
-      mean: 0.8488556,
-      median: 3.293817,
-      std: 7.72577964368323,
-      mostNegative: -23.410473,
-      leastNegative: -0.27686,
-      smallestPositive: 1.30641,
-      largestPositive: 8.375883,
-      pearsonCorrelation: -0.48972918052165376,
-      percentiles: {
-        p10: -9.269238,
-        p25: -0.27686,
-        p50: 3.293817,
-        p75: 5.256892,
-        p90: 5.79428
-      }
-    },
-    categorized: {
-      "highly different": 12,
-      "almost equal": 6,
-      "slightly different": 6,
-      "different": 1
+      mean: 0,
+      median: 0,
+      std: 0,
+      most_negative: 0,
+      least_negative: 0,
+      smallest_positive: 0,
+      largest_positive: 0,
+      pearson_corr: 0,
     }
-  };
+  });
+  private pollingSubscription?: Subscription;
+  private chunkSize$ = new Subject<number>();
+  chunkSize = 16;
 
 
   scatterOption!: EChartsCoreOption;
@@ -243,6 +207,14 @@ export class ComparisonDetails implements OnInit {
   diffHistogramOption !: EChartsCoreOption;
   categoryBarChart !: EChartsCoreOption;
   boxplotOption!: EChartsCoreOption;
+
+  sharedChunkingResult?: ChunkingResult;
+
+  onChunkingSliderChange(data: ChunkingResult) {
+    console.log("Chunking data change detected in comparison-details: ", data);
+    this.sharedChunkingResult = data;
+    this.handleChunkingResult(data);
+  }
 
 
   ngOnInit(): void {
@@ -259,23 +231,79 @@ export class ComparisonDetails implements OnInit {
             this.reports = reports;
             this.checkIfMoreReportsExist(reports.length);
 
-            //====HARDCODED ECHARTS OPTIONS====//
-            //TODO clarify if all of this vis are needed/or more/other visualizations are preferred by BFW?
-            this.scatterOption = this.buildScatterChart();
-            this.fileDistributionOption = this.buildDistributionChart();
-            this.diffDistributionOption = this.buildDifferenceDistributionChart();
-            this.diffHistogramOption = this.buildDifferenceHistogramChart();
-            this.categoryBarChart = this.buildCategoryBarChart();
-            this.boxplotOption = this.buildBoxplotChart();
-
           },
-          error: (error) => {
-            console.error('Error fetching comparison data:', error);
-            this.errorMessage.set('Failed to fetch comparison data. Please try again later.');
+          error: (err) => {
+            console.error(err);
+            this.errorMessage.set('Failed to fetch comparison data.');
           }
         });
     }
   }
+
+  private handleChunkingResult(result: ChunkingResult): void {
+    console.log('[FINAL CHUNKING RESULT]', result);
+    if (!result?.chunked_cells) {
+      console.warn('Chunking result incomplete, skipping chart update.', result);
+      return;
+    }
+
+    this.vegetationStats.set({
+      cells: this.flattenCells(result.chunked_cells),
+      fileA_metrics: result.statistics.file_a,
+      fileB_metrics: result.statistics.file_b,
+      difference_metrics: result.statistics.difference
+    });
+    console.log('[FLATTENED CELLS COUNT]', this.vegetationStats().cells.length);
+
+    this.buildAllCharts();
+  }
+
+  private buildAllCharts(): void {
+    if (!this.vegetationStats().cells?.length) {
+      console.warn('No cells available, charts not built.');
+      return;
+    }
+
+    console.log('[BUILDING CHARTS]');
+
+    this.scatterOption = {...this.buildScatterChart()};
+    this.fileDistributionOption = {...this.buildDistributionChart()};
+    this.diffDistributionOption = {...this.buildDifferenceDistributionChart()};
+    this.diffHistogramOption = {...this.buildDifferenceHistogramChart()};
+    this.boxplotOption = {...this.buildBoxplotChart()};
+
+
+  }
+
+  private flattenCells(matrix: any[][]): CellEntry[] {
+    if (!Array.isArray(matrix)) return [];
+
+    const cells: CellEntry[] = [];
+
+    for (const row of matrix) {
+      if (!Array.isArray(row)) continue;
+      for (const cell of row) {
+        if (!cell) continue;
+        cells.push({
+          A: cell.veg_height_max_a ?? 0,
+          B: cell.veg_height_max_b ?? 0,
+          delta_z: cell.delta_z ?? 0
+        });
+      }
+    }
+
+    return cells;
+  }
+
+  private statisticsReady(stats: any): boolean {
+    return !!(
+      stats?.file_a &&
+      stats?.file_b &&
+      stats?.difference &&
+      typeof stats.difference.pearsonCorrelation === 'number'
+    );
+  }
+
 
   loadMoreReports(): void {
     if (this.comparisonId == null) return;
@@ -284,8 +312,8 @@ export class ComparisonDetails implements OnInit {
     this.fetchReports();
   }
 
-  createReport(): void {
-    const chartImages: ChartData[] = [];
+  createReport():void {
+    const chartImages:ChartData[] = [];
     console.log('Scatter Instance:', this.scatterInstance);
     if (this.scatterInstance) {
       const dataUrl = this.scatterInstance.getDataURL({
@@ -317,7 +345,11 @@ export class ComparisonDetails implements OnInit {
     })
   }
 
-  dataURItoBlob(dataURI: string): Blob {
+  dataURItoBlob(dataURI
+                :
+                string
+  ):
+    Blob {
     const byteString = atob(dataURI.split(',')[1]);
     const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
     const ab = new ArrayBuffer(byteString.length);
@@ -357,8 +389,10 @@ export class ComparisonDetails implements OnInit {
   }
 
   //=====HARDCODED ECHARTS OPTIONS====//
-  private buildScatterChart(): EChartsCoreOption {
-    const scatterData = this.vegetationStats.cells.map(c => [c.A, c.B]);
+  private
+
+  buildScatterChart():EChartsCoreOption {
+    const scatterData = this.vegetationStats().cells.map(c => [c.A, c.B]);
 
     // Linear regression TODO should be done in worker
     const n = scatterData.length;
@@ -369,23 +403,31 @@ export class ComparisonDetails implements OnInit {
     const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
 
-    const xVals = scatterData.map(([x]) => x);
-    const minX = Math.min(...xVals);
-    const maxX = Math.max(...xVals);
-    const yVals = scatterData.map(([, y]) => y);
-    const minY = Math.min(...yVals);
-    const maxY = Math.max(...yVals);
+
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+
+    for (const [x, y] of scatterData) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+
 
     const lineData = [
       [minX, slope * minX + intercept],
       [maxX, slope * maxX + intercept]
     ];
-
+    const pearson = this.vegetationStats().difference_metrics.pearson_corr;
     return {
       title: {
         show: true,
         text: 'Vegetation Height Correlation',
-        subtext: `Pearson r = ${this.vegetationStats.difference_metrics.pearsonCorrelation.toFixed(2)}`,
+        subtext:
+          typeof pearson === 'number'
+            ? `Pearson r = ${pearson.toFixed(2)}`
+            : 'Pearson r = n/a',
         top: 0,
         left: 'center'
       },
@@ -399,15 +441,11 @@ export class ComparisonDetails implements OnInit {
       },
       xAxis: {
         name: 'veg_height_A',
-        type: 'value',
-        min: Math.floor(minX - 1),
-        max: Math.ceil(maxX + 1)
+        type: 'value'
       },
       yAxis: {
         name: 'veg_height_B',
-        type: 'value',
-        min: Math.floor(minY - 1),
-        max: Math.ceil(maxY + 1)
+        type: 'value'
       },
       series: [
         {
@@ -427,24 +465,27 @@ export class ComparisonDetails implements OnInit {
     };
   }
 
-  private buildDistributionChart(): EChartsCoreOption {
-    const {fileA_metrics, fileB_metrics} = this.vegetationStats;
+  private buildDistributionChart():EChartsCoreOption {
+    const stats = this.vegetationStats();
+    const fileA_metrics = stats.fileA_metrics;
+    const fileB_metrics = stats.fileB_metrics;
 
     // Helper function: PDF of normal distribution
     const normalPDF = (x: number, mean: number, std: number) =>
       (1 / (std * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / std, 2));
 
     // Define the range of x (min to max of both files)
-    const minX = Math.floor(Math.min(fileA_metrics.min, fileB_metrics.min) - 5);
-    const maxX = Math.ceil(Math.max(fileA_metrics.max, fileB_metrics.max) + 10);
+    const minX = Math.floor(Math.min(fileA_metrics.min_veg_height, fileB_metrics.min_veg_height) - 5);
+    const maxX = Math.ceil(Math.max(fileA_metrics.max_veg_height, fileB_metrics.max_veg_height) + 10);
+
 
     const step = (maxX - minX) / 100;
     const xValues = [];
     for (let x = minX; x <= maxX; x += step) xValues.push(x);
 
     // Compute y-values for both distributions
-    const fileA_Y = xValues.map(x => normalPDF(x, fileA_metrics.mean, fileA_metrics.std));
-    const fileB_Y = xValues.map(x => normalPDF(x, fileB_metrics.mean, fileB_metrics.std));
+    const fileA_Y = xValues.map(x => normalPDF(x, fileA_metrics.mean_veg_height, fileA_metrics.std_veg_height));
+    const fileB_Y = xValues.map(x => normalPDF(x, fileB_metrics.mean_veg_height, fileB_metrics.std_veg_height));
 
     return {
       title: {
@@ -463,9 +504,7 @@ export class ComparisonDetails implements OnInit {
       },
       xAxis: {
         type: 'value',
-        name: 'Vegetation Height',
-        min: minX,
-        max: maxX
+        name: 'Vegetation Height'
       },
       yAxis: {
         type: 'value',
@@ -477,40 +516,81 @@ export class ComparisonDetails implements OnInit {
           type: 'line',
           smooth: true,
           data: xValues.map((x, i) => [x, fileA_Y[i]]),
-          lineStyle: {width: 2, color: 'blue'}
+          lineStyle: { width: 2, color: 'blue' },
+          showSymbol: false
         },
         {
           name: 'File B',
           type: 'line',
           smooth: true,
           data: xValues.map((x, i) => [x, fileB_Y[i]]),
-          lineStyle: {width: 2, color: 'red'}
+          lineStyle: { width: 2, color: 'red' },
+          showSymbol: false
         }
       ]
     };
   }
 
   private buildDifferenceDistributionChart(): EChartsCoreOption {
-    const differences = this.vegetationStats.cells.map(c => c.B - c.A);
+    const cells = this.vegetationStats().cells;
 
-    // Compute mean and std
-    const n = differences.length;
-    const mean = differences.reduce((s, x) => s + x, 0) / n;
-    const std = Math.sqrt(differences.reduce((s, x) => s + (x - mean) ** 2, 0) / n);
+// --- 1) Mean & Std in einem stabilen Durchlauf (Welford) ---
+    let n = 0;
+    let mean = 0;
+    let m2 = 0;
 
-    // Normal PDF function
-    const normalPDF = (x: number) =>
-      (1 / (std * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / std, 2));
+    let minDiff = Infinity;
+    let maxDiff = -Infinity;
 
-    // X-axis values
-    const minX = Math.floor(Math.min(...differences) - 1);
-    const maxX = Math.ceil(Math.max(...differences) + 17);
-    const step = (maxX - minX) / 100;
-    const xValues = [];
-    for (let x = minX; x <= maxX; x += step) xValues.push(x);
+    for (const c of cells) {
+      const d = c.B - c.A;
+      n++;
 
-    // PDF values
-    const yValues = xValues.map(x => normalPDF(x));
+      // Welford online algorithm
+      const delta = d - mean;
+      mean += delta / n;
+      const delta2 = d - mean;
+      m2 += delta * delta2;
+
+      if (d < minDiff) minDiff = d;
+      if (d > maxDiff) maxDiff = d;
+    }
+
+    const variance = n > 0 ? m2 / n : 0;
+    const std = variance > 0 ? Math.sqrt(variance) : 0;
+
+// --- 2) PDF (robust gegen std=0) ---
+    const normalPDF = (x: number) => {
+      if (std <= 0) return 0;
+      const z = (x - mean) / std;
+      return (1 / (std * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * z * z);
+    };
+
+// --- 3) X-Range ohne Spread ---
+    const minX = Math.floor(minDiff - 1);
+    const maxX = Math.ceil(maxDiff + 17);
+
+// --- 4) Feste Sample-Anzahl (kein explodierendes Array) ---
+    const SAMPLES = 101;
+    const span = maxX - minX;
+    const step = span > 0 ? span / (SAMPLES - 1) : 1;
+
+    const xValues: number[] = new Array(SAMPLES);
+    const yValues: number[] = new Array(SAMPLES);
+
+    let maxY = 0;
+
+    for (let i = 0; i < SAMPLES; i++) {
+      const x = minX + i * step;
+      const y = normalPDF(x);
+
+      xValues[i] = x;
+      yValues[i] = y;
+
+      if (y > maxY) maxY = y;
+    }
+
+    maxY *= 1.1; // small margin for visibility
 
     return {
       title: {
@@ -518,75 +598,111 @@ export class ComparisonDetails implements OnInit {
         left: 'center',
         top: 0,
       },
-      tooltip: {
-        trigger: 'axis',
-        confine: true,
-      },
-      xAxis: {
-        type: 'value',
-        name: 'Difference',
-        min: minX,
-        max: maxX
-      },
-      yAxis: {
-        type: 'value',
-        name: 'Density'
-      },
+      tooltip: { trigger: 'axis', confine: true },
+      xAxis: { type: 'value', name: 'Difference' },
+      yAxis: { type: 'value', name: 'Density' },
       series: [
         {
           name: 'Difference PDF',
           type: 'line',
           smooth: true,
           data: xValues.map((x, i) => [x, yValues[i]]),
-          lineStyle: {width: 2, color: 'green'},
-          markLine: {
-            symbol: 'none',
-            label: {
-              show: true,
-              position: 'end',
-              formatter: (param: any) => `${param.name}: ${param.value.toFixed(2)}`
-            },
-            data: [
-              {name: 'Mean', xAxis: mean},
-              {name: '+2σ', xAxis: mean + 2 * std},
-              {name: '-2σ', xAxis: mean - 2 * std}
-            ],
-            tooltip: {
-              formatter: (param: any) => `${param.name}: ${param.value.toFixed(2)}`
-            }
-          }
+          lineStyle: { width: 2, color: 'green' },
+          showSymbol: false
+        },
+        {
+          name: 'Mean',
+          type: 'line',
+          data: [[mean, 0], [mean, maxY]],
+          lineStyle: { type: 'dashed', color: 'purple', width: 2 },
+          showSymbol: false
+        },
+        {
+          name: '+2σ',
+          type: 'line',
+          data: [[mean + 2 * std, 0], [mean + 2 * std, maxY]],
+          lineStyle: { type: 'dashed', color: 'orange', width: 2 },
+          showSymbol: false
+        },
+        {
+          name: '-2σ',
+          type: 'line',
+          data: [[mean - 2 * std, 0], [mean - 2 * std, maxY]],
+          lineStyle: { type: 'dashed', color: 'red', width: 2 },
+          showSymbol: false
         }
       ],
       legend: {
-        data: ['Difference PDF'],
+        data: ['Difference PDF', 'Mean', '+2σ', '-2σ'],
         bottom: 0
       }
     };
   }
 
-  private buildDifferenceHistogramChart(): EChartsCoreOption {
-    const differences = this.vegetationStats.cells.map(c => c.B - c.A);
-    //TODO if histogram wanted --> calculate bins in worker
-    // Histogram parameters
-    const bins = 10;
-    const minX = Math.min(...differences);
-    const maxX = Math.max(...differences);
-    const binWidth = (maxX - minX) / bins;
+  private buildDifferenceHistogramChart():EChartsCoreOption {
+    // const differences = this.vegetationStats().cells.map(c => c.B - c.A);
+    // //TODO if histogram wanted --> calculate bins in worker
+    // // Histogram parameters
+    // const bins = 10;
+    // const minX = Math.min(...differences);
+    // const maxX = Math.max(...differences);
+    // const binWidth = (maxX - minX) / bins;
+    //
+    // // Compute counts per bin
+    // const counts = new Array(bins).fill(0);
+    // differences.forEach(d => {
+    //   let idx = Math.floor((d - minX) / binWidth);
+    //   if (idx >= bins) idx = bins - 1;
+    //   counts[idx]++;
+    // });
+    //
+    // // X-axis labels: bin ranges as strings
+    // const binLabels = [];
+    // for (let i = 0; i < bins; i++) {
+    //   const start = (minX + i * binWidth).toFixed(2);
+    //   const end = (minX + (i + 1) * binWidth).toFixed(2);
+    //   binLabels.push(`${start} - ${end}`);
+    // }
+    const cells = this.vegetationStats().cells;
 
-    // Compute counts per bin
-    const counts = new Array(bins).fill(0);
-    differences.forEach(d => {
+// --- 1) Min / Max + Histogram in einem kontrollierten Ablauf ---
+    const BINS = 10;
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+
+    for (const c of cells) {
+      const d = c.B - c.A;
+      if (d < minX) minX = d;
+      if (d > maxX) maxX = d;
+    }
+
+// Schutz gegen leere / konstante Daten
+    if (!Number.isFinite(minX) || !Number.isFinite(maxX) || minX === maxX) {
+      minX = minX || 0;
+      maxX = minX + 1;
+    }
+
+    const binWidth = (maxX - minX) / BINS;
+
+// --- 2) Counts ---
+    const counts = new Array(BINS).fill(0);
+
+    for (const c of cells) {
+      const d = c.B - c.A;
       let idx = Math.floor((d - minX) / binWidth);
-      if (idx >= bins) idx = bins - 1;
+      if (idx < 0) idx = 0;
+      if (idx >= BINS) idx = BINS - 1;
       counts[idx]++;
-    });
+    }
 
-    // X-axis labels: bin ranges as strings
-    const binLabels = [];
-    for (let i = 0; i < bins; i++) {
-      const start = (minX + i * binWidth).toFixed(2);
-      const end = (minX + (i + 1) * binWidth).toFixed(2);
-      binLabels.push(`${start} - ${end}`);
+// --- 3) Labels  ---
+    const binLabels: string[] = new Array(BINS);
+
+    for (let i = 0; i < BINS; i++) {
+      const start = minX + i * binWidth;
+      const end = start + binWidth;
+      binLabels[i] = `${start.toFixed(2)} – ${end.toFixed(2)}`;
     }
 
     return {
@@ -626,7 +742,12 @@ export class ComparisonDetails implements OnInit {
     };
   }
 
-  private buildCategoryBarChart(): EChartsCoreOption {
+  /*
+  private
+
+  buildCategoryBarChart()
+    :
+    EChartsCoreOption {
     //TODO check if needed: if yes calculate in worker
     const categorized = this.vegetationStats.categorized;
     const categories = Object.keys(categorized);
@@ -693,27 +814,31 @@ export class ComparisonDetails implements OnInit {
     };
   }
 
-  private buildBoxplotChart(): EChartsCoreOption {
-    const {fileA_metrics, fileB_metrics} = this.vegetationStats;
+   */
+
+  private buildBoxplotChart():EChartsCoreOption {
+    const stats = this.vegetationStats();
+    const fileA_metrics = stats.fileA_metrics;
+    const fileB_metrics = stats.fileB_metrics;
 
     const data = [
       {
         value: [
-          fileA_metrics.min,
+          fileA_metrics.min_veg_height,
           fileA_metrics.percentiles.p25,
-          fileA_metrics.median,
+          fileA_metrics.median_veg_height,
           fileA_metrics.percentiles.p75,
-          fileA_metrics.max
+          fileA_metrics.max_veg_height
         ],
         tooltipValue: fileA_metrics
       },
       {
         value: [
-          fileB_metrics.min,
+          fileB_metrics.min_veg_height,
           fileB_metrics.percentiles.p25,
-          fileB_metrics.median,
+          fileB_metrics.median_veg_height,
           fileB_metrics.percentiles.p75,
-          fileB_metrics.max
+          fileB_metrics.max_veg_height
         ],
         tooltipValue: fileB_metrics
       }
@@ -734,11 +859,11 @@ export class ComparisonDetails implements OnInit {
           const metrics = param.data.tooltipValue;
           const categories = ['File A', 'File B'];
           return `${categories[param.dataIndex]}<br>
-            Min: ${metrics.min}<br>
+            Min: ${metrics.min_veg_height}<br>
             Q1: ${metrics.percentiles.p25}<br>
-            Median: ${metrics.median}<br>
+            Median: ${metrics.median_veg_height}<br>
             Q3: ${metrics.percentiles.p75}<br>
-            Max: ${metrics.max}`;
+            Max: ${metrics.max_veg_height}`;
         }
       },
       xAxis: {
@@ -747,8 +872,7 @@ export class ComparisonDetails implements OnInit {
       },
       yAxis: {
         type: 'value',
-        name: 'Vegetation Height',
-        min: 25
+        name: 'Vegetation Height'
       },
       series: [
         {
