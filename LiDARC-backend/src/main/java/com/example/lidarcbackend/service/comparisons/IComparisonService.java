@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public interface IComparisonService {
     Page<ComparisonDTO> getPagedComparisons(Pageable pageable);
@@ -24,7 +25,7 @@ public interface IComparisonService {
 
     void saveVisualizationComparison(Map<String, Object> result);
 
-
+    Optional<Object> pollVisualizationResults(Long comparisonId);
 
     void processPreprocessingResult(Map<String, Object> result);
 

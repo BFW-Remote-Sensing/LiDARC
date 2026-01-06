@@ -71,56 +71,6 @@ echarts.use([
   MarkLineComponent
 ]);
 
-export interface CellEntry {
-  A: number;
-  B: number;
-  delta_z: number;
-}
-
-export interface Percentiles {
-  p10: number;
-  p25: number;
-  p50: number;
-  p75: number;
-  p90: number;
-}
-
-export interface FileMetrics {
-  mean: number;
-  median: number;
-  std: number;
-  min: number;
-  max: number;
-  percentiles: Percentiles;
-}
-
-export interface DifferenceMetrics {
-  mean: number;
-  median: number;
-  std: number;
-  mostNegative: number;
-  leastNegative: number;
-  smallestPositive: number;
-  largestPositive: number;
-  pearsonCorrelation: number;
-  percentiles: Percentiles;
-}
-
-export interface CategorizedCounts {
-  "highly different": number;
-  "almost equal": number;
-  "slightly different": number;
-  "different": number;
-}
-
-export interface VegetationStats {
-  cells: CellEntry[];
-  fileA_metrics: FileMetrics;
-  fileB_metrics: FileMetrics;
-  difference_metrics: DifferenceMetrics;
-  categorized: CategorizedCounts;
-}
-
 @Component({
   selector: 'app-comparison-details',
   imports: [
@@ -388,8 +338,7 @@ export class ComparisonDetails implements OnInit {
     }
   }
 
-  //=====HARDCODED ECHARTS OPTIONS====//
-  private
+
 
   buildScatterChart():EChartsCoreOption {
     const scatterData = this.vegetationStats().cells.map(c => [c.A, c.B]);

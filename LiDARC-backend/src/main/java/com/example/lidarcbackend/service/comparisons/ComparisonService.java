@@ -307,7 +307,7 @@ public class ComparisonService implements IComparisonService {
 
     @Override
     public void startChunkingComparisonJob(Long comparisonId, int chunkingSize) throws NotFoundException{
-        ComparisonDTO dto = GetComparison(comparisonId);
+        ComparisonDTO dto = getComparison(comparisonId);
         if(dto == null) {
             throw new NotFoundException("Comparison with id: " + comparisonId + " not found!");
         }
