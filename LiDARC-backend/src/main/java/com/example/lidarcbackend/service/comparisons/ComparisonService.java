@@ -6,11 +6,7 @@ import com.example.lidarcbackend.api.metadata.MetadataMapper;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.exception.ValidationException;
-import com.example.lidarcbackend.model.DTO.BoundingBox;
-import com.example.lidarcbackend.model.DTO.MinioObjectDto;
-import com.example.lidarcbackend.model.DTO.StartChunkingJobDto;
-import com.example.lidarcbackend.model.DTO.StartComparisonJobDto;
-import com.example.lidarcbackend.model.DTO.StartPreProcessJobDto;
+import com.example.lidarcbackend.model.DTO.*;
 import com.example.lidarcbackend.model.entity.Comparison;
 import com.example.lidarcbackend.model.entity.ComparisonFile;
 import com.example.lidarcbackend.model.entity.File;
@@ -515,8 +511,8 @@ public class ComparisonService implements IComparisonService {
 
         if (allReady) {
             log.info("Comparison {}: all preprocessing files contain bucket & objectKey. Starting comparison worker...", comparisonId);
-            List<MinioObjectDto> filesDto = comparisonFiles.stream()
-                    .map(cf -> new MinioObjectDto(cf.getBucket(), cf.getObjectKey()))
+            List<ComparisonWorkerInputFileDto> filesDto = comparisonFiles.stream()
+                    .map(cf -> new ComparisonWorkerInputFileDto(cf.getBucket(), cf.getObjectKey(), cf.getGroupName()))
                     .toList();
 
             StartComparisonJobDto dto = new StartComparisonJobDto(
