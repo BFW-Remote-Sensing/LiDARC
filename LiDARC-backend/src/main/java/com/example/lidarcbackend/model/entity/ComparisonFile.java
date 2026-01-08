@@ -26,6 +26,9 @@ public class ComparisonFile {
     @Column(name = "object_key")
     private String objectKey;
 
+    @Column(name = "group_name")
+    private String groupName;
+
     //TODO: Add if processing?
 
     public ComparisonFile() {

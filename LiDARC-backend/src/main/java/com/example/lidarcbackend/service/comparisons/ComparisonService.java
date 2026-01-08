@@ -208,6 +208,7 @@ public class ComparisonService implements IComparisonService {
                 ComparisonFile cf = new ComparisonFile();
                 cf.setComparisonId(comparisonId);
                 cf.setFileId(fileEntity.getId());
+                cf.setGroupName(groupName);
 
                 String uniqueJobId = String.format("c%d_%s_f%d_%s",
                         comparisonId,
