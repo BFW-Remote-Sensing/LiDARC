@@ -208,7 +208,6 @@ export class ComparisonSetup {
     folder.files = [...folder.files];
   }
 
-
   startComparison(): void {
     this.loadingStart.set(true);
     const firstItem = this.selectedFilesService.selectedComparableItems[0];
@@ -221,6 +220,14 @@ export class ComparisonSetup {
       secondItem.type === "Folder" ?
         (secondItem as FolderFilesDTO).files.map(f => f.id) :
         [secondItem.id];
+    this.comparison.folderAId =
+      firstItem.type === "Folder" ?
+        (firstItem as FolderFilesDTO).id :
+        undefined;
+    this.comparison.folderBId =
+      secondItem.type === "Folder" ?
+        (secondItem as FolderFilesDTO).id :
+        undefined;
     this.comparisonService.postComparison(this.comparison)
       .pipe(
         finalize(() => this.loadingStart.set(false))

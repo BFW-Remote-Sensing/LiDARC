@@ -19,4 +19,5 @@ export interface FileMetadataDTO {
     pointCount?: number;
     uploadedAt?: string;
     type?: string;
+    folderId?: number;
 }

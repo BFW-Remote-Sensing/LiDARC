@@ -26,6 +26,9 @@ public class ComparisonFile {
     @Column(name = "object_key")
     private String objectKey;
 
+    @Column(name = "included")
+    private Boolean included;
+
     //TODO: Add if processing?
 
     public ComparisonFile() {

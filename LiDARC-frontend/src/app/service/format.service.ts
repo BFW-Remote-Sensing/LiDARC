@@ -51,7 +51,7 @@ export class FormatService {
       } else {
         return {
           ...this.formatMetadata(item),
-          name: item.filename,
+          name: item.originalFilename,
           type: 'File',
           fileCount: 1
         };

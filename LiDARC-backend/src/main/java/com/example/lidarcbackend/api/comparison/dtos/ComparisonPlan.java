@@ -13,16 +13,22 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class ComparisonPlan {
-    private List<ComparisonFile> filesToSave = new ArrayList<>();
+    private List<ComparisonFile> filesToInclude = new ArrayList<>();
+    private List<ComparisonFile> filesToExclude = new ArrayList<>();
     private List<StartPreProcessJobDto> jobsToStart = new ArrayList<>();
 
-    public void add(ComparisonFile file, StartPreProcessJobDto job) {
-        this.filesToSave.add(file);
+    public void addIncludedFile(ComparisonFile file, StartPreProcessJobDto job) {
+        this.filesToInclude.add(file);
         this.jobsToStart.add(job);
     }
 
+    public void addExcludedFile(ComparisonFile file) {
+        this.filesToExclude.add(file);
+    }
+
     public void merge(ComparisonPlan other) {
-        this.filesToSave.addAll(other.getFilesToSave());
+        this.filesToInclude.addAll(other.getFilesToInclude());
+        this.filesToExclude.addAll(other.getFilesToExclude());
         this.jobsToStart.addAll(other.getJobsToStart());
     }
 }

@@ -77,7 +77,7 @@ public class ComparisonController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ComparisonDTO> getComparison(@PathVariable Long id) {
+    public ResponseEntity<ComparisonDTO> getComparison(@PathVariable Long id) throws NotFoundException {
         ComparisonDTO dto = comparisonService.getComparison(id);
         if (dto == null) {
             return ResponseEntity.notFound().build();

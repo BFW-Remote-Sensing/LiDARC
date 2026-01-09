@@ -8,6 +8,6 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 public class FolderDTO {
-    private  Long id;
+    private Long id;
     private String name;
 }
