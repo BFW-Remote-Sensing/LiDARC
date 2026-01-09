@@ -68,23 +68,40 @@ export class FolderDetails {
   }
 
   getFolderSizeBytes(): number {
-    if (!this.folder) {
+    if (!this.folder || this.folder.files.length === 0) {
       return 0;
     }
-    return this.folder.files.reduce(
-      (acc, file) => acc + (file.sizeBytes ?? 0),
-      0
-    );
+
+    const sizes = this.folder.files
+      .map(f => f.sizeBytes)
+      .filter((s): s is number => s !== null && s !== undefined);
+
+    if (sizes.length === 0) {
+      return 0; // still numeric
+    }
+
+    return sizes.reduce((acc, s) => acc + s, 0);
   }
 
   getCaptureYear(): string | null {
     if (!this.folder || this.folder.files.length === 0) {
       return null;
     }
-    const min = Math.min(...this.folder.files.map(f => f.captureYear || Infinity));
-    const max = Math.max(...this.folder.files.map(f => f.captureYear || -Infinity));
+
+    const years = this.folder.files
+      .map(f => f.captureYear)
+      .filter((y): y is number => y !== null && y !== undefined);
+
+    if (years.length === 0) {
+      return "-";
+    }
+
+    const min = Math.min(...years);
+    const max = Math.max(...years);
+
     return min === max ? `${min}` : `${min}-${max}`;
   }
+
 
   getMinMinX(): number | null {
     return getExtremeValue(this.folder?.files, f => f.minX, 'min');

@@ -42,13 +42,17 @@
                             Size
                         </span>
                         <span>
+                            @if (getFolderSizeBytes() > 0) {
                             {{ getFolderSizeBytes() | formatBytes }}
+                            } @else {
+                            -
+                            }
                         </span>
                     </div>
                 </mat-list-item>
                 <mat-divider></mat-divider>
 
-                <mat-list-item role="listitem">
+                <mat-list-item role=" listitem">
                     <mat-icon matListItemIcon>cloud_upload</mat-icon>
                     <div matListItemTitle class="mat-list-item-row">
                         <span>
@@ -68,7 +72,7 @@
                             Capture Year
                         </span>
                         <span>
-                            {{ getCaptureYear() ?? 'N/A' }}
+                            {{ getCaptureYear() }}
                         </span>
                     </div>
                 </mat-list-item>
