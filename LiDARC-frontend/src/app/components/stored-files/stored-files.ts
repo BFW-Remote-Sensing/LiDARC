@@ -4,9 +4,8 @@ import { FormsModule } from '@angular/forms'; import { MatButtonModule } from '@
 import { MatCheckbox, MatCheckboxChange } from '@angular/material/checkbox'; import { MatIconModule } from '@angular/material/icon';
 import { MatPaginator, MatPaginatorModule, PageEvent } from '@angular/material/paginator'; import { MatSelectModule } from '@angular/material/select';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table'; import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router, RouterModule } from '@angular/router'; import { finalize, interval, Subject, switchMap, takeUntil } from 'rxjs'; import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { Router, RouterModule } from '@angular/router'; import { debounceTime, delay, distinctUntilChanged, finalize, interval, Subject, switchMap, takeUntil } from 'rxjs'; import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MetadataService } from '../../service/metadata.service'; import { FileMetadataDTO } from '../../dto/fileMetadata';
-import { SelectedFilesService } from '../../service/selectedFile.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormatService } from '../../service/format.service';
 import { pollingIntervalMs, snackBarDurationMs } from '../../globals/globals';
@@ -17,6 +16,8 @@ import { MatDialog } from '@angular/material/dialog';
 import { MetadataResponse } from '../../dto/metadataResponse';
 import { CreateFolderDialog } from '../create-folder-dialog/create-folder-dialog';
 import { AssignFolderDialog } from '../assign-folder-dialog/assign-folder-dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 
 @Component({
   selector: 'app-stored-files',
@@ -34,7 +35,9 @@ import { AssignFolderDialog } from '../assign-folder-dialog/assign-folder-dialog
     MatTooltipModule,
     MatProgressSpinner,
     TextCard,
-    FormatBytesPipe
+    FormatBytesPipe,
+    MatFormFieldModule,
+    MatInputModule,
   ],
   templateUrl: './stored-files.html',
   styleUrl: './stored-files.scss',
@@ -50,6 +53,7 @@ export class StoredFiles {
   private readonly metadataService = inject(MetadataService);
   public loading: WritableSignal<boolean> = signal(true);
   public errorMessage = signal<string | null>(null);
+  private searchSubject = new Subject<string>();
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
@@ -58,7 +62,6 @@ export class StoredFiles {
   private previousMap = new Map<number, string>();
 
   constructor(
-    private selectedFilesService: SelectedFilesService,
     private router: Router,
     private snackBar: MatSnackBar,
     private formatService: FormatService,
@@ -77,6 +80,14 @@ export class StoredFiles {
   }
 
   ngOnInit(): void {
+    this.searchSubject
+      .pipe(
+        debounceTime(400),
+        distinctUntilChanged())
+      .subscribe(filterValue => {
+        this.paginator.pageIndex = 0; // Reset to page 0 
+        this.fetchAndProcessMetadata(this.pageIndex, this.pageSize); // Trigger reload
+      });
     // First load
     this.fetchAndProcessMetadata(this.pageIndex, this.pageSize);
 
@@ -84,7 +95,7 @@ export class StoredFiles {
     interval(pollingIntervalMs)
       .pipe(
         takeUntil(this.stopPolling$),
-        switchMap(() => this.metadataService.getPagedMetadataWithoutFolder(this.pageIndex, this.pageSize, 'uploadedAt', false)),
+        switchMap(() => this.metadataService.getPagedMetadataWithoutFolder(this.pageIndex, this.pageSize, 'uploadedAt', false, this.dataSource.filter)),
         finalize(() => this.loading.set(false))
       )
       .subscribe({
@@ -101,9 +112,11 @@ export class StoredFiles {
 
   fetchAndProcessMetadata(pageIndex: number, pageSize: number): void {
     this.loading.set(true);
+    this.dataSource.data = [];
 
-    this.metadataService.getPagedMetadataWithoutFolder(pageIndex, pageSize, 'uploadedAt', false)
-      .pipe(finalize(() => this.loading.set(false)))
+    this.metadataService.getPagedMetadataWithoutFolder(pageIndex, pageSize, 'uploadedAt', false, this.dataSource.filter)
+      .pipe(
+        finalize(() => this.loading.set(false)))
       .subscribe({
         next: (metadataResponse: MetadataResponse) => {
           this.totalItems = metadataResponse.totalItems;
@@ -124,7 +137,6 @@ export class StoredFiles {
   private processMetadata(data: FileMetadataDTO[]): void {
     // Map formatted size
     this.dataSource.data = data.map(item => this.formatService.formatMetadata(item));
-
     // Detect transitions and update previousMap
     data.forEach(item => {
       const prev = this.previousMap.get(item.id);
@@ -206,6 +218,17 @@ export class StoredFiles {
 
   isSelected(id: number): boolean {
     return this.selectedFileIds.has(id);
+  }
+
+  applyFilter(event: Event) {
+    this.pageIndex = 0;
+    const filterValue = (event.target as HTMLInputElement).value;
+    if (filterValue.trim() === this.dataSource.filter) {
+      return; // No change in filter, do nothing
+    }
+    this.loading.set(true);
+    this.dataSource.filter = filterValue.trim().toLowerCase();
+    this.searchSubject.next(filterValue);
   }
 
   createFolder() {

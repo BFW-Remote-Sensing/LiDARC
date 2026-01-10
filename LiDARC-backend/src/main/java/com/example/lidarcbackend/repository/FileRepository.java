@@ -26,6 +26,11 @@ public interface FileRepository extends JpaRepository<File, Long> {
 
     Page<File> findPagedByFolderIsNull(Pageable pageable);
 
+    Page<File> findPagedByFolderIsNullAndOriginalFilenameContainingIgnoreCase(
+            String originalFilename,
+            Pageable pageable
+    );
+
     List<File> findAllByFolderId(Long folderId, Sort sort);
 
     List<File> findAllByFolderIdIn(
@@ -37,51 +42,73 @@ public interface FileRepository extends JpaRepository<File, Long> {
 
     @Query(
             value = """
-                    SELECT folder_id AS folderId, file_id AS fileId
-                    FROM (
-                        SELECT
-                            f.id AS folder_id,
-                            NULL AS file_id,
-                            f.created_at AS sort_ts
-                        FROM folders f
-                        WHERE EXISTS (
-                            SELECT 1
-                            FROM files fi
-                            WHERE fi.folder_id = f.id
-                        )
-                    
-                        UNION ALL
-                    
-                        SELECT
-                            NULL AS folder_id,
-                            fi.id AS file_id,
-                            fi.uploaded_at AS sort_ts
-                        FROM files fi
-                        WHERE fi.folder_id IS NULL
-                    ) t
-                    ORDER BY t.sort_ts DESC
-                    """,
+        SELECT folder_id AS folderId, file_id AS fileId
+        FROM (
+            SELECT
+                f.id AS folder_id,
+                NULL AS file_id,
+                f.created_at AS sort_ts,
+                f.name AS folder_name,
+                NULL AS file_name
+            FROM folders f
+            WHERE EXISTS (
+                SELECT 1
+                FROM files fi
+                WHERE fi.folder_id = f.id
+            )
+        
+            UNION ALL
+        
+            SELECT
+                NULL AS folder_id,
+                fi.id AS file_id,
+                fi.uploaded_at AS sort_ts,
+                NULL AS folder_name,
+                fi.original_filename AS file_name
+            FROM files fi
+            WHERE fi.folder_id IS NULL
+        ) t
+        WHERE (:search IS NULL
+               OR LOWER(t.folder_name) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(t.file_name) LIKE LOWER(CONCAT('%', :search, '%')))
+        ORDER BY t.sort_ts DESC
+        """,
             countQuery = """
-                    SELECT COUNT(*)
-                    FROM (
-                        SELECT f.id
-                        FROM folders f
-                        WHERE EXISTS (
-                            SELECT 1
-                            FROM files fi
-                            WHERE fi.folder_id = f.id
-                        )
-                    
-                        UNION ALL
-                    
-                        SELECT fi.id
-                        FROM files fi
-                        WHERE fi.folder_id IS NULL
-                    ) cnt
-                    """,
+        SELECT COUNT(*)
+        FROM (
+            SELECT
+                f.id AS folder_id,
+                NULL AS file_id,
+                f.created_at AS sort_ts,
+                f.name AS folder_name,
+                NULL AS file_name
+            FROM folders f
+            WHERE EXISTS (
+                SELECT 1
+                FROM files fi
+                WHERE fi.folder_id = f.id
+            )
+        
+            UNION ALL
+        
+            SELECT
+                NULL AS folder_id,
+                fi.id AS file_id,
+                fi.uploaded_at AS sort_ts,
+                NULL AS folder_name,
+                fi.original_filename AS file_name
+            FROM files fi
+            WHERE fi.folder_id IS NULL
+        ) t
+        WHERE (:search IS NULL
+               OR LOWER(t.folder_name) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(t.file_name) LIKE LOWER(CONCAT('%', :search, '%')))
+        """,
             nativeQuery = true
     )
-    Page<ComparableProjection> findComparables(Pageable pageable);
+    Page<ComparableProjection> findComparables(@Param("search") String search, Pageable pageable);
+
+
 
     @Modifying
     @Query("""

@@ -76,14 +76,16 @@ class MetadataApiController {
      * @return list of metadata
      */
     @GetMapping("/unassigned/paged")
-    public ResponseEntity<MetadataResponse> getPagedMetadataWithoutFolder(@Valid @ModelAttribute MetadataRequest request) {
+    public ResponseEntity<MetadataResponse> getPagedMetadataWithoutFolder(
+            @RequestParam(required = false) String search,
+            @Valid @ModelAttribute MetadataRequest request) {
         try {
             Sort sort = request.isAscending() ?
                     Sort.by(request.getSortBy()).ascending() :
                     Sort.by(request.getSortBy()).descending();
 
             Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
-            Page<FileMetadataDTO> result = metadataService.getPagedMetadataWithoutFolder(pageable);
+            Page<FileMetadataDTO> result = metadataService.getPagedMetadataWithoutFolder(pageable, search);
 
             MetadataResponse response = new MetadataResponse(
                     result.getContent(),
@@ -112,11 +114,12 @@ class MetadataApiController {
 
     @GetMapping("/all/grouped-by-folder/paged")
     public ResponseEntity<ComparableResponse> getAllMetadataGroupedByFolderPaged(
+            @RequestParam(required = false) String search,
             @Valid @ModelAttribute ComparableRequest request
     ) {
         try {
             Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), Sort.unsorted());
-            Page<ComparableItemDTO> result = metadataService.getAllMetadataGroupedByFolderPaged(pageable);
+            Page<ComparableItemDTO> result = metadataService.getAllMetadataGroupedByFolderPaged(pageable, search);
             return ResponseEntity.ok(
                     new ComparableResponse(
                             result.getContent(),

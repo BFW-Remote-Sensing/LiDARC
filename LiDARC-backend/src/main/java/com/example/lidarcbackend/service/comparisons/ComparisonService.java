@@ -87,9 +87,17 @@ public class ComparisonService implements IComparisonService {
     private final Map<Long, Object> chunkedComparisonsStorage = new ConcurrentHashMap<>();
 
     @Override
-    public Page<ComparisonDTO> getPagedComparisons(Pageable pageable) {
-        Page<Comparison> comparisonPage = comparisonRepository.findAll(pageable);
+    public Page<ComparisonDTO> getPagedComparisons(Pageable pageable, String search) {
+        Page<Comparison> comparisonPage;
 
+        if (search == null || search.isBlank()) {
+            comparisonPage = comparisonRepository.findAll(pageable);
+        } else {
+            comparisonPage = comparisonRepository.findByNameContainingIgnoreCase(
+                    search,
+                    pageable
+            );
+        }
         List<ComparisonDTO> dtoList = comparisonPage.getContent().stream().map(comparison -> {
             ComparisonDTO dto = mapper.toDto(comparison);
             reportRepository.findTopByComparisonIdOrderByCreationDateDesc(comparison.getId())

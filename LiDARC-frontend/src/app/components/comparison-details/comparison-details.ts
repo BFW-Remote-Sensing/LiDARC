@@ -185,7 +185,6 @@ export class ComparisonDetails implements OnInit {
         .pipe(finalize(() => this.loading.set(false)))
         .subscribe({
           next: ({ comparison, reports }) => {
-            console.log(comparison)
             this.comparison = comparison;
             this.reports = reports;
             this.checkIfMoreReportsExist(reports.length);

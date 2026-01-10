@@ -23,13 +23,48 @@
 .upper-section {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 8px 16px;
+    align-items: flex-start;
 
     .upper-action-section {
         display: flex;
         gap: 10px;
-        align-items: center;
+        align-items: flex-start;
+
+        .filter-field {
+            width: 350px;
+            font-size: 14px;
+
+            ::ng-deep .mat-mdc-text-field-wrapper {
+                background-color: white;
+            }
+        }
+
+        .selected-items-display {
+            margin-left: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+
+            .chip-content {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+
+            .type-icon {
+                margin-right: 5px;
+            }
+
+            .remove-icon {
+                color: red;
+                font-size: 19px;
+            }
+
+            .chip {
+                background-color: white;
+                border: 2px solid black;
+            }
+        }
     }
 }
 

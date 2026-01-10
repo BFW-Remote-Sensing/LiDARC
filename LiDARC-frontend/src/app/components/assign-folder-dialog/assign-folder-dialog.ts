@@ -48,7 +48,6 @@ export class AssignFolderDialog {
   ngOnInit() {
     this.folderService.getFolders().subscribe({
       next: (folders) => {
-        console.log('Loaded folders:', folders);
         this.folders.set(folders);
         this.filteredFolders.set(folders);
         this.loadingFolders.set(false);
@@ -62,7 +61,6 @@ export class AssignFolderDialog {
 
   filterFolders(query: string): void {
     const lowerQuery = query.toLowerCase();
-    console.log('Filtering folders with query:', query);
     const filtered = this.folders().filter(folder => folder.name.toLowerCase().includes(lowerQuery));
     this.filteredFolders.set(filtered);
   }

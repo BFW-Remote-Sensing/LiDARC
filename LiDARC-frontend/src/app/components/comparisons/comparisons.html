@@ -1,13 +1,18 @@
 <div style="padding: 30px;">
+    <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Filter Comparisons by Name</mat-label>
+        <input matInput (keyup)="applyFilter($event)" placeholder="Ex. My Comparison Name" #input>
+        <mat-icon matPrefix>search</mat-icon>
+    </mat-form-field>
     @if (loading()) {
     <div class="flex-center">
         <mat-spinner></mat-spinner>
     </div>
-    }@else if (!loading() && dataSource.data.length === 0 && !errorMessage()) {
-    <app-text-card type="info" message="No comparison found."></app-text-card>
-    }
-    @else if (errorMessage()) {
+    }@else if (errorMessage()) {
     <app-text-card type="error" message="{{ errorMessage() }}"></app-text-card>
+
+    }@else if (dataSource.data.length === 0) {
+    <app-text-card type="info" message="No comparison found."></app-text-card>
     }
     @else {
     <table mat-table [dataSource]="dataSource" class="mat-elevation-z8" style="width: 100%;">
@@ -113,7 +118,8 @@
     </table>
     }
     <div [hidden]="loading() || errorMessage() || dataSource.data.length === 0" style="margin-top: 20px">
-        <mat-paginator [pageSizeOptions]="[10, 20, 30]" showFirstLastButtons>
+        <mat-paginator [length]="totalItems" [pageSize]="pageSize" [pageIndex]="pageIndex"
+            [pageSizeOptions]="[10, 15, 20, 1]" showFirstLastButtons (page)="onPageChange($event)">
         </mat-paginator>
     </div>
 </div>

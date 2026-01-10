@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Optional;
 
 public interface IComparisonService {
-    Page<ComparisonDTO> getPagedComparisons(Pageable pageable);
+    Page<ComparisonDTO> getPagedComparisons(Pageable pageable, String search);
 
     List<ComparisonDTO> getAllComparisons();
 

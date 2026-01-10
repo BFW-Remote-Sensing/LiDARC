@@ -12,13 +12,13 @@ import java.util.Map;
 
 
 public interface IMetadataService {
-    Page<FileMetadataDTO> getPagedMetadataWithoutFolder(Pageable pageable);
+    Page<FileMetadataDTO> getPagedMetadataWithoutFolder(Pageable pageable, String search);
 
     List<FileMetadataDTO> getAllMetadataWithoutFolder();
 
     List<FolderFilesDTO> getMetadataGroupedByFolder();
 
-    Page<ComparableItemDTO> getAllMetadataGroupedByFolderPaged(Pageable pageable);
+    Page<ComparableItemDTO> getAllMetadataGroupedByFolderPaged(Pageable pageable, String search);
 
     FileMetadataDTO GetMetadata(String metadataId);
 

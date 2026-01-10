@@ -1,0 +1,8 @@
+.filter-field {
+    width: 350px;
+    font-size: 14px;
+
+    ::ng-deep .mat-mdc-text-field-wrapper {
+        background-color: white;
+    }
+}

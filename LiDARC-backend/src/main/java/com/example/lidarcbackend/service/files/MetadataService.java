@@ -76,9 +76,19 @@ public class MetadataService implements IMetadataService {
         return fileRepository.existsById(id);
     }
 
-    public Page<FileMetadataDTO> getPagedMetadataWithoutFolder(Pageable pageable) {
-        return fileRepository.findPagedByFolderIsNull(pageable)
-                .map(mapper::toDto);
+    public Page<FileMetadataDTO> getPagedMetadataWithoutFolder(Pageable pageable, String search) {
+        Page<File> page;
+
+        if (search == null || search.isBlank()) {
+            page = fileRepository.findPagedByFolderIsNull(pageable);
+        } else {
+            page = fileRepository.findPagedByFolderIsNullAndOriginalFilenameContainingIgnoreCase(
+                    search,
+                    pageable
+            );
+        }
+
+        return page.map(mapper::toDto);
     }
 
     public List<FileMetadataDTO> getAllMetadataWithoutFolder() {
@@ -114,8 +124,8 @@ public class MetadataService implements IMetadataService {
                 .toList();
     }
 
-    public Page<ComparableItemDTO> getAllMetadataGroupedByFolderPaged(Pageable pageable) {
-        Page<ComparableProjection> page = fileRepository.findComparables(pageable);
+    public Page<ComparableItemDTO> getAllMetadataGroupedByFolderPaged(Pageable pageable, String search) {
+        Page<ComparableProjection> page = fileRepository.findComparables(search != null && !search.isBlank() ? search : null, pageable);
 
         List<Long> folderIds =
                 page.stream()
