@@ -37,13 +37,20 @@ export class PdfThumbnail implements AfterViewInit {
       const viewport = page.getViewport({scale: 1});
       const scale = desiredWidth / viewport.width;
       const scaledViewport = page.getViewport({scale});
+      const outputScale = window.devicePixelRatio || 1;
 
-      canvas.height = scaledViewport.height;
-      canvas.width = scaledViewport.width;
+      canvas.width = Math.floor(scaledViewport.width * outputScale);
+      canvas.height = Math.floor(scaledViewport.height * outputScale)
+      canvas.style.width = Math.floor(scaledViewport.width) + "px";
+      canvas.style.height = Math.floor(scaledViewport.height) + "px";
+      const transform = outputScale !== 1
+        ? [outputScale, 0, 0, outputScale, 0, 0]
+        : undefined;
 
       await page.render({
         canvasContext: context,
         viewport: scaledViewport,
+        transform: transform,
         canvas: canvas
       }).promise;
 

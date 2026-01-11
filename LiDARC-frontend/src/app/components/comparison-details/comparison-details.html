@@ -208,30 +208,38 @@
         </h2>
         <div class="reports-scroll-container">
           <mat-nav-list role="navigation">
-            @for (report of reports; track report.id; let last = $last) {
-
-              <a mat-list-item
-                 [href]="this.globals.backendUri + '/reports/' + report.id + '/download'"
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 download>
+            @for (report of reports(); track report.id; let last = $last) {
+              <mat-list-item class="report-row">
                 <mat-icon matListItemIcon>assessment</mat-icon>
-
-                <div matListItemTitle class="mat-list-item-row">
-                        <span class="file-name">
-                            {{ report.title | titlecase }}
-                        </span>
-                  <span>
-                  Created At: {{ report.creationDate | date:'mediumDate' }} {{ report.creationDate | date:'shortTime' }}
+                <span matListItemTitle>
+                {{ report.title | titlecase }}
+              </span>
+                <span matListItemLine class="date-line">
+                Created At: {{ report.creationDate | date:'mediumDate' }} {{ report.creationDate | date:'shortTime' }}
+              </span>
+                <a [href]="this.globals.backendUri + '/reports/' + report.id + '/view'"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="row-overlay-link"
+                   aria-label="View Report"
+                   matTooltip="View Report">
+                </a>
+                <span matListItemMeta>
+                  <a mat-icon-button
+                     [href]="this.globals.backendUri + '/reports/' + report.id + '/download'"
+                     target="_blank"
+                     download
+                     class="download-btn"
+                     matTooltip="Download Report">
+                    <mat-icon>download</mat-icon>
+                  </a>
                 </span>
-                </div>
-              </a>
-
+              </mat-list-item>
               @if (!last) {
                 <mat-divider></mat-divider>
               }
             }
-            @if (reports.length === 0) {
+            @if (reports().length === 0) {
               <mat-list-item role="listitem">
                 <div matListItemTitle class="mat-list-item-row">
                         <span style="font-style: italic; color: gray; margin-left: 10px;">
@@ -242,7 +250,7 @@
             }
           </mat-nav-list>
         </div>
-        @if (hasMoreReports() && reports.length > 0) {
+        @if (hasMoreReports() && reports().length > 0) {
           <div class="load-more-container">
             @if (reportsLoading()) {
               <mat-spinner diameter="30"></mat-spinner>
@@ -265,7 +273,8 @@
       <mat-icon>analytics</mat-icon>
       Comparison Results
     </h2>
-    <app-chunking-settings (visualizationData)="onChunkingSliderChange($event)" [comparisonId]="comparisonId"></app-chunking-settings>
+    <app-chunking-settings (visualizationData)="onChunkingSliderChange($event)"
+                           [comparisonId]="comparisonId"></app-chunking-settings>
     <div class="comparison-container">
 
       <!-- ===== File Metrics Section ===== -->
@@ -294,9 +303,12 @@
           </div>
 
           <div class="charts-grid">
-            <div echarts [options]="{}" [merge]="scatterOption" class="chart"></div>
-            <div echarts [options]="{}" [merge]="boxplotOption" class="chart"></div>
-            <div echarts [options]="{}" [merge]="fileDistributionOption" class="chart"></div>
+            <div echarts [options]="{}" [merge]="scatterOption" (chartInit)="onChartInit($event, 'scatter')"
+                 class="chart"></div>
+            <div echarts [options]="{}" [merge]="boxplotOption" (chartInit)="onChartInit($event, 'boxplot')"
+                 class="chart"></div>
+            <div echarts [options]="{}" [merge]="fileDistributionOption"
+                 (chartInit)="onChartInit($event, 'distribution')" class="chart"></div>
           </div>
         </mat-card-content>
       </mat-card>
@@ -321,8 +333,10 @@
           </mat-list>
 
           <div class="charts-grid">
-            <div echarts [options]="{}" [merge]="diffDistributionOption" class="chart"></div>
-            <div echarts [options]="{}" [merge]="diffHistogramOption" class="chart"></div>
+            <div echarts [options]="{}" [merge]="diffDistributionOption"
+                 (chartInit)="onChartInit($event, 'distribution_diff')" class="chart"></div>
+            <div echarts [options]="{}" [merge]="diffHistogramOption" (chartInit)="onChartInit($event, 'histo_diff')"
+                 class="chart"></div>
             <!-- TODO check if needed
             <div echarts [options]="categoryBarChart" class="chart"></div>
             -->
@@ -334,7 +348,7 @@
         <mat-card-title>Heatmaps of Vegetational Heights</mat-card-title>
         <mat-divider></mat-divider>
         <mat-card-content>
-          <app-heatmap [data]="sharedChunkingResult" >
+          <app-heatmap [data]="sharedChunkingResult">
           </app-heatmap>
         </mat-card-content>
       </mat-card>

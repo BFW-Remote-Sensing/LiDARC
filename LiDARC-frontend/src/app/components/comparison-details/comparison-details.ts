@@ -1,4 +1,4 @@
-import {Component, inject, Input, OnInit, signal, WritableSignal} from '@angular/core';
+import {Component, inject, Input, OnInit, signal, WritableSignal, ViewChild} from '@angular/core';
 import {ComparisonService} from '../../service/comparison.service';
 import {ActivatedRoute, RouterModule} from '@angular/router';
 import {FormatService} from '../../service/format.service';
@@ -18,7 +18,7 @@ import {MatTooltip} from '@angular/material/tooltip';
 
 
 import * as echarts from 'echarts/core';
-import {EChartsCoreOption} from 'echarts/core';
+import {EChartsCoreOption, ECElementEvent} from 'echarts/core';
 import {NgxEchartsDirective, provideEchartsCore} from "ngx-echarts";
 import {BarChart, BoxplotChart, HeatmapChart, LineChart, ScatterChart} from 'echarts/charts';
 import {
@@ -99,13 +99,16 @@ echarts.use([
 export class ComparisonDetails implements OnInit {
   @Input() comparisonId: number | null = null;
   @Input() comparison: ComparisonDTO | null = null;
-  @Input() reports: ComparisonReport[] = [];
+  @Input() reports = signal<ComparisonReport[]>([]);
+  @ViewChild(Heatmap) heatmapComponent!: Heatmap;
+
   public loading: WritableSignal<boolean> = signal(true);
   public errorMessage = signal<string | null>(null);
+  private chartInstances: { [key: string]: ECharts} = {};
   private scatterInstance!: ECharts;
-  reportsLimit: number = 4;
-  reportsLoading = signal(false);
-  hasMoreReports = signal(true);
+  reportsLimit: number = 3;
+  reportsLoading = signal<boolean>(false);
+  hasMoreReports = signal<boolean>(true);
 
   constructor(
     private comparisonService: ComparisonService,
@@ -160,6 +163,9 @@ export class ComparisonDetails implements OnInit {
 
   sharedChunkingResult?: ChunkingResult;
 
+  onChartInit(instance: any, chartName: string): void {
+    this.chartInstances[chartName] = instance
+  }
   onChunkingSliderChange(data: ChunkingResult) {
     console.log("Chunking data change detected in comparison-details: ", data);
     this.sharedChunkingResult = data;
@@ -178,9 +184,8 @@ export class ComparisonDetails implements OnInit {
         .subscribe({
           next: ({comparison, reports}) => {
             this.comparison = comparison;
-            this.reports = reports;
+            this.reports.set(reports);
             this.checkIfMoreReportsExist(reports.length);
-
           },
           error: (err) => {
             console.error(err);
@@ -264,20 +269,30 @@ export class ComparisonDetails implements OnInit {
 
   createReport():void {
     const chartImages:ChartData[] = [];
-    console.log('Scatter Instance:', this.scatterInstance);
-    if (this.scatterInstance) {
-      const dataUrl = this.scatterInstance.getDataURL({
-        type: 'png',
-        pixelRatio: 2,
-        backgroundColor: '#fff',
-        excludeComponents: ['toolbox']
-      });
-      chartImages.push({
-        name: 'Vegetation Scatter Plot',
-        fileName: 'scatter_plot.png',
-        blob: this.dataURItoBlob(dataUrl)
-      });
+    if (this.heatmapComponent) {
+      if (this.heatmapComponent.chartInstance1) {
+        //TODO: Choose a better fiting name && See if we can make them more interactive / important for the report? Currently flat image of vis.
+        this.pushChartImage(chartImages, this.heatmapComponent.chartInstance1, 'Vegetation Heatmap Left', 'heatmap_left.png')
+      }
+      if (this.heatmapComponent.chartInstance2) {
+        this.pushChartImage(chartImages, this.heatmapComponent.chartInstance2, 'Vegetation Heatmap Right', 'heatmap_right.png')
+      }
     }
+    const chartsToExport = [
+      { key: 'scatter', name: 'Vegetation Height Scatter Plot', fileName: 'scatter_plot.png'},
+      { key: 'boxplot', name: 'Vegetation Height Box Plot', fileName: 'box_plot.png'},
+      { key: 'distribution', name: 'Vegetation Height Distribution', fileName: 'distribution.png'},
+      { key: 'distribution_diff', name: 'Vegetation Height Distribution Differences', fileName: 'distribution_diff.png'},
+      { key: 'histo_diff', name: 'Histogram Differences', fileName: 'histo_diff.png'}
+    ];
+    chartsToExport.forEach(chart => {
+      const instance = this.chartInstances[chart.key];
+      if (instance) {
+        this.pushChartImage(chartImages, instance, chart.name, chart.fileName)
+      } else {
+        console.warn(`Instance not found for ${chart.name}. Is the chart visible in the DOM?`);
+      }
+    });
 
     const dialogRef = this.dialog.open(ReportCreationDialogComponent, {
       width: '600px',
@@ -295,11 +310,26 @@ export class ComparisonDetails implements OnInit {
     })
   }
 
-  dataURItoBlob(dataURI
-                :
-                string
-  ):
-    Blob {
+  private pushChartImage(array: ChartData[], instance: any, name: string, fileName: string) {
+    try {
+      const dataUrl = instance.getDataURL({
+        type: 'png',
+        pixelRatio: 2,
+        backgroundColor: '#fff',
+        excludeComponents: ['toolbox']
+      });
+      array.push({
+        name: name,
+        fileName: fileName,
+        blob: this.dataURItoBlob(dataUrl)
+      });
+    } catch (error) {
+      //TODO: Add some error handling?
+      console.error(`Failed to export image for ${name}`, error);
+    }
+  }
+
+  private dataURItoBlob(dataURI: string): Blob {
     const byteString = atob(dataURI.split(',')[1]);
     const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
     const ab = new ArrayBuffer(byteString.length);
@@ -320,7 +350,7 @@ export class ComparisonDetails implements OnInit {
       .pipe(finalize(() => this.reportsLoading.set(false)))
       .subscribe({
         next: (reports: ComparisonReport[]) => {
-          this.reports = reports;
+          this.reports.set(reports);
           this.checkIfMoreReportsExist(reports.length);
         },
         error: () => {
