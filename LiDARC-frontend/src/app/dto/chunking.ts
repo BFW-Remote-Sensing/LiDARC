@@ -53,6 +53,7 @@ export interface ChunkingResult {
     difference: DifferenceMetrics;
     categorized: CategorizedCounts;
   };
+  group_mapping: GroupMapping;
 }
 
 export interface CellEntry {
@@ -66,4 +67,9 @@ export interface VegetationStats {
   fileA_metrics: FileMetrics;
   fileB_metrics: FileMetrics;
   difference_metrics: DifferenceMetrics;
+  group_mapping: GroupMapping;
+}
+export interface GroupMapping {
+  a: string;
+  b: string;
 }

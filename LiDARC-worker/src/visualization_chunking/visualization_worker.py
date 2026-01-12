@@ -78,6 +78,7 @@ def process_req(ch, method, properties, body):
     # Process request
     cells = comparison_result["cells"]
     statistics = comparison_result["statistics"]
+    group_mapping = comparison_result["group_mapping"]
 
 
 
@@ -98,19 +99,20 @@ def process_req(ch, method, properties, body):
         cells_matrix = chunk_cells_average_veg_height(cells_matrix, chunking_size)
         debug_print_matrix(cells_matrix)
 
-    message = build_response_message(comparison_id, cells_matrix, statistics, chunking_size)
+    message = build_response_message(comparison_id, cells_matrix, statistics, chunking_size, group_mapping)
 
     publisher.publish_chunking_comparison_result(BaseMessage(type="chunking_comparison_result",
                                                              status="success",
                                                              job_id="",
                                                              payload= message))
 
-def build_response_message(comparison_id, chunked_matrix, statistics, chunking_size):
+def build_response_message(comparison_id, chunked_matrix, statistics, chunking_size, group_mapping):
     return {
         "comparisonId": comparison_id,
         "chunkingSize": chunking_size,
         "chunked_cells": chunked_matrix,
         "statistics": statistics,
+        "group_mapping": group_mapping
     }
 
 

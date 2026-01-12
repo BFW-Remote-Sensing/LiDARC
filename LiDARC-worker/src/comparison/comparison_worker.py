@@ -211,7 +211,7 @@ def compare_files(path_a: str, path_b: str) -> dict:
     }
     return result
 
-def calculate_comparison_statistics(merged: pd.DataFrame) -> dict:
+def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b: str) -> dict:
     valid_mask = (
             np.isfinite(merged["veg_height_max_a"]) &
             np.isfinite(merged["veg_height_max_b"])
@@ -258,6 +258,7 @@ def calculate_comparison_statistics(merged: pd.DataFrame) -> dict:
     pos = diffs[diffs >= 0]
 
     stats_diff = {
+        "description": f"vegetational height of {group_b} - vegetational height of {group_a}",
         "mean": diffs.mean(),
         "median": diffs.median(),
         "std": diffs.std(),
@@ -302,6 +303,10 @@ def calculate_comparison_statistics(merged: pd.DataFrame) -> dict:
     ).tolist()
 
     result = {
+        "group_mapping": {
+            "a": group_a,
+            "b": group_b
+        },
         "cells": cells,
         "statistics": {
             "file_a": stats_a,
@@ -312,10 +317,14 @@ def calculate_comparison_statistics(merged: pd.DataFrame) -> dict:
     return result
 
 
-def build_merged_dataframe(files: list, temp_dir: str) -> pd.DataFrame:
+def build_merged_dataframe(
+    files: list,
+    temp_dir: str,
+    group_a: str,
+    group_b: str,
+) -> pd.DataFrame:
     cells = {}
 
-    # TODO: should not be necessary
     def normalize_df(df: pd.DataFrame) -> pd.DataFrame:
         max_val = df["veg_height_max"].max()
         if max_val > 100:
@@ -324,33 +333,49 @@ def build_merged_dataframe(files: list, temp_dir: str) -> pd.DataFrame:
         return df
 
     for f in files:
+        group = f["groupName"]
+
+        if group == group_a:
+            slot = "a"
+        elif group == group_b:
+            slot = "b"
+        else:
+            # should never happen if validated earlier
+            logging.warning("Skipping unknown groupName '%s'", group)
+            continue
+
         local_path = file_handler.fetch_file(
             {"bucket": f["bucket"], "objectKey": f["objectKey"]},
-            dest_dir = temp_dir
+            dest_dir=temp_dir
         )
+
         try:
             df = pd.read_csv(local_path)
             df = normalize_df(df)
-            group = f["groupName"]
+
             for row in df.itertuples(index=False):
                 key = (row.x0, row.x1, row.y0, row.y1)
+
                 if key not in cells:
-                    cells[key] = {"A": None, "B": None}
-                cells[key][group] = row.veg_height_max
-        # TODO propagate errors
-        finally: os.remove(local_path)
-    rows = [
-        {
-            "x0": x0,
-            "x1": x1,
-            "y0": y0,
-            "y1": y1,
-            "veg_height_max_a": v["A"],
-            "veg_height_max_b": v["B"]
-        }
-        for (x0, x1, y0, y1), v in cells.items()
-        if v["A"] is not None and v["B"] is not None
-    ]
+                    cells[key] = {"a": None, "b": None}
+
+                cells[key][slot] = row.veg_height_max
+
+        finally:
+            os.remove(local_path)
+
+    rows = []
+    for (x0, x1, y0, y1), values in cells.items():
+        if values["a"] is not None and values["b"] is not None:
+            rows.append({
+                "x0": x0,
+                "x1": x1,
+                "y0": y0,
+                "y1": y1,
+                "veg_height_max_a": values["a"],
+                "veg_height_max_b": values["b"],
+            })
+
     merged = pd.DataFrame(rows)
     logging.debug("Merged into %d matched grid cells", len(merged))
     return merged
@@ -397,8 +422,16 @@ def process_req(ch, method, props, body):
         #        return
 
 
-        merged_df = build_merged_dataframe(req["files"], temp_dir)
-        comparison_result = calculate_comparison_statistics(merged_df)
+        group_names = sorted({f["groupName"] for f in req["files"]})
+        group_a, group_b = group_names[0], group_names[1]
+        if len(group_names) != 2:
+            publish_response(ch,mk_error_msg(job_id,"Exactly two distinct groupName values are required",comparison_id))
+            return
+
+
+        merged_df = build_merged_dataframe(req["files"], temp_dir, group_a, group_b)
+        comparison_result = calculate_comparison_statistics(merged_df, group_a, group_b)
+
 
         destination_file = f"comparison-job-{job_id}.json"
 

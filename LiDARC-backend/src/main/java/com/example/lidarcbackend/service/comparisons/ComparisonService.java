@@ -139,10 +139,28 @@ public class ComparisonService implements IComparisonService {
         ComparisonPlan fullPlan = new ComparisonPlan();
 
         if (comparisonRequest.getFolderAFiles() != null && !comparisonRequest.getFolderAFiles().isEmpty()) {
-            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderAFiles(), comparisonRequest.getGrid(), savedComparison.getId(), "A"));
+            File firstFile = fileRepository.findById(comparisonRequest.getFolderAFiles().getFirst()).orElseThrow(() ->
+                    new NotFoundException("File for comparison with id: " + comparisonRequest.getFolderAFiles().getFirst() + " not found!"));
+            //TODO test if works for file to file comparisons
+            String groupName;
+            if (firstFile.getFolder() != null) {
+                groupName = firstFile.getFolder().getName();
+            } else {
+                groupName = firstFile.getOriginalFilename();
+            }
+            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderAFiles(), comparisonRequest.getGrid(), savedComparison.getId(), groupName));
         }
         if (comparisonRequest.getFolderBFiles() != null && !comparisonRequest.getFolderBFiles().isEmpty()) {
-            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderBFiles(), comparisonRequest.getGrid(), savedComparison.getId(), "B"));
+            File firstFile = fileRepository.findById(comparisonRequest.getFolderBFiles().getFirst()).orElseThrow(() ->
+                    new NotFoundException("File for comparison with id: " + comparisonRequest.getFolderBFiles().getFirst() + " not found!"));
+            //TODO test if works for file to file comparisons
+            String groupName;
+            if (firstFile.getFolder() != null) {
+                groupName = firstFile.getFolder().getName();
+            } else {
+                groupName = firstFile.getOriginalFilename();
+            }
+            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderBFiles(), comparisonRequest.getGrid(), savedComparison.getId(), groupName));
         }
         if (fileMetadataIds != null && !fileMetadataIds.isEmpty()) {
             fullPlan.merge(processFolderGroup(fileMetadataIds, comparisonRequest.getGrid(), savedComparison.getId(), "legacy"));
@@ -347,6 +365,9 @@ public class ComparisonService implements IComparisonService {
 
         if(payload.containsKey("statistics")) {
             visualizationResult.put("statistics", payload.get("statistics"));
+        }
+        if(payload.containsKey("group_mapping")) {
+            visualizationResult.put("group_mapping", payload.get("group_mapping"));
         }
         chunkedComparisonsStorage.put(comparisonId, visualizationResult);
     }

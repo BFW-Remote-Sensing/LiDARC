@@ -144,7 +144,12 @@ export class ComparisonDetails implements OnInit {
       smallest_positive: 0,
       largest_positive: 0,
       pearson_corr: 0,
+    },
+    group_mapping: {
+      a: "unknown",
+      b: "unknown"
     }
+
   });
   private pollingSubscription?: Subscription;
   private chunkSize$ = new Subject<number>();
@@ -201,7 +206,8 @@ export class ComparisonDetails implements OnInit {
       cells: this.flattenCells(result.chunked_cells),
       fileA_metrics: result.statistics.file_a,
       fileB_metrics: result.statistics.file_b,
-      difference_metrics: result.statistics.difference
+      difference_metrics: result.statistics.difference,
+      group_mapping: result.group_mapping,
     });
     console.log('[FLATTENED CELLS COUNT]', this.vegetationStats().cells.length);
 
