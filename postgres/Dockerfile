@@ -2,9 +2,8 @@ FROM postgres:16
 
 USER root
 
-# Change postgres user/group IDs to match the host-mapped IDs
-RUN groupmod -g 58400 postgres
-RUN usermod  -u 58400 -g 58400 postgres
+# Change postgres user/group IDs to match the host-mapped IDs (only in CI/Linux)
+RUN if [ -n "$CI" ]; then groupmod -g 58400 postgres && usermod -u 58400 -g 58400 postgres; fi
 
 RUN chown -R postgres:postgres /var/lib/postgresql /var/run/postgresql
 

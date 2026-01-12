@@ -249,33 +249,25 @@
         <mat-nav-list role="navigation">
           @for (report of reports(); track report.id; let last = $last) {
 
-          < mat-list-item class="report-row">
+          <mat-list-item class="report-row">
             <mat-icon matListItemIcon>assessment</mat-icon>
 
             <span matListItemTitle>
-                {{ report.title | titlecase }}
-              </span>
-              <spanmatListItemLine class="date-line">
-                Created At: {{ report.creationDate | date:'mediumDate' }} {{ report.creationDate | date:'shortTime' }}
-              </span>
-            <a [href]="this.globals.backendUri + '/reports/' + report.id + '/view'"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   class="row-overlay-link"
-                   aria-label="View Report"
-                   matTooltip="View Report">
-                </a>
-                <span matListItemMeta>
-                  <a mat-icon-button
-                     [href]="this.globals.backendUri + '/reports/' + report.id + '/download'"
-                     target="_blank"
-                     download
-                     class="download-btn"
-                     matTooltip="Download Report">
-                    <mat-icon>download</mat-icon>
-          </a>
-</span>
-              </mat-list-item>
+              {{ report.title | titlecase }}
+            </span>
+            <span matListItemLine class="date-line">
+              Created At: {{ report.creationDate | date:'mediumDate' }} {{ report.creationDate | date:'shortTime' }}
+            </span>
+            <a [href]="this.globals.backendUri + '/reports/' + report.id + '/view'" target="_blank"
+              rel="noopener noreferrer" class="row-overlay-link" aria-label="View Report" matTooltip="View Report">
+            </a>
+            <span matListItemMeta>
+              <a mat-icon-button [href]="this.globals.backendUri + '/reports/' + report.id + '/download'"
+                target="_blank" download class="download-btn" matTooltip="Download Report">
+                <mat-icon>download</mat-icon>
+              </a>
+            </span>
+          </mat-list-item>
           @if (!last) {
           <mat-divider></mat-divider>
           }
@@ -331,8 +323,8 @@
             <mat-list-item>Std: {{ vegetationStats().fileA_metrics.std_veg_height }}</mat-list-item>
             <mat-list-item>Min: {{ vegetationStats().fileA_metrics.min_veg_height }}</mat-list-item>
             <mat-list-item>Max: {{ vegetationStats().fileA_metrics.max_veg_height }}</mat-list-item>
-          <mat-list-item>Avg. Points: {{ vegetationStats().fileA_metrics.mean_points_per_grid_cell }}</mat-list-item>
-            </mat-list>
+            <mat-list-item>Avg. Points: {{ vegetationStats().fileA_metrics.mean_points_per_grid_cell }}</mat-list-item>
+          </mat-list>
 
           <mat-list>
             <h4>B: {{vegetationStats().group_mapping.b}}</h4>
@@ -341,17 +333,17 @@
             <mat-list-item>Std: {{ vegetationStats().fileB_metrics.std_veg_height }}</mat-list-item>
             <mat-list-item>Min: {{ vegetationStats().fileB_metrics.min_veg_height }}</mat-list-item>
             <mat-list-item>Max: {{ vegetationStats().fileB_metrics.max_veg_height }}</mat-list-item>
-              <mat-list-item>Avg. Points: {{ vegetationStats().fileB_metrics.mean_points_per_grid_cell }}</mat-list-item>
+            <mat-list-item>Avg. Points: {{ vegetationStats().fileB_metrics.mean_points_per_grid_cell }}</mat-list-item>
           </mat-list>
         </div>
 
         <div class="charts-grid">
           <div echarts [options]="{}" [merge]="scatterOption" (chartInit)="onChartInit($event, 'scatter')"
-                 class="chart"></div>
+            class="chart"></div>
           <div echarts [options]="{}" [merge]="boxplotOption" (chartInit)="onChartInit($event, 'boxplot')"
-                 class="chart"></div>
-          <div echarts [options]="{}" [merge]="fileDistributionOption"
-                 (chartInit)="onChartInit($event, 'distribution')" class="chart"></div>
+            class="chart"></div>
+          <div echarts [options]="{}" [merge]="fileDistributionOption" (chartInit)="onChartInit($event, 'distribution')"
+            class="chart"></div>
         </div>
       </mat-card-content>
     </mat-card>
@@ -377,9 +369,9 @@
 
         <div class="charts-grid">
           <div echarts [options]="{}" [merge]="diffDistributionOption"
-                 (chartInit)="onChartInit($event, 'distribution_diff')" class="chart"></div>
+            (chartInit)="onChartInit($event, 'distribution_diff')" class="chart"></div>
           <div echarts [options]="{}" [merge]="diffHistogramOption" (chartInit)="onChartInit($event, 'histo_diff')"
-                 class="chart"></div>
+            class="chart"></div>
           <!-- TODO check if needed
             <div echarts [options]="categoryBarChart" class="chart"></div>
             -->
