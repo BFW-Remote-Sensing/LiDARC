@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS folders (
     status VARCHAR(32) NOT NULL DEFAULT 'UPLOADED' CHECK (status in ('UPLOADING', 'UPLOADED', 'PROCESSING', 'PROCESSED', 'FAILED')),
     created_at TIMESTAMP
 );
-    
+
 CREATE TABLE IF NOT EXISTS files (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     filename TEXT NOT NULL UNIQUE,
@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS comparison_file (
     bucket TEXT,
     object_key TEXT,
     included BOOLEAN DEFAULT FALSE,
+    group_name TEXT,
     CONSTRAINT pk_comparison_file PRIMARY KEY (comparison_id, file_id),
     CONSTRAINT fk_comparison_id FOREIGN KEY (comparison_id) REFERENCES comparisons(id) ON DELETE CASCADE,
     CONSTRAINT fk_file_id FOREIGN KEY (file_id) REFERENCES files(id)

@@ -15,6 +15,29 @@
   padding: 10px;
 }
 
+.report-row {
+  position: relative;
+  cursor: pointer;
+  padding: 0 16px;
+}
+
+.report-row:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.row-overlay-link {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+}
+.download-btn {
+  position: relative;
+  z-index: 2; /* Layer 2: Topmost */
+}
+
 .section-card {
   padding: 10px;
   margin: 20px;
@@ -47,4 +70,9 @@
   display: flex;
   justify-content: center;
   padding: 8px 0;
+}
+
+.date-line {
+  color: #777;
+  font-size: 12px;
 }

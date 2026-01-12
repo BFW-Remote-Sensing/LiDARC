@@ -13,16 +13,19 @@ schema = {
         "files": {
             "type": "array",
             "minItems": 2,
-            "maxItems": 2,
             "items": {
                 "type": "object",
-                "required": ["bucket", "objectKey"],
+                "required": ["bucket", "objectKey", "groupName"],
                 "properties": {
                     "bucket": {
                         "type": "string",
                         "minLength": 1
                     },
                     "objectKey": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "groupName": {
                         "type": "string",
                         "minLength": 1
                     }

@@ -29,6 +29,9 @@ public class ComparisonFile {
     @Column(name = "included")
     private Boolean included;
 
+    @Column(name = "group_name")
+    private String groupName;
+
     //TODO: Add if processing?
 
     public ComparisonFile() {

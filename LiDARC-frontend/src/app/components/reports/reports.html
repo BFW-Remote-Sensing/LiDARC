@@ -27,7 +27,7 @@
             </app-pdf-thumbnail>
 
             <div class="hover-overlay">
-              <mat-icon>visibility</mat-icon>
+              <mat-icon matTooltip="View Report">visibility</mat-icon>
             </div>
           </div>
 
@@ -39,11 +39,11 @@
           <mat-card-actions align="end">
             @if (report.comparisonId) {
               <a [routerLink]="['/comparisons', report.comparisonId]" style="text-decoration: none;">
-                <button mat-button color="accent">COMPARISON</button>
+                <button mat-button color="accent" matTooltip="Go To Comparison">COMPARISON</button>
               </a>
             }
             <a [href]="globals.backendUri + '/reports/' + report.id + '/download'" target="_blank" download>
-              <button mat-button color="primary">DOWNLOAD</button>
+              <button mat-button color="primary" matTooltip="Download Report">DOWNLOAD</button>
             </a>
           </mat-card-actions>
         </mat-card>
