@@ -17,5 +17,5 @@ public class StartComparisonJobDto {
     @NotNull
     private String comparisonId;
 
-    private List<MinioObjectDto> files;
+    private List<ComparisonWorkerInputFileDto> files;
 }

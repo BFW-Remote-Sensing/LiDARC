@@ -23,6 +23,7 @@ export interface FileMetrics {
   min_veg_height: number;
   max_veg_height: number;
   percentiles: Percentiles;
+  mean_points_per_grid_cell: number;
 }
 
 export interface DifferenceMetrics {
@@ -33,7 +34,8 @@ export interface DifferenceMetrics {
   least_negative: number;
   smallest_positive: number;
   largest_positive: number;
-  pearson_corr: number;
+  correlation: CorrelationMetrics;
+  histogram: Histogram;
 }
 
 export interface CategorizedCounts {
@@ -53,6 +55,7 @@ export interface ChunkingResult {
     difference: DifferenceMetrics;
     categorized: CategorizedCounts;
   };
+  group_mapping: GroupMapping;
 }
 
 export interface CellEntry {
@@ -66,4 +69,26 @@ export interface VegetationStats {
   fileA_metrics: FileMetrics;
   fileB_metrics: FileMetrics;
   difference_metrics: DifferenceMetrics;
+  group_mapping: GroupMapping;
+}
+export interface GroupMapping {
+  a: string;
+  b: string;
+}
+
+export interface Histogram {
+  bin_edges: number[];
+  counts: number[];
+}
+
+export interface RegressionLine {
+  slope: number;
+  intercept: number;
+  x_min: number;
+  x_max: number;
+}
+
+export interface CorrelationMetrics {
+  pearson_correlation: number;
+  regression_line: RegressionLine;
 }

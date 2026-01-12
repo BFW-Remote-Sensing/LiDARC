@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS comparison_file (
     file_id INTEGER NOT NULL,
     bucket TEXT,
     object_key TEXT,
+    group_name TEXT,
     CONSTRAINT pk_comparison_file PRIMARY KEY (comparison_id, file_id),
     CONSTRAINT fk_comparison_id FOREIGN KEY (comparison_id) REFERENCES comparisons(id) ON DELETE CASCADE,
     CONSTRAINT fk_file_id FOREIGN KEY (file_id) REFERENCES files(id)

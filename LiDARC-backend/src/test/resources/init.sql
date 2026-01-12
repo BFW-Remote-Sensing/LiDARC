@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS comparisons (
 CREATE TABLE IF NOT EXISTS comparison_file (
                                                comparison_id BIGINT NOT NULL,
                                                file_id BIGINT NOT NULL,
+                                               group_name TEXT NOT NULL,
                                                CONSTRAINT pk_comparison_file PRIMARY KEY (comparison_id, file_id),
     CONSTRAINT fk_comparison_id FOREIGN KEY (comparison_id) REFERENCES comparisons(id)ON DELETE CASCADE,
     CONSTRAINT fk_file_id FOREIGN KEY (file_id) REFERENCES files(id)

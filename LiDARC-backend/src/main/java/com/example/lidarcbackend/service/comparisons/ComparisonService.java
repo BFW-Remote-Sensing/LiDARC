@@ -6,11 +6,7 @@ import com.example.lidarcbackend.api.metadata.MetadataMapper;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.exception.ValidationException;
-import com.example.lidarcbackend.model.DTO.BoundingBox;
-import com.example.lidarcbackend.model.DTO.MinioObjectDto;
-import com.example.lidarcbackend.model.DTO.StartChunkingJobDto;
-import com.example.lidarcbackend.model.DTO.StartComparisonJobDto;
-import com.example.lidarcbackend.model.DTO.StartPreProcessJobDto;
+import com.example.lidarcbackend.model.DTO.*;
 import com.example.lidarcbackend.model.entity.Comparison;
 import com.example.lidarcbackend.model.entity.ComparisonFile;
 import com.example.lidarcbackend.model.entity.File;
@@ -143,10 +139,28 @@ public class ComparisonService implements IComparisonService {
         ComparisonPlan fullPlan = new ComparisonPlan();
 
         if (comparisonRequest.getFolderAFiles() != null && !comparisonRequest.getFolderAFiles().isEmpty()) {
-            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderAFiles(), comparisonRequest.getGrid(), savedComparison.getId(), "A"));
+            File firstFile = fileRepository.findById(comparisonRequest.getFolderAFiles().getFirst()).orElseThrow(() ->
+                    new NotFoundException("File for comparison with id: " + comparisonRequest.getFolderAFiles().getFirst() + " not found!"));
+            //TODO test if works for file to file comparisons
+            String groupName;
+            if (firstFile.getFolder() != null) {
+                groupName = firstFile.getFolder().getName();
+            } else {
+                groupName = firstFile.getOriginalFilename();
+            }
+            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderAFiles(), comparisonRequest.getGrid(), savedComparison.getId(), groupName));
         }
         if (comparisonRequest.getFolderBFiles() != null && !comparisonRequest.getFolderBFiles().isEmpty()) {
-            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderBFiles(), comparisonRequest.getGrid(), savedComparison.getId(), "B"));
+            File firstFile = fileRepository.findById(comparisonRequest.getFolderBFiles().getFirst()).orElseThrow(() ->
+                    new NotFoundException("File for comparison with id: " + comparisonRequest.getFolderBFiles().getFirst() + " not found!"));
+            //TODO test if works for file to file comparisons
+            String groupName;
+            if (firstFile.getFolder() != null) {
+                groupName = firstFile.getFolder().getName();
+            } else {
+                groupName = firstFile.getOriginalFilename();
+            }
+            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderBFiles(), comparisonRequest.getGrid(), savedComparison.getId(), groupName));
         }
         if (fileMetadataIds != null && !fileMetadataIds.isEmpty()) {
             fullPlan.merge(processFolderGroup(fileMetadataIds, comparisonRequest.getGrid(), savedComparison.getId(), "legacy"));
@@ -208,6 +222,7 @@ public class ComparisonService implements IComparisonService {
                 ComparisonFile cf = new ComparisonFile();
                 cf.setComparisonId(comparisonId);
                 cf.setFileId(fileEntity.getId());
+                cf.setGroupName(groupName);
 
                 String uniqueJobId = String.format("c%d_%s_f%d_%s",
                         comparisonId,
@@ -350,6 +365,9 @@ public class ComparisonService implements IComparisonService {
 
         if(payload.containsKey("statistics")) {
             visualizationResult.put("statistics", payload.get("statistics"));
+        }
+        if(payload.containsKey("group_mapping")) {
+            visualizationResult.put("group_mapping", payload.get("group_mapping"));
         }
         chunkedComparisonsStorage.put(comparisonId, visualizationResult);
     }
@@ -514,8 +532,8 @@ public class ComparisonService implements IComparisonService {
 
         if (allReady) {
             log.info("Comparison {}: all preprocessing files contain bucket & objectKey. Starting comparison worker...", comparisonId);
-            List<MinioObjectDto> filesDto = comparisonFiles.stream()
-                    .map(cf -> new MinioObjectDto(cf.getBucket(), cf.getObjectKey()))
+            List<ComparisonWorkerInputFileDto> filesDto = comparisonFiles.stream()
+                    .map(cf -> new ComparisonWorkerInputFileDto(cf.getBucket(), cf.getObjectKey(), cf.getGroupName()))
                     .toList();
 
             StartComparisonJobDto dto = new StartComparisonJobDto(
