@@ -211,6 +211,149 @@ def compare_files(path_a: str, path_b: str) -> dict:
     }
     return result
 
+def calculate_comparison_statistics(merged: pd.DataFrame) -> dict:
+    valid_mask = (
+            np.isfinite(merged["veg_height_max_a"]) &
+            np.isfinite(merged["veg_height_max_b"])
+    )
+    merged = merged[valid_mask]
+    merged["delta_z"] = merged["veg_height_max_b"] - merged["veg_height_max_a"]
+    logging.debug("Calculating statistics on %d grid cells", len(merged))
+
+    # basic metrics of veg_height b
+    stats_b = {
+        "mean_veg_height": merged["veg_height_max_b"].mean(),
+        "median_veg_height": merged["veg_height_max_b"].median(),
+        "std_veg_height": merged["veg_height_max_b"].std(),
+        "min_veg_height": merged["veg_height_max_b"].min(),
+        "max_veg_height": merged["veg_height_max_b"].max(),
+        "percentiles": {
+            "p10": float(np.percentile(merged["veg_height_max_b"], 10)),
+            "p25": float(np.percentile(merged["veg_height_max_b"], 25)),
+            "p50": float(np.percentile(merged["veg_height_max_b"], 50)),
+            "p75": float(np.percentile(merged["veg_height_max_b"], 75)),
+            "p90": float(np.percentile(merged["veg_height_max_b"], 90)),
+        }
+    }
+
+    # basic metrics of veg_height b
+    stats_a = {
+        "mean_veg_height": merged["veg_height_max_a"].mean(),
+        "median_veg_height": merged["veg_height_max_a"].median(),
+        "std_veg_height": merged["veg_height_max_a"].std(),
+        "min_veg_height": merged["veg_height_max_a"].min(),
+        "max_veg_height": merged["veg_height_max_a"].max(),
+        "percentiles": {
+            "p10": float(np.percentile(merged["veg_height_max_a"], 10)),
+            "p25": float(np.percentile(merged["veg_height_max_a"], 25)),
+            "p50": float(np.percentile(merged["veg_height_max_a"], 50)),
+            "p75": float(np.percentile(merged["veg_height_max_a"], 75)),
+            "p90": float(np.percentile(merged["veg_height_max_a"], 90)),
+        }
+    }
+
+    # calculate basic statistics of the difference
+    diffs = merged["delta_z"]
+    neg = diffs[diffs <= 0]
+    pos = diffs[diffs >= 0]
+
+    stats_diff = {
+        "mean": diffs.mean(),
+        "median": diffs.median(),
+        "std": diffs.std(),
+        "most_negative": float(neg.min()) if not neg.empty else None,
+        "least_negative": float(neg.max()) if not neg.empty else None,
+        "smallest_positive": float(pos.min()) if not pos.empty else None,
+        "largest_positive": float(pos.max()) if not pos.empty else None,
+        "percentiles": {
+            "p10": float(np.percentile(diffs, 10)),
+            "p25": float(np.percentile(diffs, 25)),
+            "p50": float(np.percentile(diffs, 50)),
+            "p75": float(np.percentile(diffs, 75)),
+            "p90": float(np.percentile(diffs, 90)),
+        },
+        # TODO also calculate the slope for visualization?
+        "pearson_corr": float(merged["veg_height_max_a"].corr(merged["veg_height_max_b"]))
+    }
+
+    # TODO consider if needed (probably also histogram bins?)
+    # logging.debug("Simple Categorization:")
+    # categorization
+    # categories = pd.cut(
+    #    merged["delta_z"].abs(),
+    #    bins=[0, 2, 4, 5, np.inf],
+    #    labels=["almost equal", "slightly different", "different", "highly different"]
+    # )
+    # category_counts = categories.value_counts()
+    # logging.debug("Simple Categorization:")
+    # logging.debug(f"Category counts:\n{category_counts}")
+
+    cells = merged.apply(
+        lambda row: {
+            "x0": row["x0"],
+            "x1": row["x1"],
+            "y0": row["y0"],
+            "y1": row["y1"],
+            "veg_height_max_a": row["veg_height_max_a"],
+            "veg_height_max_b": row["veg_height_max_b"],
+            "delta_z": row["delta_z"],
+        },
+        axis=1
+    ).tolist()
+
+    result = {
+        "cells": cells,
+        "statistics": {
+            "file_a": stats_a,
+            "file_b": stats_b,
+            "difference": stats_diff
+        }
+    }
+    return result
+
+
+def build_merged_dataframe(files: list, temp_dir: str) -> pd.DataFrame:
+    cells = {}
+
+    # TODO: should not be necessary
+    def normalize_df(df: pd.DataFrame) -> pd.DataFrame:
+        max_val = df["veg_height_max"].max()
+        if max_val > 100:
+            logging.debug("Detected veg height in mm → converting to meters")
+            df["veg_height_max"] /= 1000.0
+        return df
+
+    for f in files:
+        local_path = file_handler.fetch_file(
+            {"bucket": f["bucket"], "objectKey": f["objectKey"]},
+            dest_dir = temp_dir
+        )
+        try:
+            df = pd.read_csv(local_path)
+            df = normalize_df(df)
+            group = f["groupName"]
+            for row in df.itertuples(index=False):
+                key = (row.x0, row.x1, row.y0, row.y1)
+                if key not in cells:
+                    cells[key] = {"A": None, "B": None}
+                cells[key][group] = row.veg_height_max
+        # TODO propagate errors
+        finally: os.remove(local_path)
+    rows = [
+        {
+            "x0": x0,
+            "x1": x1,
+            "y0": y0,
+            "y1": y1,
+            "veg_height_max_a": v["A"],
+            "veg_height_max_b": v["B"]
+        }
+        for (x0, x1, y0, y1), v in cells.items()
+        if v["A"] is not None and v["B"] is not None
+    ]
+    merged = pd.DataFrame(rows)
+    logging.debug("Merged into %d matched grid cells", len(merged))
+    return merged
 
 
 def process_req(ch, method, props, body):
@@ -235,25 +378,27 @@ def process_req(ch, method, props, body):
             publish_response(ch, mk_error_msg(job_id, "Comparison job is cancelled because job request is invalid", comparison_id=comparison_id))
             return
 
-        downloaded_files = []
-        for f in req["files"]:
-            try:
-                local_path = file_handler.fetch_file(
-                    {
-                        "bucket": f["bucket"],
-                        "objectKey": f["objectKey"]
-                    },
-                    dest_dir=temp_dir
-                )
-                downloaded_files.append(local_path)
 
-            except HTTPError as e:
-                logging.warning(f"Couldn't download file {f}: {e}")
-                publish_response(ch, mk_error_msg(job_id, f"Couldn't download file from MinIO", comparison_id=comparison_id))
-                return
+        #downloaded_files = []
+        #for f in req["files"]:
+        #    try:
+        #        local_path = file_handler.fetch_file(
+        #            {
+        #                "bucket": f["bucket"],
+        #                "objectKey": f["objectKey"]
+        #            },
+        #            dest_dir=temp_dir
+        #        )
+        #        downloaded_files.append(local_path)
+        #
+        #    except HTTPError as e:
+        #       logging.warning(f"Couldn't download file {f}: {e}")
+        #        publish_response(ch, mk_error_msg(job_id, f"Couldn't download file from MinIO", comparison_id=comparison_id))
+        #        return
 
 
-        comparison_result = compare_files(downloaded_files[0], downloaded_files[1])
+        merged_df = build_merged_dataframe(req["files"], temp_dir)
+        comparison_result = calculate_comparison_statistics(merged_df)
 
         destination_file = f"comparison-job-{job_id}.json"
 
