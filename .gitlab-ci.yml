@@ -12,6 +12,7 @@ deploy_prod:
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
   script:
+    - export CI=true
     - docker-compose --version
     - docker-compose -f docker-compose.yml down --volumes
     - docker system prune --volumes
