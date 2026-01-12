@@ -272,6 +272,17 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
         "counts": counts.tolist()
     }
 
+    # calculate linear regression of B vs A
+    x = merged["veg_height_max_a"]
+    y = merged["veg_height_max_b"]
+    n = len(x)
+    sum_x = np.sum(x)
+    sum_y = np.sum(y)
+    sum_xy = (x*y).sum()
+    sum_x2 = (x*x).sum()
+    slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x**2)
+    intercept = (sum_y - slope * sum_x) / n
+
     stats_diff = {
         "description": f"vegetational height of {group_b} - vegetational height of {group_a}",
         "mean": diffs.mean(),
@@ -290,7 +301,15 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
         },
         "histogram": histogram,
         # TODO also calculate the slope for visualization?
-        "pearson_corr": float(merged["veg_height_max_a"].corr(merged["veg_height_max_b"]))
+        "correlation": {
+            "pearson_correlation": float(merged["veg_height_max_a"].corr(merged["veg_height_max_b"])),
+            "regression_line": {
+                "slope": float(slope),
+                "intercept": float(intercept),
+                "x_min": float(x.min()),
+                "x_max": float(x.max()),
+            }
+        }
     }
 
 

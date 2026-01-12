@@ -33,7 +33,7 @@ export interface DifferenceMetrics {
   least_negative: number;
   smallest_positive: number;
   largest_positive: number;
-  pearson_corr: number;
+  correlation: CorrelationMetrics;
   histogram: Histogram;
 }
 
@@ -78,4 +78,16 @@ export interface GroupMapping {
 export interface Histogram {
   bin_edges: number[];
   counts: number[];
+}
+
+export interface RegressionLine {
+  slope: number;
+  intercept: number;
+  x_min: number;
+  x_max: number;
+}
+
+export interface CorrelationMetrics {
+  pearson_correlation: number;
+  regression_line: RegressionLine;
 }

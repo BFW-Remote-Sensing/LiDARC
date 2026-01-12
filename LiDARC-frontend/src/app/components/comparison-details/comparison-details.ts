@@ -143,7 +143,15 @@ export class ComparisonDetails implements OnInit {
       least_negative: 0,
       smallest_positive: 0,
       largest_positive: 0,
-      pearson_corr: 0,
+      correlation: {
+        pearson_correlation: 0,
+        regression_line: {
+          slope: 0,
+          intercept: 0,
+          x_max: 0,
+          x_min: 0,
+        }
+      },
       histogram: {
         bin_edges: [],
         counts: [],
@@ -351,34 +359,21 @@ export class ComparisonDetails implements OnInit {
 
 
   buildScatterChart():EChartsCoreOption {
-    const scatterData = this.vegetationStats().cells.map(c => [c.A, c.B]);
+    const stats = this.vegetationStats();
+    const scatterData = stats.cells.map(c => [c.A, c.B]);
 
-    // Linear regression TODO should be done in worker
-    const n = scatterData.length;
-    const sumX = scatterData.reduce((s, [x]) => s + x, 0);
-    const sumY = scatterData.reduce((s, [, y]) => s + y, 0);
-    const sumXY = scatterData.reduce((s, [x, y]) => s + x * y, 0);
-    const sumX2 = scatterData.reduce((s, [x]) => s + x * x, 0);
-    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-    const intercept = (sumY - slope * sumX) / n;
+    const regression = stats.difference_metrics.correlation?.regression_line;
+    const pearson = stats.difference_metrics.correlation?.pearson_correlation;
 
-
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-
-    for (const [x, y] of scatterData) {
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
-    }
+    const lineData =
+      regression && typeof regression.slope === 'number'
+        ? [
+          [regression.x_min, regression.slope * regression.x_min + regression.intercept],
+          [regression.x_max, regression.slope * regression.x_max + regression.intercept]
+        ]
+        : [];
 
 
-    const lineData = [
-      [minX, slope * minX + intercept],
-      [maxX, slope * maxX + intercept]
-    ];
-    const pearson = this.vegetationStats().difference_metrics.pearson_corr;
     return {
       title: {
         show: true,
