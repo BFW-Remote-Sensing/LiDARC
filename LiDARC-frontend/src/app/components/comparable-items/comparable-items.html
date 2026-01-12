@@ -13,7 +13,7 @@
       </button>
       <div class="selected-items-display">
         @for (item of selectedItemService.items; track item.id) {
-        <mat-chip-row (removed)="selectedItemService.items.delete(item)" class="chip">
+        <mat-chip-row (removed)="selectedItemService.delete(item)" class="chip">
           <div class="chip-content">
             <mat-icon class="type-icon">{{ getIconForType(item.type) }}</mat-icon>
             {{item.name}}

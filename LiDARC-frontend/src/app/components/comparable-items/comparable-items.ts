@@ -175,7 +175,7 @@ export class ComparableItems {
     if (event.checked) {
       this.selectedItemService.items.add(item);
     } else {
-      this.selectedItemService.items.delete(item);
+      this.selectedItemService.delete(item);
     }
   }
 
