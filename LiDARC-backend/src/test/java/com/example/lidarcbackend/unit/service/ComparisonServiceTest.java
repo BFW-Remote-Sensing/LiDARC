@@ -14,7 +14,7 @@ import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.repository.ComparisonFileRepository;
 import com.example.lidarcbackend.repository.ComparisonRepository;
 import com.example.lidarcbackend.repository.FileRepository;
-import com.example.lidarcbackend.service.comparisons.IComparisonService;
+import com.example.lidarcbackend.service.comparisons.ComparisonService;
 import com.example.lidarcbackend.service.files.MetadataService;
 import com.example.lidarcbackend.service.files.WorkerStartService;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,7 +31,11 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class ComparisonServiceTest {
@@ -53,7 +57,7 @@ public class ComparisonServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
     @InjectMocks
-    private IComparisonService comparisonService;
+    private ComparisonService comparisonService;
 
     private CreateComparisonRequest createRequest;
     private Comparison savedComparison;
@@ -377,16 +381,16 @@ public class ComparisonServiceTest {
         List<StartPreProcessJobDto> jobs = captureJobs();
         assertEquals(2, jobs.size());
         StartPreProcessJobDto job1 = jobs.stream()
-                .filter(j -> j.getFileId().equals(fileId1))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("Job for File 1 missing"));
+            .filter(j -> j.getFileId().equals(fileId1))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Job for File 1 missing"));
 
         assertBoundingBox(job1.getBboxes().getFirst(), 0.0, 100.0, 0.0, 100.0);
 
         StartPreProcessJobDto job2 = jobs.stream()
-                .filter(j -> j.getFileId().equals(fileId2))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("Job for File 2 missing"));
+            .filter(j -> j.getFileId().equals(fileId2))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Job for File 2 missing"));
 
         assertBoundingBox(job2.getBboxes().getFirst(), 0.0, 100.0, 0.0, 100.0);
     }
@@ -400,8 +404,8 @@ public class ComparisonServiceTest {
 
     private boolean isApprox(BoundingBox b, double xMin, double xMax, double yMin, double yMax) {
         return Math.abs(b.getxMin() - xMin) == 0 &&
-                Math.abs(b.getxMax() - xMax) == 0 &&
-                Math.abs(b.getyMin() - yMin) == 0 &&
-                Math.abs(b.getyMax() - yMax) == 0;
+            Math.abs(b.getxMax() - xMax) == 0 &&
+            Math.abs(b.getyMin() - yMin) == 0 &&
+            Math.abs(b.getyMax() - yMax) == 0;
     }
 }
