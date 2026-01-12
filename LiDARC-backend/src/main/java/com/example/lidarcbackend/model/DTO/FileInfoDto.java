@@ -14,69 +14,66 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @Builder
 public class FileInfoDto {
 
-  @JsonProperty("fileName")
-  @NonNull
-  @FileNameValid
-  private String fileName;
+	@JsonProperty("fileName")
+	@NonNull
+	@FileNameValid
+	private String fileName;
 
-  @JsonProperty("originalFileName")
-  private String originalFileName;
+	@JsonProperty("originalFileName")
+	private String originalFileName;
 
-  @JsonProperty("presignedURL")
-  private String presignedURL;
+	@JsonProperty("presignedURL")
+	private String presignedURL;
 
-  @JsonProperty("uploaded")
-  private Boolean uploaded;
+	@JsonProperty("uploaded")
+	private Boolean uploaded;
 
-  @JsonProperty("urlExpiresAt")
-  private Instant urlExpiresAt;
+	@JsonProperty("urlExpiresAt")
+	private Instant urlExpiresAt;
 
-  @JsonProperty("folderId")
-  private Long folderId;
+	@JsonProperty("folderId")
+  private Long folderId;public FileInfoDto() {
+	}
 
-
-  public FileInfoDto() {
+	public FileInfoDto(File file) {
+		this.fileName = file.getFilename();
+		this.presignedURL = null;
+		this.uploaded = file.getUploaded();
+		this.urlExpiresAt = null;
+		this.originalFileName = file.getOriginalFilename();
+	this.folderId = file.getFolder() != null ? file.getFolder().getId() : null;
   }
 
-  public FileInfoDto(File file) {
-    this.fileName = file.getFilename();
-    this.presignedURL = null;
-    this.uploaded = file.getUploaded();
-    this.urlExpiresAt = null;
-    this.originalFileName = file.getOriginalFilename();
-    this.folderId = file.getFolder() != null ? file.getFolder().getId() : null;
-  }
+	public FileInfoDto(String fileName) {
+		this.fileName = fileName;
+	}
 
-  public FileInfoDto(String fileName) {
-    this.fileName = fileName;
-  }
+	FileInfoDto(String fileName, String presignedURL) {
+		this.fileName = fileName;
+		this.presignedURL = presignedURL;
+	}
 
-  FileInfoDto(String fileName, String presignedURL) {
-    this.fileName = fileName;
-    this.presignedURL = presignedURL;
-  }
-
-  FileInfoDto(String fileName, String presignedURL, Boolean uploaded) {
-    this.fileName = fileName;
-    this.presignedURL = presignedURL;
-    this.uploaded = uploaded;
-  }
+	FileInfoDto(String fileName, String presignedURL, Boolean uploaded) {
+		this.fileName = fileName;
+		this.presignedURL = presignedURL;
+		this.uploaded = uploaded;
+	}
 
 
-  public FileInfoDto(String fileName, String presignedURL, Boolean uploaded, Instant urlExpiresAt) {
-    this.fileName = fileName;
-    this.presignedURL = presignedURL;
-    this.uploaded = uploaded;
-    this.urlExpiresAt = urlExpiresAt;
-  }
+	public FileInfoDto(String fileName, String presignedURL, Boolean uploaded, Instant urlExpiresAt) {
+		this.fileName = fileName;
+		this.presignedURL = presignedURL;
+		this.uploaded = uploaded;
+		this.urlExpiresAt = urlExpiresAt;
+	}
 
-  FileInfoDto(String fileName, String originalFileName, String presignedURL, Boolean uploaded, Instant urlExpiresAt) {
-    this.fileName = fileName;
-    this.presignedURL = presignedURL;
-    this.uploaded = uploaded;
-    this.urlExpiresAt = urlExpiresAt;
-    this.originalFileName = originalFileName;
-  }
+	FileInfoDto(String fileName, String originalFileName, String presignedURL, Boolean uploaded, Instant urlExpiresAt) {
+		this.fileName = fileName;
+		this.presignedURL = presignedURL;
+		this.uploaded = uploaded;
+		this.urlExpiresAt = urlExpiresAt;
+		this.originalFileName = originalFileName;
+	}
 
   FileInfoDto(String fileName, String originalFileName, String presignedURL, Boolean uploaded, Instant urlExpiresAt, Long folderId) {
     this.fileName = fileName;

@@ -21,7 +21,7 @@ import com.example.lidarcbackend.repository.UrlRepository;
 @Primary
 @Service
 public class TestPresignedUrlService extends PresignedUrlService {
-  public TestPresignedUrlService(MinioAsyncClient minioClient, MinioProperties minioProperties, UrlRepository urlRepository, FileRepository fileRepository, FolderRepository folderRepository, WorkerStartService workerStartService, UrlMapper urlMapper) {
+ public TestPresignedUrlService(MinioAsyncClient minioClient, MinioProperties minioProperties, UrlRepository urlRepository, FileRepository fileRepository, FolderRepository folderRepository, WorkerStartService workerStartService, UrlMapper urlMapper) {
     super(minioClient, minioProperties, urlRepository, fileRepository, folderRepository, workerStartService, urlMapper);
   }
 

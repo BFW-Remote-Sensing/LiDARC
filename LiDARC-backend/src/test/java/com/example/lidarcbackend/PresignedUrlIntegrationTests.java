@@ -1,9 +1,22 @@
 package com.example.lidarcbackend;
 
+import com.example.lidarcbackend.configuration.MinioProperties;
+import com.example.lidarcbackend.model.DTO.FileInfoDto;
+import com.example.lidarcbackend.model.DTO.Mapper.impl.UrlMapperImpl;
+import com.example.lidarcbackend.model.entity.File;
+import com.example.lidarcbackend.model.entity.Url;
+import com.example.lidarcbackend.service.files.PresignedUrlService;
+import com.example.lidarcbackend.service.files.WorkerStartService;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioAsyncClient;
 import io.minio.errors.MinioException;
 import io.minio.http.Method;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
