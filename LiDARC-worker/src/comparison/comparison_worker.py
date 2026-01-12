@@ -211,6 +211,17 @@ def compare_files(path_a: str, path_b: str) -> dict:
     }
     return result
 
+def round_floats(obj, ndigits=2):
+    if isinstance(obj, float):
+        return round(obj, ndigits)
+    if isinstance(obj, (np.floating,)):
+        return round(float(obj), ndigits)
+    if isinstance(obj, dict):
+        return {k: round_floats(v, ndigits) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [round_floats(v, ndigits) for v in obj]
+    return obj
+
 def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b: str) -> dict:
     valid_mask = (
             np.isfinite(merged["veg_height_max_a"]) &
@@ -341,7 +352,7 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
             "difference": stats_diff
         }
     }
-    return result
+    return round_floats(result)
 
 
 def build_merged_dataframe(
