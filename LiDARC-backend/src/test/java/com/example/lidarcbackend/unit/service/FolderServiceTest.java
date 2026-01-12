@@ -62,10 +62,12 @@ public class FolderServiceTest {
   void folderUploaded_returns_mapped_folder() {
     StatusOfUploadedFolderDto input = new StatusOfUploadedFolderDto(5L, "UPLOADED");
     Folder folder = Folder.builder().id(5L).name("f").status("s").build();
-    UploadedFolderDto dto = new UploadedFolderDto("f", 5L, "s", List.of());
+    Folder savedFolder = Folder.builder().id(5L).name("f").status("UPLOADED").build();
+    UploadedFolderDto dto = new UploadedFolderDto("f", 5L, "UPLOADED", List.of());
 
     when(folderRepository.findById(5L)).thenReturn(Optional.of(folder));
-    when(folderMapper.folderToDto(folder)).thenReturn(dto);
+    when(folderRepository.save(any(Folder.class))).thenReturn(savedFolder);
+    when(folderMapper.folderToDto(savedFolder)).thenReturn(dto);
 
     UploadedFolderDto result = folderService.folderUploaded(input);
 

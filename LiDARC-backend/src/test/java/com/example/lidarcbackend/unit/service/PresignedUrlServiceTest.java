@@ -40,17 +40,15 @@ import com.example.lidarcbackend.repository.UrlRepository;
 import com.example.lidarcbackend.service.files.PresignedUrlService;
 import com.example.lidarcbackend.service.files.WorkerStartService;
 
-
 @ExtendWith(MockitoExtension.class)
 public class PresignedUrlServiceTest {
   @Mock
   private FileRepository fileRepository;
 
   @Mock
-  private UrlRepository urlRepository;
-
-  @Mock
   private FolderRepository folderRepository;
+  @Mock
+  private UrlRepository urlRepository;
 
 
   @Mock
@@ -96,34 +94,6 @@ public class PresignedUrlServiceTest {
 
 
   @Test
-  void fetchFileInfo_generates_and_saves_url_when_none_found() throws Exception {
-    // arrange
-    String filename = "file2";
-    when(urlRepository.findByFile_Filename_AndMethod_AndExpiresAtAfter(eq(filename), eq(Method.GET), any(Instant.class)))
-        .thenReturn(Collections.emptyList());
-    when(minioProperties.getDefaultExpiryTime()).thenReturn(3600);
-    when(minioProperties.getBucket()).thenReturn("bucket");
-    when(minioClient.getPresignedObjectUrl(any())).thenReturn("http://generated");
-    File file = new File();
-    file.setId(1L);
-    file.setFilename("file");
-    when(fileRepository.findFileByFilenameAndUploaded(eq(filename), eq(true))).thenReturn(Optional.of(file));
-    // capture saved Url
-    when(urlRepository.save(any(Url.class))).thenAnswer(invocation -> invocation.getArgument(0));
-    when(urlMapper.urlToFileInfoDto(any(Url.class))).thenAnswer(invocation -> {
-      Url u = invocation.getArgument(0);
-      return new FileInfoDto(u.getFile().getFilename(), u.getPresignedURL(), true, u.getExpiresAt());
-    });
-    // act
-    Optional<FileInfoDto> res = presignedUrlService.fetchFileInfo(filename, "orig");
-
-    // assert
-    assertThat(res).isPresent();
-    verify(urlRepository).save(any(Url.class));
-  }
-
-
-  @Test
   void fetchUploadUrl_returns_empty_when_file_already_uploaded() throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
     // arrange
     String filename = "file3";
@@ -138,9 +108,36 @@ public class PresignedUrlServiceTest {
 
     // assert
     assertThat(res).isEmpty();
-    verify(minioClient, never()).getPresignedObjectUrl(any());
+    verify(urlRepository, never()).save(any(Url.class));
   }
 
+  @Test
+  void fetchFileInfo_generates_and_saves_url_when_none_found() throws Exception {
+    // arrange
+    String filename = "file2";
+    when(urlRepository.findByFile_Filename_AndMethod_AndExpiresAtAfter(eq(filename), eq(Method.GET), any(Instant.class)))
+        .thenReturn(Collections.emptyList());
+    when(minioProperties.getDefaultExpiryTime()).thenReturn(3600);
+    when(minioProperties.getBucket()).thenReturn("bucket");
+    when(minioClient.getPresignedObjectUrl(any())).thenReturn("http://generated");
+    File file = new File();
+    file.setId(1L);
+    file.setFilename(filename);
+    when(fileRepository.findFileByFilenameAndUploaded(eq(filename), eq(true))).thenReturn(Optional.of(file));
+    // capture saved Url
+    when(urlRepository.save(any(Url.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(urlMapper.urlToFileInfoDto(any(Url.class))).thenAnswer(invocation -> {
+      Url u = invocation.getArgument(0);
+      return new FileInfoDto(u.getFile().getFilename(), u.getPresignedURL(), true, u.getExpiresAt());
+    });
+    // act
+    Optional<FileInfoDto> res = presignedUrlService.fetchFileInfo(filename, "orig");
+
+    // assert
+    assertThat(res).isPresent();
+    assertThat(res.get().getPresignedURL()).isEqualTo("http://generated");
+    verify(minioClient).getPresignedObjectUrl(any());
+  }
 
   @Test
   void uploadFinished_succeeds_and_deletes_upload_urls() throws Exception {
@@ -172,12 +169,14 @@ public class PresignedUrlServiceTest {
     verify(workerStartService).startMetadataJob(any());
   }
 
+
   @Test
   void fetchUploadUrl_saves_file_with_folder_when_folderId_provided() throws Exception {
     String filename = "file-folder";
     Long folderId = 9L;
     Folder folder = new Folder();
     folder.setId(folderId);
+    folder.setFiles(new java.util.ArrayList<>());
 
     when(minioProperties.getDefaultExpiryTime()).thenReturn(3600);
     when(minioProperties.getBucket()).thenReturn("bucket");
