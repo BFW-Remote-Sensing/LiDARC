@@ -568,13 +568,11 @@ public class ComparisonService implements IComparisonService {
     }
 
     private void checkIfPreprocessingDoneAndStartComparison(Long comparisonId, String jobId) {
-        List<ComparisonFile> comparisonFiles = comparisonFileRepository.findAllByComparisonId(comparisonId.intValue());
 
-        boolean allReady = comparisonFiles.stream()
-                .filter(ComparisonFile::getIncluded) // only included files matter
-                .allMatch(cf -> cf.getBucket() != null && cf.getObjectKey() != null);
+        boolean allReady = comparisonFileRepository.areAllIncludedFilesReady(comparisonId);
 
         if (allReady) {
+            List<ComparisonFile> comparisonFiles = comparisonFileRepository.findAllByComparisonIdAndIncludedTrue(comparisonId);
             log.info("Comparison {}: all preprocessing files contain bucket & objectKey. Starting comparison worker...", comparisonId);
             List<MinioObjectDto> filesDto = comparisonFiles.stream()
                     .map(cf -> new MinioObjectDto(cf.getBucket(), cf.getObjectKey()))

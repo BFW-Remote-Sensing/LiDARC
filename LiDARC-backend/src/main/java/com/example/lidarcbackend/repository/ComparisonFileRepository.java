@@ -18,6 +18,15 @@ public interface ComparisonFileRepository extends JpaRepository<ComparisonFile, 
     @Query("SELECT cf.fileId FROM ComparisonFile cf WHERE cf.comparisonId = :comparisonId")
     List<Long> getComparisonFilesByComparisonId(Long comparisonId);
 
-    @Query("SELECT cf FROM ComparisonFile cf WHERE cf.comparisonId = :comparisonId")
-    List<ComparisonFile> findAllByComparisonId(@Param("comparisonId") int comparisonId);
+    List<ComparisonFile> findAllByComparisonIdAndIncludedTrue(Long comparisonId);
+
+    @Query("""
+        SELECT CASE WHEN COUNT(cf) = 0 THEN true ELSE false END 
+        FROM ComparisonFile cf 
+        WHERE cf.comparisonId = :comparisonId 
+        AND cf.included = true 
+        AND (cf.bucket IS NULL OR cf.objectKey IS NULL)
+    """)
+    boolean areAllIncludedFilesReady(@Param("comparisonId") Long comparisonId);
+
 }
