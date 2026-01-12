@@ -375,7 +375,6 @@ export class ComparisonDetails implements OnInit {
         ]
         : [];
 
-
     return {
       title: {
         show: true,
@@ -427,17 +426,25 @@ export class ComparisonDetails implements OnInit {
     const fileB_metrics = stats.fileB_metrics;
 
     // Helper function: PDF of normal distribution
-    const normalPDF = (x: number, mean: number, std: number) =>
-      (1 / (std * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / std, 2));
+    const normalPDF = (x: number, mean: number, std: number) => {
+        const s = Math.max(std, 1e-6);
+        return (1/(s * Math.sqrt(2*Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / s, 2));
+    }
 
     // Define the range of x (min to max of both files)
-    const minX = Math.floor(Math.min(fileA_metrics.min_veg_height, fileB_metrics.min_veg_height) - 5);
-    const maxX = Math.ceil(Math.max(fileA_metrics.max_veg_height, fileB_metrics.max_veg_height) + 10);
+    const minX = Math.min(
+      fileA_metrics.mean_veg_height - 4 * fileA_metrics.std_veg_height,
+      fileB_metrics.mean_veg_height - 4 * fileB_metrics.std_veg_height
+    );
+    const maxX = Math.max(
+      fileA_metrics.mean_veg_height + 4 * fileA_metrics.std_veg_height,
+      fileB_metrics.mean_veg_height + 4 * fileB_metrics.std_veg_height
+    );
 
 
-    const step = (maxX - minX) / 100;
-    const xValues = [];
-    for (let x = minX; x <= maxX; x += step) xValues.push(x);
+    const steps = 200;
+    const step = (maxX - minX) / steps;
+    const xValues = Array.from({length: steps+1}, (_,i) => minX + i * step);
 
     // Compute y-values for both distributions
     const fileA_Y = xValues.map(x => normalPDF(x, fileA_metrics.mean_veg_height, fileA_metrics.std_veg_height));
@@ -488,75 +495,45 @@ export class ComparisonDetails implements OnInit {
   }
 
   private buildDifferenceDistributionChart(): EChartsCoreOption {
-    const cells = this.vegetationStats().cells;
+    const diff = this.vegetationStats().difference_metrics;
+    const mean = diff.mean;
+    const std = Math.max(diff.std, 1e-6);
 
-// --- 1) Mean & Std in einem stabilen Durchlauf (Welford) ---
-    let n = 0;
-    let mean = 0;
-    let m2 = 0;
+    const normalPDF = (x: number) => (1 / (std * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / std, 2));
 
-    let minDiff = Infinity;
-    let maxDiff = -Infinity;
+    const minX = mean - 4 * std;
+    const maxX = mean + 4 * std;
 
-    for (const c of cells) {
-      const d = c.B - c.A;
-      n++;
+    const steps = 200;
+    const step = (maxX - minX) / steps;
+    const xValues = Array.from({ length: steps + 1 }, (_, i) => minX + i * step);
 
-      // Welford online algorithm
-      const delta = d - mean;
-      mean += delta / n;
-      const delta2 = d - mean;
-      m2 += delta * delta2;
+    const yValues = xValues.map(x => normalPDF(x));
 
-      if (d < minDiff) minDiff = d;
-      if (d > maxDiff) maxDiff = d;
-    }
-
-    const variance = n > 0 ? m2 / n : 0;
-    const std = variance > 0 ? Math.sqrt(variance) : 0;
-
-// --- 2) PDF (robust gegen std=0) ---
-    const normalPDF = (x: number) => {
-      if (std <= 0) return 0;
-      const z = (x - mean) / std;
-      return (1 / (std * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * z * z);
-    };
-
-// --- 3) X-Range ohne Spread ---
-    const minX = Math.floor(minDiff - 1);
-    const maxX = Math.ceil(maxDiff + 17);
-
-// --- 4) Feste Sample-Anzahl (kein explodierendes Array) ---
-    const SAMPLES = 101;
-    const span = maxX - minX;
-    const step = span > 0 ? span / (SAMPLES - 1) : 1;
-
-    const xValues: number[] = new Array(SAMPLES);
-    const yValues: number[] = new Array(SAMPLES);
-
-    let maxY = 0;
-
-    for (let i = 0; i < SAMPLES; i++) {
-      const x = minX + i * step;
-      const y = normalPDF(x);
-
-      xValues[i] = x;
-      yValues[i] = y;
-
-      if (y > maxY) maxY = y;
-    }
-
-    maxY *= 1.1; // small margin for visibility
+    const maxY = Math.max(...yValues) * 1.1;
 
     return {
       title: {
-        text: 'Distribution of Differences (B - A)',
+        text: 'Distribution of Differences (B − A)',
         left: 'center',
         top: 0,
       },
-      tooltip: { trigger: 'axis', confine: true },
-      xAxis: { type: 'value', name: 'Difference' },
-      yAxis: { type: 'value', name: 'Density' },
+      tooltip: {
+        trigger: 'axis',
+        confine: true
+      },
+      legend: {
+        top: 20,
+        left: 'center',
+      },
+      xAxis: {
+        type: 'value',
+        name: 'Vegetation Height Difference'
+      },
+      yAxis: {
+        type: 'value',
+        name: 'Density'
+      },
       series: [
         {
           name: 'Difference PDF',
@@ -570,28 +547,27 @@ export class ComparisonDetails implements OnInit {
           name: 'Mean',
           type: 'line',
           data: [[mean, 0], [mean, maxY]],
-          lineStyle: { type: 'dashed', color: 'purple', width: 2 },
-          showSymbol: false
+          lineStyle: { type: 'dashed', width: 2 },
+          showSymbol: false,
+          tooltip: { show: false }
         },
         {
           name: '+2σ',
           type: 'line',
           data: [[mean + 2 * std, 0], [mean + 2 * std, maxY]],
-          lineStyle: { type: 'dashed', color: 'orange', width: 2 },
-          showSymbol: false
+          lineStyle: { type: 'dashed' },
+          showSymbol: false,
+          tooltip: { show: false }
         },
         {
           name: '-2σ',
           type: 'line',
           data: [[mean - 2 * std, 0], [mean - 2 * std, maxY]],
-          lineStyle: { type: 'dashed', color: 'red', width: 2 },
-          showSymbol: false
+          lineStyle: { type: 'dashed' },
+          showSymbol: false,
+          tooltip: { show: false }
         }
-      ],
-      legend: {
-        data: ['Difference PDF', 'Mean', '+2σ', '-2σ'],
-        bottom: 0
-      }
+      ]
     };
   }
 
