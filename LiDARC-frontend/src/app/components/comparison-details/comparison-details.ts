@@ -144,6 +144,10 @@ export class ComparisonDetails implements OnInit {
       smallest_positive: 0,
       largest_positive: 0,
       pearson_corr: 0,
+      histogram: {
+        bin_edges: [],
+        counts: [],
+      }
     },
     group_mapping: {
       a: "unknown",
@@ -595,69 +599,19 @@ export class ComparisonDetails implements OnInit {
   }
 
   private buildDifferenceHistogramChart():EChartsCoreOption {
-    // const differences = this.vegetationStats().cells.map(c => c.B - c.A);
-    // //TODO if histogram wanted --> calculate bins in worker
-    // // Histogram parameters
-    // const bins = 10;
-    // const minX = Math.min(...differences);
-    // const maxX = Math.max(...differences);
-    // const binWidth = (maxX - minX) / bins;
-    //
-    // // Compute counts per bin
-    // const counts = new Array(bins).fill(0);
-    // differences.forEach(d => {
-    //   let idx = Math.floor((d - minX) / binWidth);
-    //   if (idx >= bins) idx = bins - 1;
-    //   counts[idx]++;
-    // });
-    //
-    // // X-axis labels: bin ranges as strings
-    // const binLabels = [];
-    // for (let i = 0; i < bins; i++) {
-    //   const start = (minX + i * binWidth).toFixed(2);
-    //   const end = (minX + (i + 1) * binWidth).toFixed(2);
-    //   binLabels.push(`${start} - ${end}`);
-    // }
-    const cells = this.vegetationStats().cells;
+    const histogram = this.vegetationStats().difference_metrics.histogram;
 
-// --- 1) Min / Max + Histogram in einem kontrollierten Ablauf ---
-    const BINS = 10;
-
-    let minX = Infinity;
-    let maxX = -Infinity;
-
-    for (const c of cells) {
-      const d = c.B - c.A;
-      if (d < minX) minX = d;
-      if (d > maxX) maxX = d;
+    if (!histogram) {
+      console.warn('No hisogram data available')
+      return {};
     }
 
-// Schutz gegen leere / konstante Daten
-    if (!Number.isFinite(minX) || !Number.isFinite(maxX) || minX === maxX) {
-      minX = minX || 0;
-      maxX = minX + 1;
-    }
+    const binEdges = histogram.bin_edges;
+    const counts = histogram.counts;
 
-    const binWidth = (maxX - minX) / BINS;
-
-// --- 2) Counts ---
-    const counts = new Array(BINS).fill(0);
-
-    for (const c of cells) {
-      const d = c.B - c.A;
-      let idx = Math.floor((d - minX) / binWidth);
-      if (idx < 0) idx = 0;
-      if (idx >= BINS) idx = BINS - 1;
-      counts[idx]++;
-    }
-
-// --- 3) Labels  ---
-    const binLabels: string[] = new Array(BINS);
-
-    for (let i = 0; i < BINS; i++) {
-      const start = minX + i * binWidth;
-      const end = start + binWidth;
-      binLabels[i] = `${start.toFixed(2)} – ${end.toFixed(2)}`;
+    const binLabels: string[] = [];
+    for (let i = 0; i < binEdges.length - 1; i++) {
+      binLabels.push(`${binEdges[i].toFixed(2)} – ${binEdges[i + 1].toFixed(2)}`);
     }
 
     return {
@@ -696,80 +650,6 @@ export class ComparisonDetails implements OnInit {
       ]
     };
   }
-
-  /*
-  private
-
-  buildCategoryBarChart()
-    :
-    EChartsCoreOption {
-    //TODO check if needed: if yes calculate in worker
-    const categorized = this.vegetationStats.categorized;
-    const categories = Object.keys(categorized);
-    const counts = Object.values(categorized);
-
-    return {
-      title: {
-        text: 'Counts per Category',
-        left: 'center',
-        top: 0,
-      },
-      tooltip: {
-        trigger: 'axis',
-        confine: true,
-        formatter: (params: any) => {
-          const p = params[0];
-          return `${p.axisValue}<br>Count: ${p.data}`;
-        }
-      },
-      graphic: {
-        show: true,
-        type: 'group',
-        right: 10,
-        top: 50,
-        children: [
-          {
-            type: 'text',
-            style: {
-              text:
-                'Category Ranges:\n' +
-                '• almost equal:          0–2\n' +
-                '• slightly different:    2–4\n' +
-                '• different:             4–5\n' +
-                '• highly different:      >5',
-              fontSize: 12,
-              fontFamily: 'Arial',
-              fill: '#444',
-              lineHeight: 18,
-              align: 'center'
-            }
-          }
-        ]
-      },
-      xAxis: {
-        type: 'category',
-        name: 'Category',
-        data: categories,
-        axisLabel: {rotate: 30}
-      },
-      yAxis: {
-        type: 'value',
-        name: 'Count'
-      },
-      series: [
-        {
-          name: 'Count',
-          type: 'bar',
-          data: counts,
-          itemStyle: {color: 'orange'},
-          barGap: 0,
-          barCategoryGap: '50%'
-        }
-      ]
-    };
-  }
-
-   */
 
   private buildBoxplotChart():EChartsCoreOption {
     const stats = this.vegetationStats();

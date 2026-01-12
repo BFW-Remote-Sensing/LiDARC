@@ -257,6 +257,21 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
     neg = diffs[diffs <= 0]
     pos = diffs[diffs >= 0]
 
+    # calculate histogram of difference
+    bins = 10
+    min_diff = diffs.min()
+    max_diff = diffs.max()
+    if min_diff == max_diff:
+        min_diff -= 0.5
+        max_diff += 0.5
+    q_low, q_high = np.percentile(diffs, [1, 99])
+    bin_edges = np.linspace(q_low, q_high, bins + 1)
+    counts, _ = np.histogram(diffs, bins=bin_edges)
+    histogram = {
+        "bin_edges": bin_edges.tolist(),
+        "counts": counts.tolist()
+    }
+
     stats_diff = {
         "description": f"vegetational height of {group_b} - vegetational height of {group_a}",
         "mean": diffs.mean(),
@@ -273,21 +288,12 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
             "p75": float(np.percentile(diffs, 75)),
             "p90": float(np.percentile(diffs, 90)),
         },
+        "histogram": histogram,
         # TODO also calculate the slope for visualization?
         "pearson_corr": float(merged["veg_height_max_a"].corr(merged["veg_height_max_b"]))
     }
 
-    # TODO consider if needed (probably also histogram bins?)
-    # logging.debug("Simple Categorization:")
-    # categorization
-    # categories = pd.cut(
-    #    merged["delta_z"].abs(),
-    #    bins=[0, 2, 4, 5, np.inf],
-    #    labels=["almost equal", "slightly different", "different", "highly different"]
-    # )
-    # category_counts = categories.value_counts()
-    # logging.debug("Simple Categorization:")
-    # logging.debug(f"Category counts:\n{category_counts}")
+
 
     cells = merged.apply(
         lambda row: {

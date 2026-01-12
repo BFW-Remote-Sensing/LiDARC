@@ -34,6 +34,7 @@ export interface DifferenceMetrics {
   smallest_positive: number;
   largest_positive: number;
   pearson_corr: number;
+  histogram: Histogram;
 }
 
 export interface CategorizedCounts {
@@ -72,4 +73,9 @@ export interface VegetationStats {
 export interface GroupMapping {
   a: string;
   b: string;
+}
+
+export interface Histogram {
+  bin_edges: number[];
+  counts: number[];
 }
