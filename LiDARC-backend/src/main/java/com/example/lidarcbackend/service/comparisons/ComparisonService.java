@@ -218,9 +218,7 @@ public class ComparisonService implements IComparisonService {
         //TODO: Order by newer dates so newer file is higher prio
         //TODO: Which dates? Upload or capture year?
         List<BoundingBox> restrictedZones = new ArrayList<>();
-        int breakIndex = 0;
-        for (int i = 0; i < files.size(); i++) {
-            File fileEntity = files.get(i);
+        for (File fileEntity : files) {
             BoundingBox rawBox = new BoundingBox(fileEntity.getMinX(), fileEntity.getMaxX(), fileEntity.getMinY(), fileEntity.getMaxY());
             BoundingBox snappedBox = snapToGrid(rawBox, grid);
 
@@ -229,16 +227,12 @@ public class ComparisonService implements IComparisonService {
 
             for (BoundingBox restrictedZone : restrictedZones) {
                 validRegions = subtractRectangleFromList(validRegions, restrictedZone);
-                if (validRegions.isEmpty()) {
-                    breakIndex = i;
-                    break;
-                }
+                if (validRegions.isEmpty()) break;
             }
 
             ComparisonFile cf = new ComparisonFile();
             cf.setComparisonId(comparisonId);
             cf.setFileId(fileEntity.getId());
-            cf.setIncluded(false);
 
             if (!validRegions.isEmpty()) {
                 cf.setIncluded(true);
@@ -248,7 +242,7 @@ public class ComparisonService implements IComparisonService {
                         fileEntity.getId(),
                         UUID.randomUUID().toString().substring(0, 8)
                 );
-                StartPreProcessJobDto startPreProcessJobDto = StartPreProcessJobDto.builder()
+                StartPreProcessJobDto jobDto = StartPreProcessJobDto.builder()
                         .jobId(uniqueJobId)
                         .grid(grid)
                         .bboxes(validRegions)
@@ -256,22 +250,16 @@ public class ComparisonService implements IComparisonService {
                         .file(new MinioObjectDto("basebucket", fileEntity.getFilename()))
                         .fileId(fileEntity.getId())
                         .build();
-                plan.addIncludedFile(cf, startPreProcessJobDto);
+                plan.addIncludedFile(cf, jobDto);
+
                 restrictedZones.add(snappedBox);
             } else {
+                cf.setIncluded(false);
                 plan.addExcludedFile(cf);
             }
             //TODO: Handle traceability in BE
             //TODO: Check if this is reliable
             //TODO: file1 , file2, file3, ...
-        }
-        for (int i = breakIndex; i < files.size(); i++) {
-            File fileEntity = files.get(i);
-            ComparisonFile cf = new ComparisonFile();
-            cf.setComparisonId(comparisonId);
-            cf.setFileId(fileEntity.getId());
-            cf.setIncluded(false);
-            plan.addExcludedFile(cf);
         }
         return plan;
     }
@@ -386,6 +374,8 @@ public class ComparisonService implements IComparisonService {
 
         chunkedComparisonsStorage.remove(dto.getId());
 
+
+        // TODO Check bucket and object already exist for comparison, else worker throws error and stops
         String bucketName = dto.getResultBucket();
         String objectKey = dto.getResultObjectKey();
         StartChunkingJobDto chunkingJobDto = new StartChunkingJobDto(comparisonId, chunkingSize, new MinioObjectDto(bucketName, objectKey));
