@@ -233,7 +233,8 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
             "p50": float(np.percentile(merged["veg_height_max_b"], 50)),
             "p75": float(np.percentile(merged["veg_height_max_b"], 75)),
             "p90": float(np.percentile(merged["veg_height_max_b"], 90)),
-        }
+        },
+        "mean_points_per_grid_cell": float(merged["count_b"].mean())
     }
 
     # basic metrics of veg_height b
@@ -249,7 +250,8 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
             "p50": float(np.percentile(merged["veg_height_max_a"], 50)),
             "p75": float(np.percentile(merged["veg_height_max_a"], 75)),
             "p90": float(np.percentile(merged["veg_height_max_a"], 90)),
-        }
+        },
+        "mean_points_per_grid_cell": float(merged["count_a"].mean())
     }
 
     # calculate basic statistics of the difference
@@ -385,6 +387,11 @@ def build_merged_dataframe(
                     cells[key] = {"a": None, "b": None}
 
                 cells[key][slot] = row.veg_height_max
+                if slot == "a":
+                    cells[key]["count_a"] = getattr(row, "count", 0)
+                if slot == "b":
+                    cells[key]["count_b"] = getattr(row, "count", 0)
+
 
         finally:
             os.remove(local_path)
@@ -399,6 +406,8 @@ def build_merged_dataframe(
                 "y1": y1,
                 "veg_height_max_a": values["a"],
                 "veg_height_max_b": values["b"],
+                "count_a": values.get("count_a", 0),
+                "count_b": values.get("count_b", 0),
             })
 
     merged = pd.DataFrame(rows)

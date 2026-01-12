@@ -23,6 +23,7 @@ export interface FileMetrics {
   min_veg_height: number;
   max_veg_height: number;
   percentiles: Percentiles;
+  mean_points_per_grid_cell: number;
 }
 
 export interface DifferenceMetrics {

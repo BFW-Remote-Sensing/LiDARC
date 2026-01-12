@@ -125,7 +125,8 @@ export class ComparisonDetails implements OnInit {
       mean_veg_height: 0,
       std_veg_height: 0,
       median_veg_height: 0,
-      percentiles: {p10: 0, p25: 0, p50: 0, p75: 0, p90: 0}
+      percentiles: {p10: 0, p25: 0, p50: 0, p75: 0, p90: 0},
+      mean_points_per_grid_cell: 0
     },
     fileB_metrics: {
       min_veg_height: 0,
@@ -133,7 +134,8 @@ export class ComparisonDetails implements OnInit {
       mean_veg_height: 0,
       std_veg_height: 0,
       median_veg_height: 0,
-      percentiles: {p10: 0, p25: 0, p50: 0, p75: 0, p90: 0}
+      percentiles: {p10: 0, p25: 0, p50: 0, p75: 0, p90: 0},
+      mean_points_per_grid_cell: 0
     },
     difference_metrics: {
       mean: 0,
