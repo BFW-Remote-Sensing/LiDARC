@@ -78,10 +78,19 @@ CREATE TABLE IF NOT EXISTS comparison_file (
     file_id INTEGER NOT NULL,
     bucket TEXT,
     object_key TEXT,
+    included BOOLEAN DEFAULT FALSE,
     group_name TEXT,
     CONSTRAINT pk_comparison_file PRIMARY KEY (comparison_id, file_id),
     CONSTRAINT fk_comparison_id FOREIGN KEY (comparison_id) REFERENCES comparisons(id) ON DELETE CASCADE,
     CONSTRAINT fk_file_id FOREIGN KEY (file_id) REFERENCES files(id)
+);
+
+CREATE TABLE IF NOT EXISTS comparison_folder (
+    comparison_id INTEGER NOT NULL,
+    folder_id INTEGER NOT NULL,
+    CONSTRAINT pk_comparison_folder PRIMARY KEY (comparison_id, folder_id),
+    CONSTRAINT fk_comparison_id FOREIGN KEY (comparison_id) REFERENCES comparisons(id) ON DELETE CASCADE,
+    CONSTRAINT fk_folder_id FOREIGN KEY (folder_id) REFERENCES folders(id)
 );
 
 CREATE TABLE IF NOT EXISTS reports (

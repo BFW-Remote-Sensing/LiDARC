@@ -2,18 +2,14 @@ package com.example.lidarcbackend.service.comparisons;
 
 import com.example.lidarcbackend.api.comparison.ComparisonMapper;
 import com.example.lidarcbackend.api.comparison.dtos.*;
+import com.example.lidarcbackend.api.folder.dtos.FolderDTO;
 import com.example.lidarcbackend.api.metadata.MetadataMapper;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.exception.ValidationException;
 import com.example.lidarcbackend.model.DTO.*;
-import com.example.lidarcbackend.model.entity.Comparison;
-import com.example.lidarcbackend.model.entity.ComparisonFile;
-import com.example.lidarcbackend.model.entity.File;
-import com.example.lidarcbackend.repository.ComparisonFileRepository;
-import com.example.lidarcbackend.repository.ComparisonRepository;
-import com.example.lidarcbackend.repository.FileRepository;
-import com.example.lidarcbackend.repository.ReportRepository;
+import com.example.lidarcbackend.model.entity.*;
+import com.example.lidarcbackend.repository.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.example.lidarcbackend.service.files.IMetadataService;
 import com.example.lidarcbackend.service.files.WorkerStartService;
@@ -32,6 +28,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 
 @Service
@@ -40,7 +37,9 @@ public class ComparisonService implements IComparisonService {
     private final ComparisonRepository comparisonRepository;
     private final ReportRepository reportRepository;
     private final ComparisonFileRepository comparisonFileRepository;
+    private final ComparisonFolderRepository comparisonFolderRepository;
     private final FileRepository fileRepository;
+    private final FolderRepository folderRepository;
     private final IMetadataService metadataService;
     private final Validator validator;
     private final RabbitTemplate rabbitTemplate;
@@ -52,7 +51,10 @@ public class ComparisonService implements IComparisonService {
 
     public ComparisonService(
             ComparisonRepository comparisonRepository,
-            ComparisonFileRepository comparisonFileRepository, FileRepository fileRepository,
+            ComparisonFileRepository comparisonFileRepository,
+            ComparisonFolderRepository comparisonFolderRepository,
+            FileRepository fileRepository,
+            FolderRepository folderRepository,
             IMetadataService metadataService,
             Validator validator,
             RabbitTemplate rabbitTemplate,
@@ -64,6 +66,8 @@ public class ComparisonService implements IComparisonService {
             ApplicationEventPublisher eventPublisher) {
         this.comparisonRepository = comparisonRepository;
         this.comparisonFileRepository = comparisonFileRepository;
+        this.comparisonFolderRepository = comparisonFolderRepository;
+        this.folderRepository = folderRepository;
         this.fileRepository = fileRepository;
         this.metadataService = metadataService;
         this.validator = validator;
@@ -79,9 +83,17 @@ public class ComparisonService implements IComparisonService {
     private final Map<Long, Object> chunkedComparisonsStorage = new ConcurrentHashMap<>();
 
     @Override
-    public Page<ComparisonDTO> getPagedComparisons(Pageable pageable) {
-        Page<Comparison> comparisonPage = comparisonRepository.findAll(pageable);
+    public Page<ComparisonDTO> getPagedComparisons(Pageable pageable, String search) {
+        Page<Comparison> comparisonPage;
 
+        if (search == null || search.isBlank()) {
+            comparisonPage = comparisonRepository.findAll(pageable);
+        } else {
+            comparisonPage = comparisonRepository.findByNameContainingIgnoreCase(
+                    search,
+                    pageable
+            );
+        }
         List<ComparisonDTO> dtoList = comparisonPage.getContent().stream().map(comparison -> {
             ComparisonDTO dto = mapper.toDto(comparison);
             reportRepository.findTopByComparisonIdOrderByCreationDateDesc(comparison.getId())
@@ -166,12 +178,26 @@ public class ComparisonService implements IComparisonService {
             fullPlan.merge(processFolderGroup(fileMetadataIds, comparisonRequest.getGrid(), savedComparison.getId(), "legacy"));
         }
 
-        //Saving only files that are relevant for comparison
-        comparisonFileRepository.saveAll(fullPlan.getFilesToSave());
+        //Saving all files (excluded and included)
+        List<ComparisonFile> allFiles =
+                Stream.concat(
+                        fullPlan.getFilesToInclude().stream(),
+                        fullPlan.getFilesToExclude().stream()
+                ).toList();
+
+        comparisonFileRepository.saveAll(allFiles);
+
+        //Saving folder <-> comparison connections
+        if (comparisonRequest.getFolderAId() != null) {
+            comparisonFolderRepository.save(new ComparisonFolder(savedComparison.getId(), comparisonRequest.getFolderAId()));
+        }
+        if (comparisonRequest.getFolderBId() != null) {
+            comparisonFolderRepository.save(new ComparisonFolder(savedComparison.getId(), comparisonRequest.getFolderBId()));
+        }
 
         ComparisonDTO dto = mapper.toDto(savedComparison);
-        List<Long> activeFileIds = fullPlan.getFilesToSave().stream().map(ComparisonFile::getFileId).toList();
-        dto.setFiles(metadataService.getMetadataList(activeFileIds.stream().map(String::valueOf).toList()));
+        List<Long> allFileIds = allFiles.stream().map(ComparisonFile::getFileId).toList();
+        dto.setFiles(metadataService.getMetadataList(allFileIds.stream().map(String::valueOf).toList()));
 
         eventPublisher.publishEvent(new PreProcessJobsReadyEvent(fullPlan.getJobsToStart()));
         return dto;
@@ -218,19 +244,20 @@ public class ComparisonService implements IComparisonService {
                 if (validRegions.isEmpty()) break;
             }
 
-            if (!validRegions.isEmpty()) {
-                ComparisonFile cf = new ComparisonFile();
-                cf.setComparisonId(comparisonId);
-                cf.setFileId(fileEntity.getId());
+            ComparisonFile cf = new ComparisonFile();
+            cf.setComparisonId(comparisonId);
+            cf.setFileId(fileEntity.getId());
                 cf.setGroupName(groupName);
 
+            if (!validRegions.isEmpty()) {
+                cf.setIncluded(true);
                 String uniqueJobId = String.format("c%d_%s_f%d_%s",
                         comparisonId,
                         groupName,
                         fileEntity.getId(),
                         UUID.randomUUID().toString().substring(0, 8)
                 );
-                StartPreProcessJobDto startPreProcessJobDto = StartPreProcessJobDto.builder()
+                StartPreProcessJobDto jobDto = StartPreProcessJobDto.builder()
                         .jobId(uniqueJobId)
                         .grid(grid)
                         .bboxes(validRegions)
@@ -238,8 +265,12 @@ public class ComparisonService implements IComparisonService {
                         .file(new MinioObjectDto("basebucket", fileEntity.getFilename()))
                         .fileId(fileEntity.getId())
                         .build();
-                plan.add(cf, startPreProcessJobDto);
+                plan.addIncludedFile(cf, jobDto);
+
                 restrictedZones.add(snappedBox);
+            } else {
+                cf.setIncluded(false);
+                plan.addExcludedFile(cf);
             }
             //TODO: Handle traceability in BE
             //TODO: Check if this is reliable
@@ -306,7 +337,7 @@ public class ComparisonService implements IComparisonService {
     }
 
     @Override
-    public ComparisonDTO getComparison(Long comparisonId) {
+    public ComparisonDTO getComparison(Long comparisonId) throws NotFoundException {
         ComparisonDTO dto = comparisonRepository.findById(comparisonId).map(mapper::toDto).orElse(null);
         if (dto == null) return null;
         reportRepository.findTopByComparisonIdOrderByCreationDateDesc(dto.getId())
@@ -315,20 +346,51 @@ public class ComparisonService implements IComparisonService {
         List<String> fileMetadataIdStrings = fileMetadataIds.stream()
                 .map(String::valueOf)
                 .toList();
-        List<FileMetadataDTO> fileMetadataDTOs = metadataService.getMetadataList(fileMetadataIdStrings);
-        dto.setFiles(fileMetadataDTOs);
+
+        setComparisonFolders(comparisonId, dto);
+
+        dto.setFiles(
+                metadataService.getMetadataList(fileMetadataIdStrings).stream()
+                        .filter(f -> f.getFolderId() == null)
+                        .toList()
+        );
+
         return dto;
     }
 
+    private void setComparisonFolders(Long comparisonId, ComparisonDTO dto) throws NotFoundException {
+        List<Long> cfIds = comparisonFolderRepository.getComparisonFoldersByComparisonId(comparisonId);
+        if (cfIds == null || cfIds.isEmpty()) {
+            return;
+        }
+
+        Folder folderA = findFolderOrThrow(cfIds.get(0));
+        dto.setFolderA(new FolderDTO(folderA.getId(), folderA.getName()));
+
+        if (cfIds.size() > 1) {
+            Folder folderB = findFolderOrThrow(cfIds.get(1));
+            dto.setFolderB(new FolderDTO(folderB.getId(), folderB.getName()));
+        }
+    }
+
+    private Folder findFolderOrThrow(Long folderId) throws NotFoundException {
+        return folderRepository.findById(folderId)
+                .orElseThrow(() ->
+                        new NotFoundException("Folder for comparison with id: " + folderId + " not found!")
+                );
+    }
+
     @Override
-    public void startChunkingComparisonJob(Long comparisonId, int chunkingSize) throws NotFoundException{
+    public void startChunkingComparisonJob(Long comparisonId, int chunkingSize) throws NotFoundException {
         ComparisonDTO dto = getComparison(comparisonId);
-        if(dto == null) {
+        if (dto == null) {
             throw new NotFoundException("Comparison with id: " + comparisonId + " not found!");
         }
 
         chunkedComparisonsStorage.remove(dto.getId());
 
+
+        // TODO Check bucket and object already exist for comparison, else worker throws error and stops
         String bucketName = dto.getResultBucket();
         String objectKey = dto.getResultObjectKey();
         StartChunkingJobDto chunkingJobDto = new StartChunkingJobDto(comparisonId, chunkingSize, new MinioObjectDto(bucketName, objectKey));
@@ -337,19 +399,19 @@ public class ComparisonService implements IComparisonService {
     }
 
     @Override
-    public void saveVisualizationComparison(Map<String, Object> result){
+    public void saveVisualizationComparison(Map<String, Object> result) {
         log.info("Saving visualization comparison with result: {}", result);
-        if(!result.containsKey("payload")) {
+        if (!result.containsKey("payload")) {
             log.warn("No comparison id or payload found in result of chunking worker");
             return;
         }
         Map<String, Object> payload = (Map<String, Object>) result.get("payload");
-        if(!payload.containsKey("comparisonId")) {
+        if (!payload.containsKey("comparisonId")) {
             log.warn("No comparison id found in result of chunking worker");
             return;
         }
-        Object idObj =  payload.get("comparisonId");
-        if (!(idObj instanceof Number )) {
+        Object idObj = payload.get("comparisonId");
+        if (!(idObj instanceof Number)) {
             log.warn("Invalid comparisonId in result of chunking worker");
             return;
         }
@@ -363,7 +425,7 @@ public class ComparisonService implements IComparisonService {
         Map<String, Object> visualizationResult = new HashMap<>();
         visualizationResult.put("chunked_cells", payload.get("chunked_cells"));
 
-        if(payload.containsKey("statistics")) {
+        if (payload.containsKey("statistics")) {
             visualizationResult.put("statistics", payload.get("statistics"));
         }
         if(payload.containsKey("group_mapping")) {
@@ -379,8 +441,6 @@ public class ComparisonService implements IComparisonService {
         Object result = chunkedComparisonsStorage.get(comparisonId);
         return Optional.ofNullable(result);
     }
-
-
 
 
     @Override
@@ -526,11 +586,11 @@ public class ComparisonService implements IComparisonService {
     }
 
     private void checkIfPreprocessingDoneAndStartComparison(Long comparisonId, String jobId) {
-        List<ComparisonFile> comparisonFiles = comparisonFileRepository.findAllByComparisonId(comparisonId.intValue());
 
-        boolean allReady = comparisonFiles.stream().allMatch(cf -> cf.getBucket() != null && cf.getObjectKey() != null);
+        boolean allReady = comparisonFileRepository.areAllIncludedFilesReady(comparisonId);
 
         if (allReady) {
+            List<ComparisonFile> comparisonFiles = comparisonFileRepository.findAllByComparisonIdAndIncludedTrue(comparisonId);
             log.info("Comparison {}: all preprocessing files contain bucket & objectKey. Starting comparison worker...", comparisonId);
             List<ComparisonWorkerInputFileDto> filesDto = comparisonFiles.stream()
                     .map(cf -> new ComparisonWorkerInputFileDto(cf.getBucket(), cf.getObjectKey(), cf.getGroupName()))

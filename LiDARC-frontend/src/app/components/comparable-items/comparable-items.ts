@@ -14,16 +14,17 @@ import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
 import { TextCard } from '../text-card/text-card';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { finalize, interval, Subject, switchMap, takeUntil } from 'rxjs';
-import { FileMetadataDTO } from '../../dto/fileMetadata';
+import { debounceTime, distinctUntilChanged, finalize, interval, Subject, switchMap, takeUntil } from 'rxjs';
 import { FormatService } from '../../service/format.service';
 import { MetadataService } from '../../service/metadata.service';
-import { SelectedFilesService } from '../../service/selectedFile.service';
-import { MetadataResponse } from '../../dto/metadataResponse';
+import { SelectedItemService } from '../../service/selectedItem.service';
 import { pollingIntervalMs, snackBarDurationMs } from '../../globals/globals';
 import { ConfirmationDialogData, ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog';
 import { ComparableItemDTO, ComparableListItem } from '../../dto/comparableItem';
 import { ComparableResponse } from '../../dto/comparableResponse';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatChipsModule } from '@angular/material/chips';
 
 @Component({
   selector: 'app-comparable-items',
@@ -40,17 +41,21 @@ import { ComparableResponse } from '../../dto/comparableResponse';
     MatTooltipModule,
     MatProgressSpinner,
     TextCard,
-    FormatBytesPipe],
+    FormatBytesPipe,
+    MatFormFieldModule,
+    MatInputModule,
+    MatChipsModule
+  ],
   templateUrl: './comparable-items.html',
   styleUrl: './comparable-items.scss',
 })
 export class ComparableItems {
   displayedColumns: string[] = ['select', 'name', 'type', 'fileCount', 'status', 'captureYear', 'sizeBytes', 'uploadedAt', 'actions'];
   dataSource = new MatTableDataSource<ComparableListItem>([]);
-  selectedComparableItemIds: Set<string> = new Set();
   private readonly metadataService = inject(MetadataService);
   public loading: WritableSignal<boolean> = signal(true);
   public errorMessage = signal<string | null>(null);
+  private searchSubject = new Subject<string>();
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
@@ -59,7 +64,7 @@ export class ComparableItems {
   private previousMap = new Map<number, string>();
 
   constructor(
-    private selectedFilesService: SelectedFilesService,
+    public selectedItemService: SelectedItemService,
     private router: Router,
     private snackBar: MatSnackBar,
     private formatService: FormatService,
@@ -78,6 +83,14 @@ export class ComparableItems {
   }
 
   ngOnInit(): void {
+    this.searchSubject
+      .pipe(
+        debounceTime(400),
+        distinctUntilChanged())
+      .subscribe(filterValue => {
+        this.paginator.pageIndex = 0; // Reset to page 0 
+        this.fetchAndProcessMetadata(this.pageIndex, this.pageSize); // Trigger reload
+      });
     // First load
     this.fetchAndProcessMetadata(this.pageIndex, this.pageSize);
 
@@ -85,7 +98,7 @@ export class ComparableItems {
     interval(pollingIntervalMs)
       .pipe(
         takeUntil(this.stopPolling$),
-        switchMap(() => this.metadataService.getAllMetadataGroupedByFolderPaged(this.pageIndex, this.pageSize)),
+        switchMap(() => this.metadataService.getAllMetadataGroupedByFolderPaged(this.pageIndex, this.pageSize, this.dataSource.filter)),
         finalize(() => this.loading.set(false))
       )
       .subscribe({
@@ -103,7 +116,7 @@ export class ComparableItems {
   fetchAndProcessMetadata(pageIndex: number, pageSize: number): void {
     this.loading.set(true);
 
-    this.metadataService.getAllMetadataGroupedByFolderPaged(pageIndex, pageSize)
+    this.metadataService.getAllMetadataGroupedByFolderPaged(pageIndex, pageSize, this.dataSource.filter)
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: (comparableResponse: ComparableResponse) => {
@@ -158,22 +171,22 @@ export class ComparableItems {
     this.stopPolling$.complete();
   }
 
-  toggleSelection(id: string, event: any) {
+  toggleSelection(item: ComparableListItem, event: any) {
     if (event.checked) {
-      this.selectedComparableItemIds.add(id);
+      this.selectedItemService.items.add(item);
     } else {
-      this.selectedComparableItemIds.delete(id);
+      this.selectedItemService.delete(item);
     }
   }
 
-  isSelected(id: string): boolean {
-    return this.selectedComparableItemIds.has(id);
+  isSelected(item: ComparableListItem): boolean {
+    return Array.from(this.selectedItemService.items).some(
+      selected => selected.id === item.id && selected.type === item.type
+    );
   }
 
   goToComparison() {
-    this.selectedFilesService.selectedComparableItemIds = Array.from(this.selectedComparableItemIds);
-    this.selectedFilesService.selectedComparableItems = this.dataSource.data.filter(item => this.selectedComparableItemIds.has(`${item.id}-${item.type}`));
-    console.log('Selected Comparable Items:', this.selectedFilesService.selectedComparableItemIds);
+    console.log('Selected Comparable Items:', this.selectedItemService.items);
     this.router.navigate(['/comparison-setup']);
   }
 
@@ -193,10 +206,31 @@ export class ComparableItems {
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         alert('Delete functionality not yet implemented.');
-        this.selectedComparableItemIds.clear();
+        this.selectedItemService.items.clear();
         this.cdr.detectChanges(); // force Angular to update the view
       }
     });
   }
 
+  applyFilter(event: Event) {
+    this.pageIndex = 0;
+    const filterValue = (event.target as HTMLInputElement).value;
+    if (filterValue.trim() === this.dataSource.filter) {
+      return; // No change in filter, do nothing
+    }
+    this.loading.set(true);
+    this.dataSource.filter = filterValue.trim().toLowerCase();
+    this.searchSubject.next(filterValue);
+  }
+
+  getIconForType(type: string): string {
+    switch (type) {
+      case 'Folder':
+        return 'folder';
+      case 'File':
+        return 'insert_drive_file';
+      default:
+        return 'help_outline';
+    }
+  }
 }

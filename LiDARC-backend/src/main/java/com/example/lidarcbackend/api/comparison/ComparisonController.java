@@ -59,13 +59,15 @@ public class ComparisonController {
     }
 
     @GetMapping("/paged")
-    public ResponseEntity<ComparisonResponse> getPagedMetadata(@Valid @ModelAttribute ComparisonRequest request) {
+    public ResponseEntity<ComparisonResponse> getPagedComparisons(
+            @RequestParam(required = false) String search,
+            @Valid @ModelAttribute ComparisonRequest request) {
         Sort sort = request.isAscending() ?
                 Sort.by(request.getSortBy()).ascending() :
                 Sort.by(request.getSortBy()).descending();
 
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
-        Page<ComparisonDTO> result = comparisonService.getPagedComparisons(pageable);
+        Page<ComparisonDTO> result = comparisonService.getPagedComparisons(pageable, search);
         ComparisonResponse response = new ComparisonResponse(
                 result.getContent(),
                 result.getTotalElements(),
@@ -77,7 +79,7 @@ public class ComparisonController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ComparisonDTO> getComparison(@PathVariable Long id) {
+    public ResponseEntity<ComparisonDTO> getComparison(@PathVariable Long id) throws NotFoundException {
         ComparisonDTO dto = comparisonService.getComparison(id);
         if (dto == null) {
             return ResponseEntity.notFound().build();

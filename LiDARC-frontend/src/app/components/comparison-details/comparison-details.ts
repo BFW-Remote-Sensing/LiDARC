@@ -1,26 +1,26 @@
-import {Component, inject, Input, OnInit, signal, WritableSignal, ViewChild} from '@angular/core';
-import {ComparisonService} from '../../service/comparison.service';
-import {ActivatedRoute, RouterModule} from '@angular/router';
-import {FormatService} from '../../service/format.service';
-import {MetadataService} from '../../service/metadata.service';
-import {debounceTime, finalize, forkJoin, map, Subject, Subscription, switchMap, timer} from 'rxjs';
-import {FormatBytesPipe} from '../../pipes/formatBytesPipe';
-import {ComparisonDTO} from '../../dto/comparison';
-import {ComparisonReport} from '../../dto/comparisonReport';
-import {CommonModule} from '@angular/common';
-import {MatExpansionModule} from '@angular/material/expansion';
-import {MatIcon} from '@angular/material/icon';
-import {MatListModule} from '@angular/material/list';
-import {MatProgressSpinner} from '@angular/material/progress-spinner';
-import {TextCard} from '../text-card/text-card';
-import {MatButton, MatIconButton} from '@angular/material/button';
-import {MatTooltip} from '@angular/material/tooltip';
+import { Component, inject, Input, OnInit, signal, WritableSignal , ViewChild} from '@angular/core';
+import { ComparisonService } from '../../service/comparison.service';
+import { ActivatedRoute, RouterModule } from '@angular/router';
+import { FormatService } from '../../service/format.service';
+import { MetadataService } from '../../service/metadata.service';
+import { debounceTime, finalize, forkJoin, map, Subject, Subscription, switchMap, timer } from 'rxjs';
+import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
+import { ComparisonDTO } from '../../dto/comparison';
+import { ComparisonReport } from '../../dto/comparisonReport';
+import { CommonModule } from '@angular/common';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatIcon } from '@angular/material/icon';
+import { MatListModule } from '@angular/material/list';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { TextCard } from '../text-card/text-card';
+import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatTooltip } from '@angular/material/tooltip';
 
 
 import * as echarts from 'echarts/core';
-import {EChartsCoreOption, ECElementEvent} from 'echarts/core';
-import {NgxEchartsDirective, provideEchartsCore} from "ngx-echarts";
-import {BarChart, BoxplotChart, HeatmapChart, LineChart, ScatterChart} from 'echarts/charts';
+import { EChartsCoreOption , ECElementEvent} from 'echarts/core';
+import { NgxEchartsDirective, provideEchartsCore } from "ngx-echarts";
+import { BarChart, BoxplotChart, HeatmapChart, LineChart, ScatterChart } from 'echarts/charts';
 import {
   GraphicComponent,
   GridComponent,
@@ -30,17 +30,17 @@ import {
   TooltipComponent,
   VisualMapComponent
 } from 'echarts/components';
-import {CanvasRenderer} from 'echarts/renderers';
-import {LegacyGridContainLabel} from 'echarts/features';
-import {MatGridListModule} from '@angular/material/grid-list';
-import {MatDividerModule} from '@angular/material/divider';
-import {MatCardModule} from '@angular/material/card';
-import {Heatmap} from '../heatmap/heatmap';
-import {ReportCreationDialogComponent} from '../report-creation-dialog-component/report-creation-dialog-component';
-import {MatDialog} from '@angular/material/dialog';
-import {ChartData} from '../../dto/report';
-import {ECharts} from 'echarts';
-import {Globals} from '../../globals/globals';
+import { CanvasRenderer } from 'echarts/renderers';
+import { LegacyGridContainLabel } from 'echarts/features';
+import { MatGridListModule } from '@angular/material/grid-list';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatCardModule } from '@angular/material/card';
+import { Heatmap } from '../heatmap/heatmap';
+import { ReportCreationDialogComponent } from '../report-creation-dialog-component/report-creation-dialog-component';
+import { MatDialog } from '@angular/material/dialog';
+import { ChartData } from '../../dto/report';
+import { ECharts } from 'echarts';
+import { Globals } from '../../globals/globals';
 
 import {
   ChunkingResult,
@@ -48,10 +48,11 @@ import {
   VegetationStats,
   CellEntry
 } from '../../dto/chunking';
-import {filter, takeWhile} from 'rxjs/operators';
-import {HttpResponse} from '@angular/common/http';
-import {ChunkingSettings} from '../chunking-settings/chunking-settings';
-import {FormsModule} from '@angular/forms';
+import { filter, takeWhile } from 'rxjs/operators';
+import { HttpResponse } from '@angular/common/http';
+import { ChunkingSettings } from '../chunking-settings/chunking-settings';
+import { FormsModule } from '@angular/forms';
+import { FolderDTO } from '../../dto/folder';
 
 //====HARDCODED VIS===//
 echarts.use([
@@ -94,7 +95,7 @@ echarts.use([
   ],
   templateUrl: './comparison-details.html',
   styleUrls: ['./comparison-details.scss', '../file-details/file-details.scss'],
-  providers: [provideEchartsCore({echarts})]
+  providers: [provideEchartsCore({ echarts })]
 })
 export class ComparisonDetails implements OnInit {
   @Input() comparisonId: number | null = null;
@@ -128,7 +129,7 @@ export class ComparisonDetails implements OnInit {
       mean_veg_height: 0,
       std_veg_height: 0,
       median_veg_height: 0,
-      percentiles: {p10: 0, p25: 0, p50: 0, p75: 0, p90: 0},
+      percentiles: { p10: 0, p25: 0, p50: 0, p75: 0, p90: 0 },
       mean_points_per_grid_cell: 0
     },
     fileB_metrics: {
@@ -137,7 +138,7 @@ export class ComparisonDetails implements OnInit {
       mean_veg_height: 0,
       std_veg_height: 0,
       median_veg_height: 0,
-      percentiles: {p10: 0, p25: 0, p50: 0, p75: 0, p90: 0},
+      percentiles: { p10: 0, p25: 0, p50: 0, p75: 0, p90: 0 },
       mean_points_per_grid_cell: 0
     },
     difference_metrics: {
@@ -191,6 +192,13 @@ export class ComparisonDetails implements OnInit {
     this.handleChunkingResult(data);
   }
 
+  get comparedItems(): { id: number; name: string; type: 'file' | 'folder' }[] {
+    const files = this.comparison?.files.map(f => ({ id: f.id, name: f.originalFilename, type: 'file' as const })) ?? [];
+    const folders = [this.comparison?.folderA, this.comparison?.folderB]
+      .filter(f => f != null)
+      .map(f => ({ id: f.id, name: f.name, type: 'folder' as const }));
+    return [...files, ...folders];
+  }
 
   ngOnInit(): void {
     if (this.comparisonId) {
@@ -201,7 +209,7 @@ export class ComparisonDetails implements OnInit {
       })
         .pipe(finalize(() => this.loading.set(false)))
         .subscribe({
-          next: ({comparison, reports}) => {
+          next: ({ comparison, reports }) => {
             this.comparison = comparison;
             this.reports.set(reports);
             this.checkIfMoreReportsExist(reports.length);
@@ -241,11 +249,11 @@ export class ComparisonDetails implements OnInit {
 
     console.log('[BUILDING CHARTS]');
 
-    this.scatterOption = {...this.buildScatterChart()};
-    this.fileDistributionOption = {...this.buildDistributionChart()};
-    this.diffDistributionOption = {...this.buildDifferenceDistributionChart()};
-    this.diffHistogramOption = {...this.buildDifferenceHistogramChart()};
-    this.boxplotOption = {...this.buildBoxplotChart()};
+    this.scatterOption = { ...this.buildScatterChart() };
+    this.fileDistributionOption = { ...this.buildDistributionChart() };
+    this.diffDistributionOption = { ...this.buildDifferenceDistributionChart() };
+    this.diffHistogramOption = { ...this.buildDifferenceHistogramChart() };
+    this.boxplotOption = { ...this.buildBoxplotChart() };
 
 
   }
@@ -287,8 +295,8 @@ export class ComparisonDetails implements OnInit {
     this.fetchReports();
   }
 
-  createReport():void {
-    const chartImages:ChartData[] = [];
+  createReport(): void {
+    const chartImages: ChartData[] = [];
     if (this.heatmapComponent) {
       if (this.heatmapComponent.chartInstance1) {
         //TODO: Choose a better fiting name && See if we can make them more interactive / important for the report? Currently flat image of vis.
@@ -347,7 +355,7 @@ export class ComparisonDetails implements OnInit {
       //TODO: Add some error handling?
       console.error(`Failed to export image for ${name}`, error);
     }
-  }
+    }
 
   private dataURItoBlob(dataURI: string): Blob {
     const byteString = atob(dataURI.split(',')[1]);
@@ -357,7 +365,7 @@ export class ComparisonDetails implements OnInit {
     for (let i = 0; i < byteString.length; i++) {
       ia[i] = byteString.charCodeAt(i);
     }
-    return new Blob([ab], {type: mimeString});
+    return new Blob([ab], { type: mimeString });
   }
 
   private fetchReports(): void {
@@ -390,7 +398,7 @@ export class ComparisonDetails implements OnInit {
 
 
 
-  buildScatterChart():EChartsCoreOption {
+  buildScatterChart(): EChartsCoreOption {
     const stats = this.vegetationStats();
     const scatterData = stats.cells.map(c => [c.A, c.B]);
 
@@ -443,14 +451,14 @@ export class ComparisonDetails implements OnInit {
           type: 'line',
           data: lineData,
           showSymbol: false,
-          lineStyle: {type: 'dashed', width: 2, color: 'red'},
+          lineStyle: { type: 'dashed', width: 2, color: 'red' },
           name: 'Regression Line'
         }
       ]
     };
   }
 
-  private buildDistributionChart():EChartsCoreOption {
+  private buildDistributionChart(): EChartsCoreOption {
     const stats = this.vegetationStats();
     const fileA_metrics = stats.fileA_metrics;
     const fileB_metrics = stats.fileB_metrics;
@@ -529,12 +537,12 @@ export class ComparisonDetails implements OnInit {
     const mean = diff.mean;
     const std = Math.max(diff.std, 1e-6);
 
-    const normalPDF = (x: number) => (1 / (std * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / std, 2));
+        const normalPDF = (x: number) => (1 / (std * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / std, 2));
 
-    const minX = mean - 4 * std;
+        const minX = mean - 4 * std;
     const maxX = mean + 4 * std;
 
-    const steps = 200;
+        const steps = 200;
     const step = (maxX - minX) / steps;
     const xValues = Array.from({ length: steps + 1 }, (_, i) => minX + i * step);
 
@@ -601,10 +609,10 @@ export class ComparisonDetails implements OnInit {
     };
   }
 
-  private buildDifferenceHistogramChart():EChartsCoreOption {
+  private buildDifferenceHistogramChart(): EChartsCoreOption {
     const histogram = this.vegetationStats().difference_metrics.histogram;
 
-    if (!histogram) {
+        if (!histogram) {
       console.warn('No hisogram data available')
       return {};
     }
@@ -635,7 +643,7 @@ export class ComparisonDetails implements OnInit {
         type: 'category',
         name: 'Difference B - A',
         data: binLabels,
-        axisLabel: {rotate: 45}
+        axisLabel: { rotate: 45 }
       },
       yAxis: {
         type: 'value',
@@ -646,7 +654,7 @@ export class ComparisonDetails implements OnInit {
           name: 'Count',
           type: 'bar',
           data: counts,
-          itemStyle: {color: 'steelblue'},
+          itemStyle: { color: 'steelblue' },
           barGap: 0,
           barCategoryGap: '0%'
         }
@@ -654,7 +662,7 @@ export class ComparisonDetails implements OnInit {
     };
   }
 
-  private buildBoxplotChart():EChartsCoreOption {
+  private buildBoxplotChart(): EChartsCoreOption {
     const stats = this.vegetationStats();
     const fileA_metrics = stats.fileA_metrics;
     const fileB_metrics = stats.fileB_metrics;
@@ -717,7 +725,7 @@ export class ComparisonDetails implements OnInit {
           name: 'Boxplot',
           type: 'boxplot',
           data: data,
-          itemStyle: {color: 'lightblue'}
+          itemStyle: { color: 'lightblue' }
         }
       ]
     };

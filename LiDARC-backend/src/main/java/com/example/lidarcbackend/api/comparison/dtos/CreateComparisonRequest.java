@@ -22,6 +22,10 @@ public class CreateComparisonRequest {
 
     private Boolean needMostDifferences;
 
+    private Long folderAId;
+
+    private Long folderBId;
+
     //TODO: Should we remove that?
     private List<Long> fileMetadataIds;
     //TODO: ADD NOT EMPTY / NOT NULL TO EITHER

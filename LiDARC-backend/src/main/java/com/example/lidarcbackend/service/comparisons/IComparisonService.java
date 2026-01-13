@@ -13,13 +13,13 @@ import java.util.Map;
 import java.util.Optional;
 
 public interface IComparisonService {
-    Page<ComparisonDTO> getPagedComparisons(Pageable pageable);
+    Page<ComparisonDTO> getPagedComparisons(Pageable pageable, String search);
 
     List<ComparisonDTO> getAllComparisons();
 
     ComparisonDTO saveComparison(CreateComparisonRequest comparison, List<Long> fileMetadataIds) throws NotFoundException, ValidationException;
 
-    ComparisonDTO getComparison(Long comparisonId);
+    ComparisonDTO getComparison(Long comparisonId) throws NotFoundException;
 
     void startChunkingComparisonJob(Long comparisonId, int chunkSize) throws NotFoundException;
 

@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { defaultMetadataPath, Globals, headers } from "../globals/globals";
-import { Observable } from "rxjs";
+import { Observable, Subject } from "rxjs";
 import { FileMetadataDTO } from "../dto/fileMetadata";
 import { MetadataResponse } from "../dto/metadataResponse";
 import { FolderFilesDTO } from "../dto/folderFiles";
@@ -30,9 +30,19 @@ export class MetadataService {
         );
     }
 
-    getPagedMetadataWithoutFolder(page: number, size: number, sortBy: string, isAscending: boolean): Observable<MetadataResponse> {
+    getPagedMetadataWithoutFolder(page: number, size: number, sortBy: string, isAscending: boolean, search: string | null): Observable<MetadataResponse> {
+        let params =
+            `?page=${page}` +
+            `&size=${size}` +
+            `&sortBy=${sortBy}` +
+            `&ascending=${isAscending}`;
+
+        if (search && search.trim().length > 0) {
+            params += `&search=${encodeURIComponent(search)}`;
+        }
+
         return this.httpClient.get<MetadataResponse>(
-            this.globals.backendUri + defaultMetadataPath + '/unassigned/paged' + `?page=${page}&size=${size}&sortBy=${sortBy}&ascending=${isAscending}`,
+            this.globals.backendUri + defaultMetadataPath + '/unassigned/paged' + params,
             { headers }
         );
     }
@@ -44,9 +54,13 @@ export class MetadataService {
         );
     }
 
-    getAllMetadataGroupedByFolderPaged(page: number, size: number): Observable<ComparableResponse> {
+    getAllMetadataGroupedByFolderPaged(page: number, size: number, search: string | null): Observable<ComparableResponse> {
+        let params = `?page=${page}&size=${size}`;
+        if (search && search.trim().length > 0) {
+            params += `&search=${encodeURIComponent(search)}`;
+        }
         return this.httpClient.get<ComparableResponse>(
-            this.globals.backendUri + defaultMetadataPath + '/all/grouped-by-folder/paged' + `?page=${page}&size=${size}`,
+            this.globals.backendUri + defaultMetadataPath + '/all/grouped-by-folder/paged' + params,
             { headers }
         );
     }

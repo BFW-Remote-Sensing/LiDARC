@@ -10,7 +10,7 @@ export class ReferenceFileService {
     }
 
     isSelectedComparableItem(item: ComparableListItem): boolean {
-        return this.selectedComparableItem()?.id === item.id;
+        return this.selectedComparableItem()?.id === item.id && this.selectedComparableItem()?.type === item.type;
     }
 
     clearSelectedComparableItem(): void {

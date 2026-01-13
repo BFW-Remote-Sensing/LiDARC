@@ -24,22 +24,34 @@ export class FormatService {
     return items.map(item => {
       if ('files' in item) {
         const formattedFiles = item.files.map(file => this.formatMetadata(file));
-        const min = Math.min(...formattedFiles.map(f => f.captureYear || Infinity));
-        const max = Math.max(...formattedFiles.map(f => f.captureYear || -Infinity));
+        const years = formattedFiles
+          .map(f => f.captureYear)
+          .filter((y): y is number => y !== null && y !== undefined);
+
+        const min = years.length > 0 ? Math.min(...years) : null;
+        const max = years.length > 0 ? Math.max(...years) : null;
+
         return {
           ...item,
           name: item.folderName,
           type: 'Folder',
           files: formattedFiles,
-          captureYear: min === max ? `${min}` : `${min}-${max}`,
-          sizeBytes: formattedFiles.reduce((acc, file) => acc + (file.sizeBytes || 0), 0),
+          captureYear:
+            min === null || max === null
+              ? null
+              : min === max
+                ? `${min}`
+                : `${min}-${max}`,
+          sizeBytes: formattedFiles.some(ff => ff.sizeBytes !== null)
+            ? formattedFiles.reduce((acc, file) => acc + (file.sizeBytes || 0), 0)
+            : null,
           uploadedAt: item.createdDate,
           fileCount: formattedFiles.length
         };
       } else {
         return {
           ...this.formatMetadata(item),
-          name: item.filename,
+          name: item.originalFilename,
           type: 'File',
           fileCount: 1
         };

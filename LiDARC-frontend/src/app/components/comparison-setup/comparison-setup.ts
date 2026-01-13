@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, Input, signal, WritableSignal } from '@angular/core';
-import { SelectedFilesService } from '../../service/selectedFile.service';
+import { SelectedItemService } from '../../service/selectedItem.service';
 import { MatAnchor, MatButtonModule } from "@angular/material/button";
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -84,7 +84,7 @@ export class ComparisonSetup {
   needExpandCol: boolean = false;
 
   constructor(
-    private selectedFilesService: SelectedFilesService,
+    private selectedItemService: SelectedItemService,
     private comparisonService: ComparisonService,
     private router: Router,
     private dialog: MatDialog,
@@ -134,8 +134,8 @@ export class ComparisonSetup {
   }
 
   ngOnInit(): void {
-    if (this.selectedFilesService.selectedComparableItemIds.length >= 2) {
-      this.dataSource.data = this.selectedFilesService.selectedComparableItems;
+    if (this.selectedItemService.items.size >= 2) {
+      this.dataSource.data = Array.from(this.selectedItemService.items);
     }
     this.needExpandCol = this.needExpandColumn();
     this.route.queryParamMap.subscribe(params => {
@@ -208,11 +208,10 @@ export class ComparisonSetup {
     folder.files = [...folder.files];
   }
 
-
   startComparison(): void {
     this.loadingStart.set(true);
-    const firstItem = this.selectedFilesService.selectedComparableItems[0];
-    const secondItem = this.selectedFilesService.selectedComparableItems[1];
+    const firstItem = Array.from(this.selectedItemService.items)[0];
+    const secondItem = Array.from(this.selectedItemService.items)[1];
     this.comparison.folderAFiles =
       firstItem.type === "Folder" ?
         (firstItem as FolderFilesDTO).files.map(f => f.id) :
@@ -221,13 +220,21 @@ export class ComparisonSetup {
       secondItem.type === "Folder" ?
         (secondItem as FolderFilesDTO).files.map(f => f.id) :
         [secondItem.id];
+    this.comparison.folderAId =
+      firstItem.type === "Folder" ?
+        (firstItem as FolderFilesDTO).id :
+        undefined;
+    this.comparison.folderBId =
+      secondItem.type === "Folder" ?
+        (secondItem as FolderFilesDTO).id :
+        undefined;
     this.comparisonService.postComparison(this.comparison)
       .pipe(
         finalize(() => this.loadingStart.set(false))
       )
       .subscribe({
         next: () => {
-          this.selectedFilesService.clearSelectedFileIds();
+          this.selectedItemService.items.clear();
           this.router.navigate(['/comparisons']);
         },
         error: (error) => {

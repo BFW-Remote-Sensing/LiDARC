@@ -1,5 +1,6 @@
 package com.example.lidarcbackend.api.comparison.dtos;
 
+import com.example.lidarcbackend.api.folder.dtos.FolderDTO;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import lombok.Getter;
 import lombok.Setter;
@@ -38,6 +39,9 @@ public class ComparisonDTO {
 
     private String resultObjectKey;
 
+    private FolderDTO folderA;
+
+    private FolderDTO folderB;
 
     public ComparisonDTO() {
 

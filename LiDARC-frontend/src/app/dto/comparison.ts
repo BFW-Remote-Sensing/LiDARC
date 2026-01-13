@@ -1,4 +1,5 @@
 import { FileMetadataDTO } from "./fileMetadata";
+import { FolderDTO } from "./folder";
 
 export type CreateComparison = {
     name: string;
@@ -6,6 +7,8 @@ export type CreateComparison = {
     needOutlierDetection: boolean;
     needStatisticsOverScenery: boolean;
     needMostDifferences: boolean;
+    folderAId?: number;
+    folderBId?: number;
     folderAFiles: number[];
     folderBFiles: number[];
     grid: GridParameters | null;
@@ -27,4 +30,6 @@ export type ComparisonDTO = CreateComparison & {
     latestReport: string | null;
     errorMessage: string | null;
     files: FileMetadataDTO[];
+    folderA?: FolderDTO;
+    folderB?: FolderDTO;
 }
