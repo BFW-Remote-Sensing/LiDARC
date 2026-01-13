@@ -1,14 +1,12 @@
 FROM postgres:16
 
-USER root
-
-# Change postgres user/group IDs to match the host-mapped IDs (only in CI/Linux)
-RUN if [ -n "$CI" ]; then groupmod -g 58400 postgres && usermod -u 58400 -g 58400 postgres; fi
-
-RUN chown -R postgres:postgres /var/lib/postgresql /var/run/postgresql
-
-USER postgres
-
+RUN if [ -n "$CI" ]; then \
+    USER root && \
+    groupmod -g 58400 postgres && \
+    usermod -u 58400 -g 58400 postgres && \
+    chown -R postgres:postgres /var/lib/postgresql /var/run/postgresql && \
+    USER postgres; \
+    fi
 
 # Copy init scripts into the container (00-drop.sql runs first due to naming)
 COPY config/00-drop.sql /docker-entrypoint-initdb.d/00-drop.sql
