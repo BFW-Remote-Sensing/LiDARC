@@ -107,7 +107,12 @@ def extract_metadata(file_path: str) -> dict:
         raw_filename = os.path.basename(file_path)
         filename = unquote(raw_filename)
         match = re.search(r"\d{4}_", filename)
-        capture_year = int(match.group(0)[:-1]) if match else None
+        capture_year = None
+        if match:
+            year = int(match.group(0)[:-1])
+            if 1990 < year < 2100:
+                capture_year = year
+
         size_bytes = os.path.getsize(file_path)
 
         with laspy.open(file_path) as las:

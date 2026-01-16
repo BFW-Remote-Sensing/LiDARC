@@ -266,10 +266,13 @@ public class MetadataService implements IMetadataService {
         file.setSystemIdentifier((String) metadata.get("system_identifier"));
 
         //numeric
-        short captureYear = castToShort(metadata.get("capture_year"));
-        if (captureYear > 1900) {
-            file.setCaptureYear(captureYear);
+        if(metadata.get("capture_year") != null) {
+            short captureYear = castToShort(metadata.get("capture_year"));
+            if (captureYear > 1990) {
+                file.setCaptureYear(captureYear);
+            }
         }
+
         file.setSizeBytes(castToLong(metadata.get("size_bytes")));
         file.setMinX(castToDouble(metadata.get("min_x")));
         file.setMinY(castToDouble(metadata.get("min_y")));
