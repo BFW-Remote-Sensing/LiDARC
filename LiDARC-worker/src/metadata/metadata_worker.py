@@ -1,6 +1,8 @@
 import json
 import logging
 import os
+from urllib.parse import unquote
+
 import laspy
 import argparse
 import signal
@@ -102,7 +104,8 @@ def parse_coordinate_system(header) -> str:
 
 def extract_metadata(file_path: str) -> dict:
     try:
-        filename = os.path.basename(file_path)
+        raw_filename = os.path.basename(file_path)
+        filename = unquote(raw_filename)
         match = re.search(r"\d{4}_", filename)
         capture_year = int(match.group(0)[:-1]) if match else None
         size_bytes = os.path.getsize(file_path)
