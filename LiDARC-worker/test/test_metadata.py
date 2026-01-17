@@ -61,4 +61,34 @@ def test_extract_metadata_all_fields(las_with_header):
     assert metadata["file_creation_date"] == "2024-03-14"
     assert metadata["coordinate_system"] == "EPSG:31256"
 
-# TODO integration tests: test some errors --> error messages published; check whats published when everything works;
+def test_extract_metadata_with_encoded_space_in_filename(las_with_header):
+    file_path = las_with_header(
+        filename="graz2021_block6_060_065_elv%201.las"
+    )
+    metadata = extract_metadata(file_path)
+    assert metadata["filename"] == "graz2021_block6_060_065_elv 1.las"
+
+def test_extract_metadata_with_space_in_filename(las_with_header):
+    file_path = las_with_header(
+        filename="graz2021_block6_060_065_elv 1.las"
+    )
+    metadata = extract_metadata(file_path)
+    assert metadata["filename"] == "graz2021_block6_060_065_elv 1.las"
+
+@pytest.mark.parametrize(
+    "filename,expected_year",
+    [
+        ("graz2021_block6_060_065_elv.las", 2021),
+        ("graz2021_block6_2024_065_elv%201.las", 2021),
+        ("eacb07aa05d7f792_graz2021_block6.las", 2021),
+        ("graz3125_block6.las", None),
+        ("graz_block654_.las", None),
+        ("graz2100_block6.las", None),
+        ("graz1990_block6.las", None)
+    ],
+)
+def test_extract_metadata_capture_year_variants(las_with_header, filename, expected_year):
+    file_path = las_with_header(filename=filename)
+    metadata = extract_metadata(file_path)
+
+    assert metadata["capture_year"] == expected_year
