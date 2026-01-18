@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS files (
     point_count BIGINT,
     file_creation_date DATE,
     status VARCHAR(32) NOT NULL DEFAULT 'UPLOADED' CHECK (status in ('UPLOADING', 'UPLOADED', 'PROCESSING', 'PROCESSED', 'FAILED')),
+    error_msg TEXT,
     uploaded BOOLEAN DEFAULT FALSE,
     uploaded_at TIMESTAMP,
     folder_id INTEGER,

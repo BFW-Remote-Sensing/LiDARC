@@ -81,6 +81,9 @@ public class File {
     @Enumerated(EnumType.STRING)
     private FileStatus status;
 
+    @Column(name = "error_msg")
+    private String errorMsg;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "folder_id")
     private Folder folder;
