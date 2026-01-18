@@ -151,7 +151,7 @@ public class PresignedUrlService implements IPresignedUrlService {
       file.setFilename(fileName);
       file.setUploaded(false);
       file.setOriginalFilename(originalFileName);
-      file.setStatus("UPLOADED");
+      file.setStatus(File.FileStatus.UPLOADING);
       if (folderId != null) {
         Folder folder = folderRepository.findById(folderId).orElse(null);
         file.setFolder(folder);
@@ -209,6 +209,7 @@ public class PresignedUrlService implements IPresignedUrlService {
     }
 
     file.setUploaded(true);
+    file.setStatus(File.FileStatus.PROCESSING);
     file.setUploadedAt(Instant.now());
     file = fileRepository.save(file);
     FileInfoDto dto = new FileInfoDto(file);

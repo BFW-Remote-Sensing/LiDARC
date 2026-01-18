@@ -301,6 +301,7 @@ public class MetadataService implements IMetadataService {
             return null;
         }
 
+        file.setStatus(File.FileStatus.PROCESSED);
         return file;
     }
 

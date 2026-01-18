@@ -86,7 +86,7 @@ public class PresignedUrlIntegrationTests extends AbstractIntegrationTests {
     // arrange
     String fileName = "already.txt";
     File f = new File();
-    f.setStatus("UPLOADED");
+    f.setStatus(File.FileStatus.UPLOADED);
     f.setFilename(fileName);
     f.setUploaded(true);
     fileRepository.save(f);
@@ -105,7 +105,7 @@ public class PresignedUrlIntegrationTests extends AbstractIntegrationTests {
     File f = new File();
     f.setFilename(fileName);
     f.setUploaded(true);
-    f.setStatus("UPLOADED");
+    f.setStatus(File.FileStatus.UPLOADED);
     fileRepository.save(f);
 
     when(minioClient.getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class))).thenReturn("http://get-url");
