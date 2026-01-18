@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS comparisons (
     need_statistics_over_scenery BOOLEAN DEFAULT FALSE,
     need_most_differences BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP,
-    status VARCHAR(32) NOT NULL DEFAULT 'PENDING' CHECK (status in ('PENDING', 'COMPLETED', 'FAILED')),
+    status VARCHAR(32) NOT NULL DEFAULT 'PREPROCESSING' CHECK (status in ('PREPROCESSING', 'COMPARING', 'COMPLETED', 'FAILED')),
     error_message TEXT,
     grid_cell_width INTEGER,
     grid_cell_height INTEGER,
@@ -81,6 +81,8 @@ CREATE TABLE IF NOT EXISTS comparison_file (
     object_key TEXT,
     included BOOLEAN DEFAULT FALSE,
     group_name TEXT,
+    status VARCHAR(32) NOT NULL DEFAULT 'PREPROCESSING' CHECK (status in ('PREPROCESSING', 'COMPLETED', 'FAILED')),
+    error_msg TEXT,
     CONSTRAINT pk_comparison_file PRIMARY KEY (comparison_id, file_id),
     CONSTRAINT fk_comparison_id FOREIGN KEY (comparison_id) REFERENCES comparisons(id) ON DELETE CASCADE,
     CONSTRAINT fk_file_id FOREIGN KEY (file_id) REFERENCES files(id)

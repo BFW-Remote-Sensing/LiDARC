@@ -140,8 +140,12 @@ def process_points(points, precomp_grid, bboxes):
         values = veg_sorted[start:end]
         precomp_grid["veg_height_digest"][r,c].batch_update(values)
 
-def mk_error_msg(error_msg: str):
-    return {"msg": error_msg}
+def mk_error_msg(error_msg: str, file_id: str, comparison_id: str):
+    return {
+        "msg": error_msg,
+        "fileId": file_id,
+        "comparisonId": comparison_id
+    }
 
 def mk_summary(grid_shape, df: pd.DataFrame):
     return {
@@ -200,13 +204,26 @@ def process_req(ch, method, properties, body):
     publisher = ResultPublisher(ch)
     start_time = time.time()
     request = json.loads(body)
+
+    file_id = ""
+    comparison_id = ""
+
+    if "fileId" in request:
+        file_id = request["fileId"]
+
+    if "comparisonId" in request:
+        comparison_id = request["comparisonId"]
+
     if "jobId" not in request:
         logging.warning("The precompute job is cancelled because there is no job id")
         publisher.publish_preprocessing_result(BaseMessage(type="preprocessing",
                                                            status="error",
                                                            job_id="",
-                                                           payload=mk_error_msg(error_msg="Precompute job is cancelled because job has no job id")))
+                                                           payload=mk_error_msg(error_msg="Precompute job is cancelled because job has no job id", file_id=file_id,
+                                                                                comparison_id=comparison_id,)))
     job_id = request["jobId"]
+
+
 
     #TODO: create validation correctly
     valid = True
@@ -217,7 +234,8 @@ def process_req(ch, method, properties, body):
         publisher.publish_preprocessing_result(BaseMessage(type="preprocessing",
                                                            status="error",
                                                            job_id=job_id,
-                                                           payload=mk_error_msg(error_msg="Precompute job is cancelled because job request is invalid")))
+                                                           payload=mk_error_msg(error_msg="Precompute job is cancelled because job request is invalid", file_id=file_id,
+                                                                                comparison_id=comparison_id,)))
         return
 
     #Process request
@@ -264,11 +282,13 @@ def process_req(ch, method, properties, body):
         publisher.publish_preprocessing_result(BaseMessage(type="preprocessing",
                                                            status="error",
                                                            job_id=job_id,
-                                                           payload=mk_error_msg(error_msg="Couldn't download file from: {}, precompute job cancelled".format(las_file))))
+                                                           payload=mk_error_msg(error_msg="Couldn't download file from: {}, precompute job cancelled".format(las_file), file_id=file_id,
+                                                           comparison_id=comparison_id,)))
         return
     except Exception as e:
         logging.exception(f"Error processing job {job_id}")
-        publisher.publish_preprocessing_result(BaseMessage(type="preprocessing", status="error", job_id=job_id, payload=mk_error_msg(str(e))))
+        publisher.publish_preprocessing_result(BaseMessage(type="preprocessing", status="error", job_id=job_id, payload=mk_error_msg(str(e), file_id=file_id,
+                                                           comparison_id=comparison_id,)))
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 

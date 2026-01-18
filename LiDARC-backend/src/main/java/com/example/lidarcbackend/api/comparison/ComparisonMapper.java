@@ -45,7 +45,7 @@ public class ComparisonMapper {
         newComparison.setNeedOutlierDetection(request.getNeedOutlierDetection());
         newComparison.setNeedStatisticsOverScenery(request.getNeedStatisticsOverScenery());
         newComparison.setNeedMostDifferences(request.getNeedMostDifferences());
-        newComparison.setStatus(Comparison.Status.PENDING);
+        newComparison.setStatus(Comparison.Status.PREPROCESSING);
         newComparison.setCreatedAt(java.time.LocalDateTime.now());
         newComparison.setGridCellHeight(request.getGrid().getCellHeight());
         newComparison.setGridCellWidth(request.getGrid().getCellWidth());
