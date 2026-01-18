@@ -5,6 +5,7 @@ import com.example.lidarcbackend.api.metadata.dtos.ComparableItemDTO;
 import com.example.lidarcbackend.api.metadata.dtos.ComparableProjection;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import com.example.lidarcbackend.api.metadata.dtos.FolderFilesDTO;
+import com.example.lidarcbackend.model.entity.Comparison;
 import com.example.lidarcbackend.model.entity.CoordinateSystem;
 import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.model.entity.Folder;
@@ -184,19 +185,8 @@ public class MetadataService implements IMetadataService {
         String jobId = (String) result.get("job_id");
 
         if (status == null || jobId == null) {
-            log.error("Invalid result message received, missing jobId or status");
+            log.error("Invalid result message received, missing jobId, fileName or status");
             return;
-        }
-
-        if (!status.equalsIgnoreCase("success")) {
-            Object payload = result.get("payload");
-            if (payload instanceof Map) {
-                Object payloadMsg = ((Map<?, ?>) payload).get("msg");
-                if (payloadMsg instanceof String errorMessage) {
-                    log.warn("Metadata job {} failed: {}", jobId, errorMessage);
-                    return;
-                }
-            }
         }
 
         Object payloadObj = result.get("payload");
@@ -204,21 +194,45 @@ public class MetadataService implements IMetadataService {
             log.error("Invalid payload for job {}", jobId);
             return;
         }
-        Map<String, Object> payload = (Map<String, Object>) payloadObj;
-        Object metadataObj = payload.get("metadata");
-        if (!(metadataObj instanceof Map)) {
-            log.error("Invalid metadata object for job {}", jobId);
-            return;
-        }
-        Map<String, Object> metadata = (Map<String, Object>) metadataObj;
 
-        File file = parseMetadata(metadata);
-        if (file == null) {
-            log.error("Invalid metadata object for job {}", jobId);
-        } else {
-            fileRepository.save(file);
-            log.info("Saved FileMetadata for file: {}", file.getFilename());
+        if (!status.equalsIgnoreCase("success")) {
+            Object payload = result.get("payload");
+            if (payload instanceof Map) {
+                Object payloadMsg = ((Map<?, ?>) payload).get("msg");
+                Object payloadFileName = ((Map<?, ?>) payload).get("file_name");
+                if (payloadMsg instanceof String errorMessage && payloadFileName instanceof String fileName) {
+                    log.warn("Metadata job {} failed: {}", jobId, errorMessage);
+                    this.persistMetadataError(fileName, errorMessage);
+                    return;
+                } else {
+                    log.error("Invalid error payload for job {}", jobId);
+                    return;
+                }
+            }
         }
+
+        Map<String, Object> payload = (Map<String, Object>) payloadObj;
+        Object metadataObj = ((Map<?, ?>) payload).get("metadata");
+        Object payloadFileName = ((Map<?, ?>) payload).get("file_name");
+        if((payloadFileName instanceof String fileName)) {
+            if (!(metadataObj instanceof Map)) {
+                log.error("Invalid metadata object for job {}", jobId);
+                persistMetadataError(fileName,"Received invalid payload from metadata worker");
+            } else {
+                Map<String, Object> metadata = (Map<String, Object>) metadataObj;
+                File file = parseMetadata(metadata);
+                if (file == null) {
+                    log.error("Invalid metadata object for job {}", jobId);
+                    this.persistMetadataError(fileName,"Received invalid payload from metadata worker");
+                } else {
+                    fileRepository.save(file);
+                    log.info("Saved FileMetadata for file: {}", file.getFilename());
+                }
+            }
+        } else {
+            log.warn("Invalid metadata payload for job {}", jobId);
+        }
+
     }
 
     @Transactional
@@ -343,5 +357,14 @@ public class MetadataService implements IMetadataService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private void persistMetadataError(String fileName, String errorMsg) {
+        Optional<File> old = fileRepository.findFileByFilename(fileName);
+        if (old.isEmpty()) {
+            log.warn("Original file not found in database, skipping save: {}", fileName);
+        }
+        File file = old.get();
+        file.setStatus(File.FileStatus.FAILED);
     }
 }

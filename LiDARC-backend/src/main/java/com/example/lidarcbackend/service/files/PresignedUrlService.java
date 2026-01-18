@@ -220,13 +220,13 @@ public class PresignedUrlService implements IPresignedUrlService {
     dto.setUrlExpiresAt(expiresAt);
 
     //TODO change to real jobId when job status management is implemented
-    sendFinishMessage("1234", dto.getPresignedURL());
+    sendFinishMessage("1234", dto.getPresignedURL(), dto.getFileName());
 
     return Optional.of(dto);
   }
 
-  private void sendFinishMessage(String jobId, String presignedUploadUrl) {
-    StartMetadataJobDto startMetadataJobDto = new StartMetadataJobDto(jobId, presignedUploadUrl);
+  private void sendFinishMessage(String jobId, String presignedUploadUrl, String fileName) {
+    StartMetadataJobDto startMetadataJobDto = new StartMetadataJobDto(jobId, presignedUploadUrl, fileName);
     workerStartService.startMetadataJob(startMetadataJobDto);
   }
 
