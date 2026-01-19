@@ -111,7 +111,9 @@ services:
     depends_on:
       minio-mc:
         condition: service_completed_successfully
-
+      redis:
+        condition: service_started
+        restart: true
       rabbitmq:
         condition: service_started
         restart: true
@@ -126,6 +128,8 @@ services:
       - RABBITMQ_DEFAULT_USER=admin
       - RABBITMQ_DEFAULT_PASS=admin
       - APP_UPLOAD_DIR=/app/uploads
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     healthcheck:
       test: "curl --fail --silent localhost:8080/actuator/health | grep UP || exit 1"
       interval: 20s
@@ -201,6 +205,13 @@ services:
       rabbitmq:
         condition: service_started
         restart: true
+      redis:
+        condition: service_started
+        restart: true
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_CHUNKING_TTL_MINUTES=30
     networks:
       - ase-network
 

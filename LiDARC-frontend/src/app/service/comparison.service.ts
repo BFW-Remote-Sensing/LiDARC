@@ -100,9 +100,45 @@ export class ComparisonService {
     );
   }
 
-  pollChunkingResult(id: number): Observable<HttpResponse<any>> {
+  pollChunkingResult(id: number, chunkSize: number): Observable<HttpResponse<any>> {
+    const params = new HttpParams()
+      .set('chunkSize', String(chunkSize));
     return this.httpClient.get<any>(
-      this.globals.backendUri + defaultComparisonPath + `/${id}/chunking`, { observe: 'response' }
+      this.globals.backendUri + defaultComparisonPath + `/${id}/chunking`, { params, observe: 'response' }
     );
+  }
+
+  /**
+   * Creates an EventSource for SSE streaming of chunking results.
+   * Returns an Observable that emits the chunking result when received.
+   * Results are cached per chunkSize, so the same chunkSize must be used.
+   */
+  streamChunkingResult(id: number, chunkSize: number): Observable<any> {
+    return new Observable(observer => {
+      const url = this.globals.backendUri + defaultComparisonPath + `/${id}/chunking/stream?chunkSize=${chunkSize}`;
+      const eventSource = new EventSource(url);
+
+      eventSource.addEventListener('chunking-result', (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          observer.next(data);
+          observer.complete();
+          eventSource.close();
+        } catch (e) {
+          observer.error(e);
+          eventSource.close();
+        }
+      });
+
+      eventSource.onerror = (error) => {
+        observer.error(error);
+        eventSource.close();
+      };
+
+      // Cleanup on unsubscribe
+      return () => {
+        eventSource.close();
+      };
+    });
   }
 }

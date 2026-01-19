@@ -75,18 +75,29 @@ export class ChunkingSettings implements OnInit{
   private requestVisualizationData(chunkSize: number, comparisonId: number) {
     return this.comparisonService.startChunkingResult(comparisonId, chunkSize).pipe(
       tap(() => console.log("Starting chunking worker...with chunking size" + chunkSize)),
-      switchMap(() => this.pollVisualizationData(comparisonId)),
+      switchMap(() => this.streamVisualizationData(comparisonId, chunkSize)),
       catchError(err => {
-        console.log("Error during start or polling:", err);
+        console.log("Error during start or streaming:", err);
         return of(null)
       }),
       filter(data => data !== null)
     );
   }
 
-  private pollVisualizationData(comparisonId: number) {
+  /**
+   * Uses SSE streaming to receive chunking results instead of polling.
+   * Results are cached per chunkSize.
+   */
+  private streamVisualizationData(comparisonId: number, chunkSize: number) {
+    return this.comparisonService.streamChunkingResult(comparisonId, chunkSize);
+  }
+
+  /**
+   * Fallback polling method (kept for reference, not currently used).
+   */
+  private pollVisualizationData(comparisonId: number, chunkSize: number) {
     return timer(0, 1000).pipe(
-      switchMap(() => this.comparisonService.pollChunkingResult(comparisonId)),
+      switchMap(() => this.comparisonService.pollChunkingResult(comparisonId, chunkSize)),
       map((response: HttpResponse<any>) => {
         if (response.status === 202) return { status: 'PENDING', data: null };
         if (response.status === 200) return { status: 'COMPLETED', data: response.body };

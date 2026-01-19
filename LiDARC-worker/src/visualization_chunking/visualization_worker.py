@@ -19,6 +19,7 @@ import util.file_handler as file_handler
 from pika.exceptions import ChannelWrongStateError, ReentrancyError, StreamLostError
 from requests import HTTPError
 from schemas.comparison import schema as comparison_schema
+from redis_cache import get_redis_cache
 
 rabbitConfig = get_rabbitmq_config()
 
@@ -101,10 +102,29 @@ def process_req(ch, method, properties, body):
 
     message = build_response_message(comparison_id, cells_matrix, statistics, chunking_size, group_mapping)
 
-    publisher.publish_chunking_comparison_result(BaseMessage(type="chunking_comparison_result",
-                                                             status="success",
-                                                             job_id="",
-                                                             payload= message))
+    # Write result directly to Redis cache (keyed by comparison_id and chunk_size)
+    redis_cache = get_redis_cache()
+    cache_success = redis_cache.save(comparison_id, chunking_size, message)
+
+    if cache_success:
+        # Send lightweight notification to backend (no payload - result is in Redis)
+        notification = {
+            "comparisonId": comparison_id,
+            "chunkSize": chunking_size,
+            "cached": True
+        }
+        publisher.publish_chunking_comparison_result(BaseMessage(type="chunking_comparison_result",
+                                                                 status="success",
+                                                                 job_id="",
+                                                                 payload=notification))
+        logging.info(f"Chunking result for comparison {comparison_id} (chunkSize={chunking_size}) saved to Redis and notification sent")
+    else:
+        # Fallback: send full payload via RabbitMQ if Redis fails
+        logging.warning(f"Redis save failed for comparison {comparison_id}, falling back to RabbitMQ payload")
+        publisher.publish_chunking_comparison_result(BaseMessage(type="chunking_comparison_result",
+                                                                 status="success",
+                                                                 job_id="",
+                                                                 payload=message))
 
 def build_response_message(comparison_id, chunked_matrix, statistics, chunking_size, group_mapping):
     return {

@@ -27,8 +27,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
+  import java.util.stream.Stream;
 
 
 @Service
@@ -48,6 +47,7 @@ public class ComparisonService implements IComparisonService {
     private final MetadataMapper metadataMapper;
     private final WorkerStartService workerStartService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ChunkingResultCacheService chunkingCacheService;
 
     public ComparisonService(
             ComparisonRepository comparisonRepository,
@@ -63,7 +63,8 @@ public class ComparisonService implements IComparisonService {
             MetadataMapper metadataMapper,
             ReportRepository reportRepository,
             WorkerStartService workerStartService,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            ChunkingResultCacheService chunkingCacheService) {
         this.comparisonRepository = comparisonRepository;
         this.comparisonFileRepository = comparisonFileRepository;
         this.comparisonFolderRepository = comparisonFolderRepository;
@@ -78,9 +79,8 @@ public class ComparisonService implements IComparisonService {
         this.reportRepository = reportRepository;
         this.workerStartService = workerStartService;
         this.eventPublisher = eventPublisher;
+        this.chunkingCacheService = chunkingCacheService;
     }
-
-    private final Map<Long, Object> chunkedComparisonsStorage = new ConcurrentHashMap<>();
 
     @Override
     public Page<ComparisonDTO> getPagedComparisons(Pageable pageable, String search) {
@@ -387,7 +387,8 @@ public class ComparisonService implements IComparisonService {
             throw new NotFoundException("Comparison with id: " + comparisonId + " not found!");
         }
 
-        chunkedComparisonsStorage.remove(dto.getId());
+        // Clear any existing cached result for this comparison and chunk size
+        chunkingCacheService.delete(dto.getId(), chunkingSize);
 
 
         // TODO Check bucket and object already exist for comparison, else worker throws error and stops
@@ -395,12 +396,12 @@ public class ComparisonService implements IComparisonService {
         String objectKey = dto.getResultObjectKey();
         StartChunkingJobDto chunkingJobDto = new StartChunkingJobDto(comparisonId, chunkingSize, new MinioObjectDto(bucketName, objectKey));
         workerStartService.startChunkingComparisonJob(chunkingJobDto);
-        log.info("Starting chunking comparison job for comparison with id: {}", comparisonId);
+        log.info("Starting chunking comparison job for comparison with id: {} and chunkSize: {}", comparisonId, chunkingSize);
     }
 
     @Override
     public void saveVisualizationComparison(Map<String, Object> result) {
-        log.info("Saving visualization comparison with result: {}", result);
+        log.info("Received visualization comparison notification");
         if (!result.containsKey("payload")) {
             log.warn("No comparison id or payload found in result of chunking worker");
             return;
@@ -415,11 +416,32 @@ public class ComparisonService implements IComparisonService {
             log.warn("Invalid comparisonId in result of chunking worker");
             return;
         }
+        Long comparisonId = ((Number) idObj).longValue();
+
+        // Extract chunkSize from payload
+        Object chunkSizeObj = payload.get("chunkSize");
+        int chunkSize = (chunkSizeObj instanceof Number) ? ((Number) chunkSizeObj).intValue() : 1;
+
+        // Check if result is already cached by worker (new flow)
+        Boolean cached = payload.get("cached") instanceof Boolean ? (Boolean) payload.get("cached") : false;
+
+        if (Boolean.TRUE.equals(cached)) {
+            // Worker wrote result directly to Redis - just notify SSE subscribers
+            log.info("Chunking result for comparison {} (chunkSize={}) already cached by worker, notifying subscribers", comparisonId, chunkSize);
+            Optional<Object> cachedResult = chunkingCacheService.get(comparisonId, chunkSize);
+            if (cachedResult.isPresent()) {
+                eventPublisher.publishEvent(new ChunkingResultReadyEvent(this, comparisonId, chunkSize, cachedResult.get()));
+            } else {
+                log.warn("Cached flag was true but no result found in Redis for comparisonId={}, chunkSize={}", comparisonId, chunkSize);
+            }
+            return;
+        }
+
+        // Fallback: full payload in message (legacy flow or Redis failure in worker)
         if (!payload.containsKey("chunked_cells")) {
             log.warn("No chunked cells found in result of chunking worker");
             return;
         }
-        Long comparisonId = ((Number) idObj).longValue();
 
         //TODO: Eventually fix to real dto / model
         Map<String, Object> visualizationResult = new HashMap<>();
@@ -428,18 +450,22 @@ public class ComparisonService implements IComparisonService {
         if (payload.containsKey("statistics")) {
             visualizationResult.put("statistics", payload.get("statistics"));
         }
-        if(payload.containsKey("group_mapping")) {
+        if (payload.containsKey("group_mapping")) {
             visualizationResult.put("group_mapping", payload.get("group_mapping"));
         }
-        chunkedComparisonsStorage.put(comparisonId, visualizationResult);
+
+        // Save to Redis cache with chunkSize
+        chunkingCacheService.save(comparisonId, chunkSize, visualizationResult);
+
+        // Publish event for SSE subscribers
+        eventPublisher.publishEvent(new ChunkingResultReadyEvent(this, comparisonId, chunkSize, visualizationResult));
     }
 
     /**
-     * Returns the result once.
+     * Returns the result from Redis cache for the specified chunk size.
      */
-    public Optional<Object> pollVisualizationResults(Long comparisonId) {
-        Object result = chunkedComparisonsStorage.get(comparisonId);
-        return Optional.ofNullable(result);
+    public Optional<Object> pollVisualizationResults(Long comparisonId, int chunkSize) {
+        return chunkingCacheService.get(comparisonId, chunkSize);
     }
 
 
