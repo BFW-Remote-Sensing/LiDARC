@@ -358,7 +358,7 @@ def chunking_func(cells_matrix: Matrix, chunk_size: int) -> List[Cell]:
                 avg_a = sum_a / count
                 avg_b = sum_b / count
                     # Falls du "Delta pro Zelle" willst: (sum_b - sum_a) / count
-                delta_z = (sum_b - sum_a)
+                delta_z = (sum_b - sum_a) / count
 
             reduced_cell: Cell = {
                 "x0": block_x0,
