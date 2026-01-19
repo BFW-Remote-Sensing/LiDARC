@@ -99,9 +99,9 @@ export class Heatmap implements AfterViewInit {
     const diffVisualMap = {
       visualMap: {
         type: 'continuous',
-        min: -5,     // adapt to your data
-        max: 5,
-        dimension: 4, // <-- delta_z index in your custom series
+        min: -10,     // adapt to your data
+        max: 10,
+        //dimension: 4, // <-- delta_z index in your custom series
         calculable: true,
         inRange: {
           color: [
