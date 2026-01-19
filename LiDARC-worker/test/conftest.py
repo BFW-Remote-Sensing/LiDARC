@@ -12,8 +12,8 @@ from importlib.resources import files
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../src"))
 
-
-sys.path.append(project_root)
+# had to change to let src import work
+sys.path.insert(0, project_root)
 
 def pytest_addoption(parser):
     parser.addoption(

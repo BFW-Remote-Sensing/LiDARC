@@ -20,6 +20,5 @@ export const routes: Routes = [
   { path: 'comparisons', component: Comparisons },
   { path: 'comparisons/:id', component: ComparisonDetails },
   { path: 'comparison-setup', component: ComparisonSetup },
-  { path: 'heatmap', component: Heatmap },
   {path: 'reports', component: Reports},
 ];
