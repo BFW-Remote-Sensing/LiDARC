@@ -2,7 +2,7 @@ import {AfterViewInit, Component, Input, OnInit, SimpleChanges} from '@angular/c
 import {CommonModule} from '@angular/common';
 import {provideEchartsCore} from 'ngx-echarts';
 import {EChartsCoreOption} from 'echarts/core';
-import { connect } from 'echarts/core';
+import {connect} from 'echarts/core';
 
 // import echarts core
 import * as echarts from 'echarts/core';
@@ -37,11 +37,14 @@ echarts.use([TitleComponent, DataZoomComponent, LegacyGridContainLabel, TooltipC
 export class Heatmap implements AfterViewInit {
   optionsLeft!: EChartsCoreOption;
   optionsRight!: EChartsCoreOption;
+  differenceOptions!: EChartsCoreOption;
 
   chartElement1!: HTMLElement | null;
   chartElement2!: HTMLElement | null;
+  differenceElement!: HTMLElement | null;
   chartInstance1!: echarts.ECharts;
   chartInstance2!: echarts.ECharts;
+  differenceInstance!: echarts.ECharts;
 
   rows: number = 100;
   cols: number = 100;
@@ -54,151 +57,179 @@ export class Heatmap implements AfterViewInit {
 
   @Input() data?: ChunkingResult; //fetch result from parent component
 
-  constructor(
-  ) {}
+  constructor() {
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes["data"]?.currentValue){
+    if (changes["data"]?.currentValue) {
       console.log("Heatmap received new data:", changes['data'].currentValue['chunked_cells']);
       this.updateHeatmaps(changes['data'].currentValue['chunked_cells']);
     }
   }
 
 
-
   ngAfterViewInit(): void {
     this.chartElement1 = document.getElementById('chart1');
     this.chartElement2 = document.getElementById('chart2');
+    this.differenceElement = document.getElementById('diffChart');
 
-    if (this.chartElement1 === null || this.chartElement2 === null) {
+    if (this.chartElement1 === null || this.chartElement2 === null || this.differenceElement === null) {
       alert("chart not found!");
     }
     this.chartInstance1 = echarts.init(this.chartElement1);
     this.chartInstance2 = echarts.init(this.chartElement2);
+    this.differenceInstance = echarts.init(this.differenceElement);
 
 
-    this.optionsLeft = this.createHeatmapOptionsWithoutDataset([],"SetA", true);
-    this.optionsRight = this.createHeatmapOptionsWithoutDataset( [],"SetB", false);
+    this.optionsLeft = this.createHeatmapOptionsWithoutDataset("SetA", true);
+    this.optionsRight = this.createHeatmapOptionsWithoutDataset( "SetB", false);
+    this.differenceOptions = this.createDifferenceHeatmapOptions("Delta_z",true);
+
 
     this.chartInstance1.setOption(this.optionsLeft);
     this.chartInstance2.setOption(this.optionsRight);
+    this.differenceInstance.setOption(this.differenceOptions);
 
     this.setHighlightBorderOnMouseover(this.chartInstance1, this.chartInstance2);
     this.connectHeatmaps();
   }
 
-  private updateHeatmapRevision(matrix: ChunkedCell[][]) {
-    if (!matrix || !Array.isArray(matrix) || matrix.length === 0) {
-      console.warn("Received invalid heatmap data:", matrix);
-      return;
-    }
-
-    this.rows = matrix.length;
-    this.cols = Math.max(...matrix.map(row => row.length));
-    //const cols = matrix[0].length;
-    console.log(`Updating chart with dimensions: ${this.rows}x${this.cols}`);
-
-    const seriesDataA: any[] = [];
-    const seriesDataB: any[] = [];
-    let minX = Number.POSITIVE_INFINITY;
-    let maxX = Number.NEGATIVE_INFINITY;
-    let minY = Number.POSITIVE_INFINITY;
-    let maxY = Number.NEGATIVE_INFINITY;
-
-    for(let yIndex = 0; yIndex < this.rows; yIndex++) {
-      for(let xIndex = 0; xIndex < this.cols; xIndex++) {
-        const cell = matrix[yIndex][xIndex];
-        if (!cell) continue;
-
-        const xi = xIndex;
-        const yi = yIndex;
-
-        const x0 = Number(cell.x0);
-        const x1 = Number(cell.x1);
-        const y0 = Number(cell.y0);
-        const y1 = Number(cell.y1);
-        const valA = cell.veg_height_max_a ?? 0;
-        const valB = cell.veg_height_max_b ?? 0;
-        seriesDataA.push([xi, yi, valA, x0, y0, x1, y1]);
-        seriesDataB.push([xi, yi, valB, x0, y0, x1, y1]);
-
-        // Track bounding box for axes
-        const localMinX = Math.min(x0, x1);
-        const localMaxX = Math.max(x0, x1);
-        const localMinY = Math.min(y0, y1);
-        const localMaxY = Math.max(y0, y1);
-
-        if (localMinX < minX) minX = localMinX;
-        if (localMaxX > maxX) maxX = localMaxX;
-        if (localMinY < minY) minY = localMinY;
-        if (localMaxY > maxY) maxY = localMaxY;
+  private createDifferenceHeatmapOptions(title:string, showVisualMap: boolean): EChartsCoreOption {
+    const options = this.createHeatmapOptionsWithoutDataset(title, showVisualMap);
+    const diffVisualMap = {
+      visualMap: {
+        type: 'continuous',
+        min: -5,     // adapt to your data
+        max: 5,
+        dimension: 4, // <-- delta_z index in your custom series
+        calculable: true,
+        inRange: {
+          color: [
+            '#2166ac', // deep blue (negative)
+            '#67a9cf',
+            '#f7f7f7', // neutral (0)
+            '#ef8a62',
+            '#b2182b'  // deep red (positive)
+          ]
+        }
       }
     }
-    console.log(seriesDataA);
-    console.log(seriesDataB);
-
-    this.setEchartsOption(seriesDataA, seriesDataB, minX,minY,maxX,maxY);
+    return {...options, ...diffVisualMap};
   }
 
-  private setEchartsOption(seriesDataA: any[], seriesDataB: any[], minX: number, minY: number, maxX: number, maxY: number ) {
-    // const seriesTemplate = {
-    //   type: 'heatmap',
-    //   encode: {
-    //     x: 0,
-    //     y: 1,
-    //     value: 2
-    //     // tooltip isn't strictly required here; we'll use params.data in tooltip formatter
-    //   }
-    // };
-    // const axisUpdate = {
-    //   xAxis: {
-    //     min: minX,
-    //     max: maxX,
-    //     type: 'value',
-    //     splitLine: { show: false }
-    //   },
-    //   yAxis: {
-    //     min: minY,
-    //     max: maxY,
-    //     type: 'value',
-    //     inverse: true,
-    //     splitLine: { show: false }
-    //   }
-    // };
+  /*
+    private updateHeatmapRevision(matrix: ChunkedCell[][]) {
+      if (!matrix || !Array.isArray(matrix) || matrix.length === 0) {
+        console.warn("Received invalid heatmap data:", matrix);
+        return;
+      }
 
-    const tooltipFormatter = (params: any) => {
-      // params.data is: [xi, yi, value, x0, y0, x1, y1]
-      const d = params?.data;
-      if (!d || d.length < 5) return '';
-      const xi = d[0], yi = d[1], value = d[2];
-      const x0 = d[3], y0 = d[4], x1 = d[5], y1 = d[6];
-      const sx = Math.min(x0, x1), ex = Math.max(x0, x1);
-      const sy = Math.min(y0, y1), ey = Math.max(y0, y1);
-      return `X: ${sx} - ${ex}<br/>Y: ${sy} - ${ey}<br/>Value: ${typeof value === 'number' ? value.toFixed(3) : value}`;
-    };
-    this.chartInstance1.setOption({
-      //...axisUpdate,
-      tooltip: {
-        formatter: tooltipFormatter
-      },
-      series: [{
-        //...seriesTemplate,
-        data: seriesDataA
-      }]
-    });
-    this.chartInstance2.setOption({
-      //...axisUpdate,
-      tooltip: {
-        formatter: tooltipFormatter
-      },
-      series: [{
-       // ...seriesTemplate,
-        data: seriesDataB
-      }]
-    })
-  }
+      this.rows = matrix.length;
+      this.cols = Math.max(...matrix.map(row => row.length));
+      //const cols = matrix[0].length;
+      console.log(`Updating chart with dimensions: ${this.rows}x${this.cols}`);
 
+      const seriesDataA: any[] = [];
+      const seriesDataB: any[] = [];
+      let minX = Number.POSITIVE_INFINITY;
+      let maxX = Number.NEGATIVE_INFINITY;
+      let minY = Number.POSITIVE_INFINITY;
+      let maxY = Number.NEGATIVE_INFINITY;
 
+      for(let yIndex = 0; yIndex < this.rows; yIndex++) {
+        for(let xIndex = 0; xIndex < this.cols; xIndex++) {
+          const cell = matrix[yIndex][xIndex];
+          if (!cell) continue;
+
+          const xi = xIndex;
+          const yi = yIndex;
+
+          const x0 = Number(cell.x0);
+          const x1 = Number(cell.x1);
+          const y0 = Number(cell.y0);
+          const y1 = Number(cell.y1);
+          const valA = cell.veg_height_max_a ?? 0;
+          const valB = cell.veg_height_max_b ?? 0;
+          seriesDataA.push([xi, yi, valA, x0, y0, x1, y1]);
+          seriesDataB.push([xi, yi, valB, x0, y0, x1, y1]);
+
+          // Track bounding box for axes
+          const localMinX = Math.min(x0, x1);
+          const localMaxX = Math.max(x0, x1);
+          const localMinY = Math.min(y0, y1);
+          const localMaxY = Math.max(y0, y1);
+
+          if (localMinX < minX) minX = localMinX;
+          if (localMaxX > maxX) maxX = localMaxX;
+          if (localMinY < minY) minY = localMinY;
+          if (localMaxY > maxY) maxY = localMaxY;
+        }
+      }
+      console.log(seriesDataA);
+      console.log(seriesDataB);
+
+      this.setEchartsOption(seriesDataA, seriesDataB, minX,minY,maxX,maxY);
+    }
+
+    private setEchartsOption(seriesDataA: any[], seriesDataB: any[], minX: number, minY: number, maxX: number, maxY: number ) {
+      // const seriesTemplate = {
+      //   type: 'heatmap',
+      //   encode: {
+      //     x: 0,
+      //     y: 1,
+      //     value: 2
+      //     // tooltip isn't strictly required here; we'll use params.data in tooltip formatter
+      //   }
+      // };
+      // const axisUpdate = {
+      //   xAxis: {
+      //     min: minX,
+      //     max: maxX,
+      //     type: 'value',
+      //     splitLine: { show: false }
+      //   },
+      //   yAxis: {
+      //     min: minY,
+      //     max: maxY,
+      //     type: 'value',
+      //     inverse: true,
+      //     splitLine: { show: false }
+      //   }
+      // };
+
+      const tooltipFormatter = (params: any) => {
+        // params.data is: [xi, yi, value, x0, y0, x1, y1]
+        const d = params?.data;
+        if (!d || d.length < 5) return '';
+        const xi = d[0], yi = d[1], value = d[2];
+        const x0 = d[3], y0 = d[4], x1 = d[5], y1 = d[6];
+        const sx = Math.min(x0, x1), ex = Math.max(x0, x1);
+        const sy = Math.min(y0, y1), ey = Math.max(y0, y1);
+        return `X: ${sx} - ${ex}<br/>Y: ${sy} - ${ey}<br/>Value: ${typeof value === 'number' ? value.toFixed(3) : value}`;
+      };
+      this.chartInstance1.setOption({
+        //...axisUpdate,
+        tooltip: {
+          formatter: tooltipFormatter
+        },
+        series: [{
+          //...seriesTemplate,
+          data: seriesDataA
+        }]
+      });
+      this.chartInstance2.setOption({
+        //...axisUpdate,
+        tooltip: {
+          formatter: tooltipFormatter
+        },
+        series: [{
+         // ...seriesTemplate,
+          data: seriesDataB
+        }]
+      })
+    }
+
+  */
   private updateHeatmaps(matrix: ChunkedCell[][]) {
     if (!matrix || !Array.isArray(matrix) || matrix.length === 0) {
       console.warn("Received invalid heatmap data:", matrix);
@@ -212,13 +243,14 @@ export class Heatmap implements AfterViewInit {
 
     const seriesDataA: any[] = [];
     const seriesDataB: any[] = [];
+    const differenceData: any[] = [];
     let minX = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
     let minY = Number.POSITIVE_INFINITY;
     let maxY = Number.NEGATIVE_INFINITY;
 
-    for(let yIndex = 0; yIndex < this.rows; yIndex++) {
-      for(let xIndex = 0; xIndex < this.cols; xIndex++) {
+    for (let yIndex = 0; yIndex < this.rows; yIndex++) {
+      for (let xIndex = 0; xIndex < this.cols; xIndex++) {
         const cell = matrix[yIndex][xIndex];
         if (!cell) continue;
 
@@ -228,8 +260,10 @@ export class Heatmap implements AfterViewInit {
         const y1 = Number(cell.y1);
         const valA = cell.veg_height_max_a ?? 0;
         const valB = cell.veg_height_max_b ?? 0;
+        const delta_z = cell.delta_z ?? 0;
         seriesDataA.push([x0, y0, x1, y1, valA]);
         seriesDataB.push([x0, y0, x1, y1, valB]);
+        differenceData.push([x0, y0, x1, y1, delta_z]);
 
         // Track bounding box for axes
         const localMinX = Math.min(x0, x1);
@@ -243,6 +277,9 @@ export class Heatmap implements AfterViewInit {
         if (localMaxY > maxY) maxY = localMaxY;
       }
     }
+    console.log(differenceData)
+    console.log(seriesDataA);
+    console.log(seriesDataB);
 
     const renderItem = (params: any, api: any) => {
       const x0 = api.value(0);
@@ -273,7 +310,7 @@ export class Heatmap implements AfterViewInit {
 
       return {
         type: 'rect',
-        shape: { x, y, width, height },
+        shape: {x, y, width, height},
         style: api.style({
           fill: api.visual('color'),
           stroke: '#444',
@@ -296,14 +333,14 @@ export class Heatmap implements AfterViewInit {
         min: minX,
         max: maxX,
         type: 'value',
-        splitLine: { show: false }
+        splitLine: {show: false}
       },
       yAxis: {
         min: minY,
         max: maxY,
         type: 'value',
         inverse: true,
-        splitLine: { show: false }
+        splitLine: {show: false}
       }
     };
     const tooltipFormatter = (params: any) => {
@@ -337,10 +374,21 @@ export class Heatmap implements AfterViewInit {
         data: seriesDataB
       }]
     });
+
+    this.differenceInstance.setOption({
+      ...axisUpdate,
+      tooltip: {
+        formatter: tooltipFormatter
+      },
+      series: [{
+        ...seriesTemplate,
+        data: differenceData
+      }]
+    });
   }
 
 
-  private createHeatmapOptionsWithoutDataset(data: number[][], title: string, showVisualMap: boolean): EChartsCoreOption {
+  private createHeatmapOptionsWithoutDataset(title: string, showVisualMap: boolean): EChartsCoreOption {
     return {
       title: {
         top: 0,
@@ -350,18 +398,18 @@ export class Heatmap implements AfterViewInit {
         type: 'value', // Changed from category
         min: 0,
         max: this.cols, // e.g., 100
-        splitLine: { show: false }
+        splitLine: {show: false}
       },
       yAxis: {
         type: 'value', // Changed from category
         min: 0,
         max: this.rows, // e.g., 100
         inverse: true, // Optional: makes Y=0 start at top like a matrix
-        splitLine: { show: false }
+        splitLine: {show: false}
       },
       dataZoom: [
-        { type: 'slider', xAxisIndex: 0, bottom: 0, filterMode: 'none' },
-        { type: 'slider', yAxisIndex: 0, orient: 'vertical', right: 0, filterMode: 'none' },
+        {type: 'slider', xAxisIndex: 0, bottom: 0, filterMode: 'none'},
+        {type: 'slider', yAxisIndex: 0, orient: 'vertical', right: 0, filterMode: 'none'},
       ],
       visualMap: {
         min: 0,
@@ -374,17 +422,14 @@ export class Heatmap implements AfterViewInit {
           color: ['#e5f5e0', '#a6dba0', '#5aae61', '#1b7837', '#00441b'],
         },
         show: showVisualMap
-      },
+      },// We will set the rest in updateHeatmaps
       series: [
         {
           type: 'custom',
         }
-      ] // We will set this in updateHeatmaps
+      ]
     };
   }
-
-
-
 
 
   private connectHeatmaps() {
