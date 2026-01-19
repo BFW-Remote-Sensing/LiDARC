@@ -221,6 +221,8 @@ def process_req(ch, method, properties, body):
                                                            job_id="",
                                                            payload=mk_error_msg(error_msg="Precompute job is cancelled because job has no job id", file_id=file_id,
                                                                                 comparison_id=comparison_id,)))
+        return
+
     job_id = request["jobId"]
 
 

@@ -56,7 +56,8 @@ def test_metadata_worker_integration_valid_request(minio_client, rabbitmq_ch, la
 
     test_job = {
         "jobId": "12345",
-        "url": presigned_url
+        "url": presigned_url,
+        "fileName": "metadata_test.las"
     }
     publish_message(
         rabbitmq_ch,
@@ -89,7 +90,8 @@ def test_metadata_worker_integration_invalid_url(minio_client, rabbitmq_ch, las_
 
     test_job = {
         "jobId": "12345",
-        "url": "http://localhost:12345/nonexistent_file.las"
+        "url": "http://localhost:12345/nonexistent_file.las",
+        "fileName": "nonexistent_file.las"
     }
     publish_message(
         rabbitmq_ch,

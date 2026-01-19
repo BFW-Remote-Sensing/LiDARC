@@ -115,7 +115,7 @@ def test_invalid_job_msg_returns_error_msg(load_json):
 
         mock_publish.assert_called_once()
 
-        expected_msg = mk_error_msg("Precompute job is cancelled because job request is invalid") #TODO: This expected message might change later which could lead to failed test
+        expected_msg = mk_error_msg("Precompute job is cancelled because job request is invalid", file_id=2, comparison_id = 1) #TODO: This expected message might change later which could lead to failed test
 
         args, kwargs = mock_publish.call_args
         msg = args[0]
