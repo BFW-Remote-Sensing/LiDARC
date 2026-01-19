@@ -370,6 +370,7 @@ public class MetadataService implements IMetadataService {
         Optional<File> old = fileRepository.findFileByFilename(fileName);
         if (old.isEmpty()) {
             log.warn("Original file not found in database, skipping save: {}", fileName);
+            return;
         }
         File file = old.get();
         file.setStatus(File.FileStatus.FAILED);
