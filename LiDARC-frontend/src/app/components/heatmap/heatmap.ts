@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, Input, OnInit, SimpleChanges} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, Input, OnInit, SimpleChanges, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {provideEchartsCore} from 'ngx-echarts';
 import {EChartsCoreOption} from 'echarts/core';
@@ -17,6 +17,10 @@ import {DataZoomComponent} from 'echarts/components'
 import {max, Subject} from 'rxjs';
 import {ChunkedCell, ChunkingResult} from '../../dto/chunking';
 import {FormsModule} from '@angular/forms';
+import {MatMenu, MatMenuItem, MatMenuTrigger,} from '@angular/material/menu';
+import {MatDivider} from '@angular/material/divider';
+import {MatIcon} from '@angular/material/icon';
+import {MatButton} from '@angular/material/button';
 
 
 echarts.use([TitleComponent, DataZoomComponent, LegacyGridContainLabel, TooltipComponent, VisualMapComponent, BarChart, GridComponent, CanvasRenderer, HeatmapChart, CustomChart]);
@@ -26,7 +30,7 @@ echarts.use([TitleComponent, DataZoomComponent, LegacyGridContainLabel, TooltipC
   selector: 'app-heatmap',
   standalone: true,
   imports: [CommonModule,
-    FormsModule],
+    FormsModule, MatMenuTrigger, MatMenu, MatDivider, MatIcon, MatMenuItem, MatButton],
   templateUrl: './heatmap.html',
   styleUrl: './heatmap.scss',
   providers: [
@@ -39,12 +43,27 @@ export class Heatmap implements AfterViewInit {
   optionsRight!: EChartsCoreOption;
   differenceOptions!: EChartsCoreOption;
 
-  chartElement1!: HTMLElement | null;
-  chartElement2!: HTMLElement | null;
-  differenceElement!: HTMLElement | null;
+
   chartInstance1!: echarts.ECharts;
   chartInstance2!: echarts.ECharts;
   differenceInstance!: echarts.ECharts;
+  @ViewChild("chart1") chart1?: ElementRef<HTMLDivElement>;
+  @ViewChild("chart2") chart2?: ElementRef<HTMLDivElement>;
+  @ViewChild("diffChart") diffElement?: ElementRef<HTMLDivElement>;
+
+
+  private instA?: echarts.ECharts;
+  private instB?: echarts.ECharts;
+  private instD?: echarts.ECharts;
+
+
+  // deine Daten (Beispiele)
+  private dataA: any[] = [];
+  private dataB: any[] = [];
+  private dataD: any[] = [];
+
+
+  displayedHeatmap: string = "both"; // "both", "absolute comparison", "delta z"
 
   rows: number = 100;
   cols: number = 100;
@@ -60,6 +79,9 @@ export class Heatmap implements AfterViewInit {
   constructor() {
   }
 
+
+
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes["data"]?.currentValue) {
       console.log("Heatmap received new data:", changes['data'].currentValue['chunked_cells']);
@@ -69,16 +91,14 @@ export class Heatmap implements AfterViewInit {
 
 
   ngAfterViewInit(): void {
-    this.chartElement1 = document.getElementById('chart1');
-    this.chartElement2 = document.getElementById('chart2');
-    this.differenceElement = document.getElementById('diffChart');
 
-    if (this.chartElement1 === null || this.chartElement2 === null || this.differenceElement === null) {
+    if (this.chart1 === null || this.chart2 === null || this.diffElement === null) {
       alert("chart not found!");
+      return
     }
-    this.chartInstance1 = echarts.init(this.chartElement1);
-    this.chartInstance2 = echarts.init(this.chartElement2);
-    this.differenceInstance = echarts.init(this.differenceElement);
+    this.chartInstance1 = echarts.init(this.chart1?.nativeElement);
+    this.chartInstance2 = echarts.init(this.chart2?.nativeElement);
+    this.differenceInstance = echarts.init(this.diffElement?.nativeElement);
 
 
     this.optionsLeft = this.createHeatmapOptionsWithoutDataset("SetA", true);
@@ -117,6 +137,11 @@ export class Heatmap implements AfterViewInit {
     return {...options, ...diffVisualMap};
   }
 
+  protected selectOption(option: string) {
+    console.log("Selected option:", option);
+    this.displayedHeatmap = option
+    this.updateHeatmaps(this.data?.chunked_cells || []);
+  }
   /*
     private updateHeatmapRevision(matrix: ChunkedCell[][]) {
       if (!matrix || !Array.isArray(matrix) || matrix.length === 0) {
