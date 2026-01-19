@@ -210,7 +210,6 @@ public class MetadataService implements IMetadataService {
                 }
             }
         }
-
         Map<String, Object> payload = (Map<String, Object>) payloadObj;
         Object metadataObj = ((Map<?, ?>) payload).get("metadata");
         Object payloadFileName = ((Map<?, ?>) payload).get("file_name");
@@ -226,6 +225,7 @@ public class MetadataService implements IMetadataService {
                     this.persistMetadataError(fileName,"Received invalid payload from metadata worker");
                 } else {
                     file.setErrorMsg(null);
+                    tryUpdateFolderStatusToProcessed(file);
                     fileRepository.save(file);
                     log.info("Saved FileMetadata for file: {}", file.getFilename());
                 }
@@ -376,5 +376,47 @@ public class MetadataService implements IMetadataService {
         file.setStatus(File.FileStatus.FAILED);
         file.setErrorMsg(errorMsg);
         fileRepository.save(file);
+        tryUpdateFolderStatusToFailed(file);
     }
+
+    private void tryUpdateFolderStatusToProcessed(File file) {
+        if (file == null || file.getFolder() == null) return;
+
+        Folder folder = file.getFolder();
+
+        if (folder.getFiles() == null || folder.getFiles().isEmpty()) {
+            return;
+        }
+
+        if(Objects.equals(folder.getStatus(), "FAILED")) return;
+
+        boolean hasUnfinishedFiles = folder.getFiles().stream()
+                .filter(f -> !f.getId().equals(file.getId()))
+                .anyMatch(f ->
+                        f.getStatus() == File.FileStatus.UPLOADING ||
+                                f.getStatus() == File.FileStatus.UPLOADED ||
+                                f.getStatus() == File.FileStatus.PROCESSING
+                );
+
+        if (!hasUnfinishedFiles) {
+            folder.setStatus("PROCESSED");
+            folderRepository.save(folder);
+        }
+    }
+
+    private void tryUpdateFolderStatusToFailed(File file) {
+        if (file == null || file.getFolder() == null) return;
+
+        Folder folder = file.getFolder();
+
+        if (folder.getFiles() == null || folder.getFiles().isEmpty()) {
+            return;
+        }
+        folder.setStatus("FAILED");
+        folderRepository.save(folder);
+    }
+
+
+
+
 }

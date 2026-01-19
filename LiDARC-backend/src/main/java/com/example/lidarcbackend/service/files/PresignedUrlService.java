@@ -156,7 +156,11 @@ public class PresignedUrlService implements IPresignedUrlService {
         Folder folder = folderRepository.findById(folderId).orElse(null);
         file.setFolder(folder);
         file = fileRepository.save(file);
-        if (folder != null) folder.addFile(file);
+        if (folder != null) {
+            folder.addFile(file);
+            folder.setStatus("UPLOADING");
+            folderRepository.save(folder);
+        }
       } else {
         file = fileRepository.save(file);
 
@@ -212,12 +216,19 @@ public class PresignedUrlService implements IPresignedUrlService {
     file.setStatus(File.FileStatus.PROCESSING);
     file.setUploadedAt(Instant.now());
     file = fileRepository.save(file);
+
+    if(file.getFolder() != null) {
+        Folder folder = folderRepository.findById(file.getFolder().getId()).orElse(null);
+        this.tryUpdateFolderStatusToProcessing(folder, file);
+    }
+
     FileInfoDto dto = new FileInfoDto(file);
     urlRepository.deleteByFileIdAndMethod(file.getId(), Method.PUT);
 
     dto.setUploaded(true);
     dto.setPresignedURL(fileInfoOpt.get().getPresignedURL());
     dto.setUrlExpiresAt(expiresAt);
+
 
     //TODO change to real jobId when job status management is implemented
     sendFinishMessage("1234", dto.getPresignedURL(), dto.getFileName());
@@ -267,6 +278,26 @@ public class PresignedUrlService implements IPresignedUrlService {
         .object(fileName)
         .expiry(minioProperties.getDefaultExpiryTime())
         .build();
+  }
+
+  private void tryUpdateFolderStatusToProcessing(Folder folder, File file) {
+    if(folder == null || file == null) {
+      return;
+    }
+
+    List<File> files = folder.getFiles();
+    if(files == null || files.isEmpty()) return;
+
+    boolean hasPendingFiles = files.stream()
+          .filter(f -> !f.getId().equals(file.getId()))
+          .anyMatch(f ->
+                  f.getStatus() == File.FileStatus.UPLOADING ||
+                          f.getStatus() == File.FileStatus.UPLOADED
+          );
+
+    if(!hasPendingFiles) {
+      folder.setStatus("PROCESSING");
+    }
   }
 
 }
