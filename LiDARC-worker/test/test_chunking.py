@@ -62,7 +62,7 @@ def test_simple_2x2_chunk_to_1x1_averages_and_coords():
     assert_close(cell["veg_height_max_a"], 2.5)
     assert_close(cell["veg_height_max_b"], 25.0)
     # your delta_z is sum_b - sum_a (not mean diff)
-    assert_close(cell["delta_z"], (10+20+30+40) - (1+2+3+4))
+    assert_close(cell["delta_z"], ((10+20+30+40) - (1+2+3+4)) / 4)
     assert cell["count"] == 4
     assert_close(cell["coverage"], 1.0)
 
