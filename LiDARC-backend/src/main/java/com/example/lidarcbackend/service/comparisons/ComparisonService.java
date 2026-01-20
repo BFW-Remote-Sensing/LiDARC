@@ -8,8 +8,11 @@ import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.exception.ValidationException;
 import com.example.lidarcbackend.model.DTO.*;
+import com.example.lidarcbackend.model.JobType;
+import com.example.lidarcbackend.model.TrackedJob;
 import com.example.lidarcbackend.model.entity.*;
 import com.example.lidarcbackend.repository.*;
+import com.example.lidarcbackend.service.IJobTrackingService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.example.lidarcbackend.service.files.IMetadataService;
 import com.example.lidarcbackend.service.files.WorkerStartService;
@@ -26,6 +29,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
@@ -41,6 +46,7 @@ public class ComparisonService implements IComparisonService {
     private final FileRepository fileRepository;
     private final FolderRepository folderRepository;
     private final IMetadataService metadataService;
+    private final IJobTrackingService  jobTrackingService;
     private final Validator validator;
     private final RabbitTemplate rabbitTemplate;
     private final ComparisonMapper mapper;
@@ -56,6 +62,7 @@ public class ComparisonService implements IComparisonService {
             FileRepository fileRepository,
             FolderRepository folderRepository,
             IMetadataService metadataService,
+            IJobTrackingService jobTrackingService,
             Validator validator,
             RabbitTemplate rabbitTemplate,
             ComparisonMapper mapper,
@@ -70,6 +77,7 @@ public class ComparisonService implements IComparisonService {
         this.folderRepository = folderRepository;
         this.fileRepository = fileRepository;
         this.metadataService = metadataService;
+        this.jobTrackingService = jobTrackingService;
         this.validator = validator;
         this.rabbitTemplate = rabbitTemplate;
         this.mapper = mapper;
@@ -252,12 +260,7 @@ public class ComparisonService implements IComparisonService {
 
             if (!validRegions.isEmpty()) {
                 cf.setIncluded(true);
-                String uniqueJobId = String.format("c%d_%s_f%d_%s",
-                        comparisonId,
-                        groupName,
-                        fileEntity.getId(),
-                        UUID.randomUUID().toString().substring(0, 8)
-                );
+                String uniqueJobId = UUID.randomUUID().toString();
                 StartPreProcessJobDto jobDto = StartPreProcessJobDto.builder()
                         .jobId(uniqueJobId)
                         .grid(grid)
@@ -269,6 +272,16 @@ public class ComparisonService implements IComparisonService {
                 plan.addIncludedFile(cf, jobDto);
 
                 restrictedZones.add(snappedBox);
+
+                TrackedJob trackedJob = new TrackedJob(
+                        UUID.fromString(UUID.nameUUIDFromBytes(uniqueJobId.getBytes()).toString()),
+                        JobType.PREPROCESSING,
+                        Map.of("comparisonId", comparisonId, "fileId", fileEntity.getId()),
+                        Instant.now(),
+                        Duration.ofSeconds(10)
+                );
+                jobTrackingService.registerJob(trackedJob);
+
             } else {
                 cf.setIncluded(false);
                 cf.setStatus(ComparisonFile.Status.COMPLETED);
@@ -463,6 +476,14 @@ public class ComparisonService implements IComparisonService {
             log.error("Invalid result message received, missing jobId, payload or status");
             return;
         }
+        UUID jobUuid;
+        try {
+            jobUuid = UUID.fromString(jobId);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid job id received, jobId: " + jobId);
+            return;
+        }
+        jobTrackingService.completeJob(jobUuid);
 
         Number comparisonIdNum = (Number) payload.get("comparisonId");
         if (comparisonIdNum == null) {
@@ -497,6 +518,10 @@ public class ComparisonService implements IComparisonService {
             return;
         }
         ComparisonFile cf = cfOpt.get();
+
+        if(cf.getStatus().equals(ComparisonFile.Status.FAILED)) {
+            return;
+        }
 
         if (!status.equalsIgnoreCase("success")) {
             Object payloadMsg = ((Map<?, ?>) payload).get("msg");
@@ -541,6 +566,15 @@ public class ComparisonService implements IComparisonService {
             return;
         }
 
+        UUID jobUuid;
+        try {
+            jobUuid = UUID.fromString(jobId);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid job id received, jobId: " + jobId);
+            return;
+        }
+        jobTrackingService.completeJob(jobUuid);
+
         Object comparisonIdObj = payload.get("comparisonId");
         Long comparisonId;
         if (comparisonIdObj instanceof Number n) {
@@ -558,7 +592,9 @@ public class ComparisonService implements IComparisonService {
             return;
         }
         Comparison comparison = comparisonOpt.get();
-
+        if(comparison.getStatus().equals(Comparison.Status.FAILED)) {
+            return;
+        }
 
         if (!status.equalsIgnoreCase("success")) {
             Object payloadMsg = ((Map<?, ?>) payload).get("msg");
@@ -609,6 +645,15 @@ public class ComparisonService implements IComparisonService {
                     filesDto
             );
 
+            UUID comparisonJobId = UUID.randomUUID();
+            TrackedJob trackedJob = new TrackedJob(
+              comparisonJobId,
+              JobType.COMPARISON,
+              Map.of("comparisonId", comparisonId),
+              Instant.now(),
+              Duration.ofMinutes(15)
+            );
+            jobTrackingService.registerJob(trackedJob);
             workerStartService.startComparisonJob(dto);
         } else {
             log.info("Comparison {} is not ready yet. Waiting for other files.", comparisonId);

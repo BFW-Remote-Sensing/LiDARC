@@ -1,5 +1,9 @@
 package com.example.lidarcbackend.service.files;
 
+import com.example.lidarcbackend.model.JobType;
+import com.example.lidarcbackend.model.TrackedJob;
+import com.example.lidarcbackend.service.IJobTrackingService;
+import com.example.lidarcbackend.service.JobTrackingService;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioAsyncClient;
 import io.minio.StatObjectArgs;
@@ -13,9 +17,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -47,6 +55,7 @@ public class PresignedUrlService implements IPresignedUrlService {
   private final FolderRepository folderRepository;
   private final WorkerStartService workerStartService;
   private final UrlMapper urlMapper;
+  private final IJobTrackingService jobTrackingService;
   //minimum added time to the current time when checking for expiry
   private final int minimumAddedTime = 20;
   @Value("${spring.rabbitmq.template.routing-key:metadata_trigger}")
@@ -230,8 +239,18 @@ public class PresignedUrlService implements IPresignedUrlService {
     dto.setUrlExpiresAt(expiresAt);
 
 
-    //TODO change to real jobId when job status management is implemented
-    sendFinishMessage("1234", dto.getPresignedURL(), dto.getFileName());
+    UUID jobId = UUID.randomUUID();
+    jobTrackingService.registerJob(
+            new TrackedJob(
+                    jobId,
+                    JobType.METADATA,
+                    Map.of("fileId", file.getId()),
+                    Instant.now(),
+                    Duration.ofMinutes(10)
+            )
+    );
+
+    sendFinishMessage(jobId.toString(), dto.getPresignedURL(), dto.getFileName());
 
     return Optional.of(dto);
   }

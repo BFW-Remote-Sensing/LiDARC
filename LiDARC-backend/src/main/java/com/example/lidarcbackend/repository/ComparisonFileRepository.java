@@ -29,4 +29,5 @@ public interface ComparisonFileRepository extends JpaRepository<ComparisonFile, 
     """)
     boolean areAllIncludedFilesReady(@Param("comparisonId") Long comparisonId);
 
+
 }

@@ -12,6 +12,7 @@ import com.example.lidarcbackend.model.entity.Folder;
 import com.example.lidarcbackend.repository.CoordinateSystemRepository;
 import com.example.lidarcbackend.repository.FileRepository;
 import com.example.lidarcbackend.repository.FolderRepository;
+import com.example.lidarcbackend.service.IJobTrackingService;
 import com.example.lidarcbackend.service.folders.IFolderService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -42,6 +43,7 @@ public class MetadataService implements IMetadataService {
     private final Validator validator;
     private final MetadataMapper mapper;
     private final IFolderService folderService;
+    private final IJobTrackingService jobTrackingService;
 
     public MetadataService(
             FileRepository fileRepository,
@@ -49,13 +51,15 @@ public class MetadataService implements IMetadataService {
             FolderRepository folderRepository,
             IFolderService folderService,
             Validator validator,
-            MetadataMapper mapper) {
+            MetadataMapper mapper,
+            IJobTrackingService jobTrackingService) {
         this.fileRepository = fileRepository;
         this.coordinateSystemRepository = coordinateSystemRepository;
         this.folderRepository = folderRepository;
         this.folderService = folderService;
         this.validator = validator;
         this.mapper = mapper;
+        this.jobTrackingService = jobTrackingService;
     }
 
     public FileMetadataDTO GetMetadata(String metadataId) {
@@ -189,6 +193,16 @@ public class MetadataService implements IMetadataService {
             return;
         }
 
+        UUID jobUuid;
+        try {
+            jobUuid = UUID.fromString(jobId);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid job id received, jobId: " + jobId);
+            return;
+        }
+
+        jobTrackingService.completeJob(jobUuid);
+
         Object payloadObj = result.get("payload");
         if (!(payloadObj instanceof Map)) {
             log.error("Invalid payload for job {}", jobId);
@@ -214,12 +228,23 @@ public class MetadataService implements IMetadataService {
         Object metadataObj = ((Map<?, ?>) payload).get("metadata");
         Object payloadFileName = ((Map<?, ?>) payload).get("file_name");
         if((payloadFileName instanceof String fileName)) {
+            Optional<File> old = fileRepository.findFileByFilename(fileName);
+            if (old.isEmpty()) {
+                log.warn("Original file not found in database, skipping save: {}", fileName);
+                return;
+            }
+            File file = old.get();
+            if (file.getStatus().equals(File.FileStatus.FAILED)) {
+                log.warn("File status is already filed (metadata job timeout): {}", fileName);
+                return;
+            }
+
             if (!(metadataObj instanceof Map)) {
                 log.error("Invalid metadata object for job {}", jobId);
                 persistMetadataError(fileName,"Received invalid payload from metadata worker");
             } else {
                 Map<String, Object> metadata = (Map<String, Object>) metadataObj;
-                File file = parseMetadata(metadata);
+                file = parseMetadata(metadata, file);
                 if (file == null) {
                     log.error("Invalid metadata object for job {}", jobId);
                     this.persistMetadataError(fileName,"Received invalid payload from metadata worker");
@@ -250,15 +275,8 @@ public class MetadataService implements IMetadataService {
         fileRepository.updateFolderForMetadata(metadataIds, folder);
     }
 
-    private File parseMetadata(Map<String, Object> metadata) {
+    private File parseMetadata(Map<String, Object> metadata, File file) {
         try {
-            Optional<File> old = fileRepository.findFileByFilename(metadata.get("filename").toString());
-            if (old.isEmpty()) {
-                log.warn("Original file not found in database, skipping save: {}", metadata.get("filename"));
-                return null;
-            }
-            File file = old.get();
-
             String csString = (String) metadata.get("coordinate_system");
             CoordinateSystem cs = null;
             if (csString != null && !csString.isEmpty()) {
