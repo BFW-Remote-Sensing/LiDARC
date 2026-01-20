@@ -12,41 +12,42 @@
   </p>
   <p>This heatmap has: {{ this.rows }} rows * {{ this.cols }} cols</p>
 </div>
-<div class="options">
-  <button mat-raised-button [matMenuTriggerFor]="hmMenu">
-    Heatmap: {{ this.displayedHeatmap }}
-    <mat-icon>arrow_drop_down</mat-icon>
-  </button>
 
-  <mat-menu #hmMenu="matMenu">
-    <button mat-menu-item (click)="selectOption('both')">Both</button>
-    <button mat-menu-item (click)="selectOption('absolute comparison')">Heatmap Comparisons</button>
-    <button mat-menu-item (click)="selectOption('delta z')">Delta Z Heatmap</button>
-  </mat-menu>
+<mat-button-toggle-group
+  [value]="mode"
+  (valueChange)="setMode($event)">
+  <mat-button-toggle value="ABD">A + B + Δ</mat-button-toggle>
+  <mat-button-toggle value="AB">A + B</mat-button-toggle>
+  <mat-button-toggle value="D">Δ</mat-button-toggle>
+</mat-button-toggle-group>
 
+<span class="spacer"></span>
+
+<button mat-stroked-button (click)="toggleVisualMap()">
+  <mat-icon>{{ this.showVisualMap ? 'visibility' : 'visibility_off' }}</mat-icon>
+  VisualMap
+</button>
+
+<button mat-stroked-button (click)="toggleZoom()">
+  <mat-icon>{{ showZoom ? 'zoom_in' : 'zoom_out' }}</mat-icon>
+  Zoom
+</button>
+
+<div class="grid" [ngClass]="displayedHeatmap">
+  <div class="heatmap a" [class.hidden]="!showAB">
+    <div class="title">Heatmap A</div>
+    <div #chart1 class="chart"></div>
+  </div>
+
+  <div class="heatmap b" [class.hidden]="!showAB">
+    <div class="title">Heatmap B</div>
+    <div #chart2 class="chart"></div>
+  </div>
+
+  <div class="heatmap d" [class.hidden]="!showD">
+    <div class="title">Δ (B − A)</div>
+    <div #diffChart class="chart"></div>
+  </div>
 </div>
 
-  <div class="heatmap-comparison">
-
-    <div>
-      <div class="heatmap-chart" #chart1 id="chart1"></div>
-    </div>
-    <div>
-      <div class="heatmap-chart" #chart2 id="chart2"></div>
-    </div>
-
-  </div>
-
-  <div  class="heatmap-differences">
-    <div>
-      <div class="heatmap-chart" #diffChart id="diffChart"></div>
-    </div>
-  </div>
-
-
-<!--<div class="grid" [class.mode-ab]="mode==='AB'" [class.mode-d]="mode==='D'" [class.mode-abd]="mode==='ABD'">-->
-<!--  <div class="panel a"><div #chart1 class="chart"></div></div>-->
-<!--  <div class="panel b"><div #chart2 class="chart"></div></div>-->
-<!--  <div class="panel d"><div #diffChart class="chart"></div></div>-->
-<!--</div>-->
 

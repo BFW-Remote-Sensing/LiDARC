@@ -21,16 +21,19 @@ import {MatMenu, MatMenuItem, MatMenuTrigger,} from '@angular/material/menu';
 import {MatDivider} from '@angular/material/divider';
 import {MatIcon} from '@angular/material/icon';
 import {MatButton} from '@angular/material/button';
+import {MatButtonToggle, MatButtonToggleGroup} from '@angular/material/button-toggle';
 
 
 echarts.use([TitleComponent, DataZoomComponent, LegacyGridContainLabel, TooltipComponent, VisualMapComponent, BarChart, GridComponent, CanvasRenderer, HeatmapChart, CustomChart]);
+
+type Mode = 'AB' | 'D' | 'ABD';
 
 
 @Component({
   selector: 'app-heatmap',
   standalone: true,
   imports: [CommonModule,
-    FormsModule, MatMenuTrigger, MatMenu, MatDivider, MatIcon, MatMenuItem, MatButton],
+    FormsModule, MatButtonToggleGroup, MatButtonToggle, MatIcon, MatButton],
   templateUrl: './heatmap.html',
   styleUrl: './heatmap.scss',
   providers: [
@@ -39,6 +42,30 @@ echarts.use([TitleComponent, DataZoomComponent, LegacyGridContainLabel, TooltipC
 })
 
 export class Heatmap implements AfterViewInit {
+  mode: Mode = 'ABD'
+
+  // --- UI helpers ---
+  get showAB(): boolean {
+    return this.mode === 'AB' || this.mode === 'ABD';
+  }
+
+  get showD(): boolean {
+    return this.mode === 'D' || this.mode === 'ABD';
+  }
+
+  get displayedHeatmap(): string {
+    if (this.mode === 'AB') return 'ab';
+    if (this.mode === 'D') return 'd';
+    return 'abd';
+  }
+
+  private readonly GROUP_AB = 'group-ab';
+  private readonly GROUP_ABD = 'group-abd';
+
+  showVisualMap = true;
+  showZoom = true;
+
+
   optionsLeft!: EChartsCoreOption;
   optionsRight!: EChartsCoreOption;
   differenceOptions!: EChartsCoreOption;
@@ -51,19 +78,6 @@ export class Heatmap implements AfterViewInit {
   @ViewChild("chart2") chart2?: ElementRef<HTMLDivElement>;
   @ViewChild("diffChart") diffElement?: ElementRef<HTMLDivElement>;
 
-
-  private instA?: echarts.ECharts;
-  private instB?: echarts.ECharts;
-  private instD?: echarts.ECharts;
-
-
-  // deine Daten (Beispiele)
-  private dataA: any[] = [];
-  private dataB: any[] = [];
-  private dataD: any[] = [];
-
-
-  displayedHeatmap: string = "both"; // "both", "absolute comparison", "delta z"
 
   rows: number = 100;
   cols: number = 100;
@@ -78,8 +92,6 @@ export class Heatmap implements AfterViewInit {
 
   constructor() {
   }
-
-
 
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -102,8 +114,8 @@ export class Heatmap implements AfterViewInit {
 
 
     this.optionsLeft = this.createHeatmapOptionsWithoutDataset("SetA", true);
-    this.optionsRight = this.createHeatmapOptionsWithoutDataset( "SetB", false);
-    this.differenceOptions = this.createDifferenceHeatmapOptions("Delta_z",true);
+    this.optionsRight = this.createHeatmapOptionsWithoutDataset("SetB", false);
+    this.differenceOptions = this.createDeltaHeatmapOptions("Delta_z", true);
 
 
     this.chartInstance1.setOption(this.optionsLeft);
@@ -111,37 +123,129 @@ export class Heatmap implements AfterViewInit {
     this.differenceInstance.setOption(this.differenceOptions);
 
     this.setHighlightBorderOnMouseover(this.chartInstance1, this.chartInstance2);
-    this.connectHeatmaps();
+
+    // connect initial mode
+    this.applyConnections();
+
   }
 
-  private createDifferenceHeatmapOptions(title:string, showVisualMap: boolean): EChartsCoreOption {
-    const options = this.createHeatmapOptionsWithoutDataset(title, showVisualMap);
-    const diffVisualMap = {
-      visualMap: {
-        type: 'continuous',
-        min: -10,     // adapt to your data
-        max: 10,
-        //dimension: 4, // <-- delta_z index in your custom series
-        calculable: true,
-        inRange: {
-          color: [
-            '#2166ac', // deep blue (negative)
-            '#67a9cf',
-            '#f7f7f7', // neutral (0)
-            '#ef8a62',
-            '#b2182b'  // deep red (positive)
-          ]
-        }
-      }
+  setMode(mode: Mode): void {
+    this.mode = mode;
+
+    // update connections based on current mode
+    this.applyConnections();
+  }
+
+
+  private applyConnections(): void {
+    // Alles “entgruppen” (wichtig, sonst hängen alte Verbindungen)
+    this.chartInstance1.group = '';
+    this.chartInstance2.group = '';
+    this.differenceInstance.group = '';
+
+    // Vorherige Gruppen trennen
+    echarts.disconnect(this.GROUP_AB);
+    echarts.disconnect(this.GROUP_ABD);
+
+    // Je nach Mode neue Gruppe setzen + connect
+    if (this.mode === 'AB') {
+      this.chartInstance1.group = this.GROUP_AB;
+      this.chartInstance2.group = this.GROUP_AB;
+      echarts.connect(this.GROUP_AB);
     }
-    return {...options, ...diffVisualMap};
+
+    if (this.mode === 'ABD') {
+      this.chartInstance1.group = this.GROUP_ABD;
+      this.chartInstance2.group = this.GROUP_ABD;
+      this.differenceInstance.group = this.GROUP_ABD;
+      echarts.connect(this.GROUP_ABD);
+    }
+
+    // mode === 'D' -> keine Verbindung nötig
   }
 
-  protected selectOption(option: string) {
-    console.log("Selected option:", option);
-    this.displayedHeatmap = option
-    this.updateHeatmaps(this.data?.chunked_cells || []);
+
+  // toggleVisualMap(): void {
+  //   this.showVisualMap = !this.showVisualMap;
+  //   this.applyVisualMapVisibility();
+  // }
+
+  toggleZoom(): void {
+    this.showZoom = !this.showZoom;
+    this.applyZoomVisibility();
   }
+
+  private updateVisualMap(chart: echarts.ECharts, show: boolean, delta_chart: boolean) {
+    let option;
+    delta_chart ? option = this.BASE_DeltaVirtualMap : option = this.BASE_VirtualMap;
+    chart.setOption(
+      {
+        visualMap: [
+          {
+            ...option,
+            show: show,
+
+          }
+        ]
+      },
+      {replaceMerge: ['visualMap'] as any}
+    );
+  }
+
+  toggleVisualMap(): void {
+    this.showVisualMap = !this.showVisualMap;
+
+    if (this.showAB) {
+      this.updateVisualMap(this.chartInstance1, this.showVisualMap, false);
+      this.updateVisualMap(this.chartInstance2, this.showVisualMap, false);
+    }
+    if (this.showD) {
+      this.updateVisualMap(this.differenceInstance, this.showVisualMap, true);
+    }
+  }
+
+  private applyZoomVisibility(): void {
+    const show = this.showZoom;
+
+    // {type: 'slider', xAxisIndex: 0, bottom: 0, filterMode: 'none'},
+    // {type: 'slider', yAxisIndex: 0, orient: 'vertical', right: 0, filterMode: 'none'},
+
+    const opt = {
+      dataZoom: [
+        { // x slider
+          type: 'slider',
+          xAxisIndex: 0,
+          bottom: 0,
+          filterMode: 'none',
+          show,
+          //height: show ? 20 : 0
+        },
+        { // y slider
+          type: 'slider',
+          yAxisIndex: 0,
+          orient: 'vertical',
+          right: 0,
+          filterMode: 'none',
+          show,
+          //width: show ? 20 : 0
+        }
+      ]
+    };
+
+    this.chartInstance1?.setOption(opt, {replaceMerge: ['dataZoom'] as any});
+    //this.chartInstance2?.setOption(opt, {replaceMerge: ['dataZoom'] as any});
+    this.differenceInstance?.setOption(opt, {replaceMerge: ['dataZoom'] as any});
+  }
+
+
+  private createDeltaHeatmapOptions(title: string, showVisualMap: boolean): EChartsCoreOption {
+    const options = this.createHeatmapOptionsWithoutDataset(title, showVisualMap);
+    const visMap = {
+      visualMap: this.BASE_DeltaVirtualMap
+    }
+    return {...options, ...visMap};
+  }
+
   /*
     private updateHeatmapRevision(matrix: ChunkedCell[][]) {
       if (!matrix || !Array.isArray(matrix) || matrix.length === 0) {
@@ -263,7 +367,6 @@ export class Heatmap implements AfterViewInit {
 
     this.rows = matrix.length;
     this.cols = Math.max(...matrix.map(row => row.length));
-    //const cols = matrix[0].length;
     console.log(`Updating chart with dimensions: ${this.rows}x${this.cols}`);
 
     const seriesDataA: any[] = [];
@@ -436,18 +539,10 @@ export class Heatmap implements AfterViewInit {
         {type: 'slider', xAxisIndex: 0, bottom: 0, filterMode: 'none'},
         {type: 'slider', yAxisIndex: 0, orient: 'vertical', right: 0, filterMode: 'none'},
       ],
-      visualMap: {
-        min: 0,
-        max: 30,
-        calculable: true,
-        orient: 'vertical',
-        left: 0,
-        top: "middle",
-        inRange: {
-          color: ['#e5f5e0', '#a6dba0', '#5aae61', '#1b7837', '#00441b'],
-        },
+      visualMap: [{
+        ...this.BASE_VirtualMap,
         show: showVisualMap
-      },// We will set the rest in updateHeatmaps
+      }],// We will set the rest in updateHeatmaps
       series: [
         {
           type: 'custom',
@@ -457,11 +552,7 @@ export class Heatmap implements AfterViewInit {
   }
 
 
-  private connectHeatmaps() {
-    if (this.chartInstance1 && this.chartInstance2) {
-      connect([this.chartInstance1, this.chartInstance2]);
-    }
-  }
+
 
 
   private setHighlightBorderOnMouseover(chart1: echarts.ECharts, chart2: echarts.ECharts) {
@@ -508,4 +599,39 @@ export class Heatmap implements AfterViewInit {
 
   }
 
+  private BASE_VirtualMap: any = {
+    min: 0,
+    max: 30,
+    calculable: true,
+    orient: 'horizontal',
+    left: "middle",
+    top: "center",
+    text: [],   // Beschriftung
+    textGap: -5,              // Abstand Text ↔ Farbskala
+    inRange: {
+      color: ['#e5f5e0', '#a6dba0', '#5aae61', '#1b7837', '#00441b'],
+    }
+  }
+  private BASE_DeltaVirtualMap = {
+
+      type: 'continuous',
+      min: -10,
+      max: 10,
+      orient: 'vertical',
+      left: 0,
+      top: "middle",
+      calculable: true,
+      inRange: {
+        color: [
+          '#2166ac', // deep blue (negative)
+          '#67a9cf',
+          '#f7f7f7', // neutral (0)
+          '#ef8a62',
+          '#b2182b'  // deep red (positive)
+        ]
+      }
+    }
+
+
 }
+
