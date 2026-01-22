@@ -70,8 +70,7 @@ export class Heatmap implements AfterViewInit {
     },
     deltas: {
       label: 'Blue',
-      color: ['#2166ac', '#67a9cf','#f7f7f7','#ef8a62','#b2182b'
-       ]
+      color: ['#2166ac', '#67a9cf','#f7f7f7','#ef8a62','#b2182b']
     }
   };
 
@@ -81,7 +80,7 @@ export class Heatmap implements AfterViewInit {
 
   showVisualMap = true;
   showZoom = true;
-  selectedColorScheme: SchemeKey = "greens";
+  selectedColorScheme: SchemeKey = "greens"; //default color scheme
 
 
   optionsLeft!: EChartsCoreOption;
