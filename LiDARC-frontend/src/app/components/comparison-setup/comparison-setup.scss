@@ -73,9 +73,9 @@
     display: flex;
     justify-content: space-between;
 
-    p {
+    span {
         margin: 5px 0;
-        font-size: 14px;
+        font-size: 17px;
     }
 }
 
@@ -87,9 +87,12 @@
 
 .coord-column p {
     margin: 5px 0;
-    font-size: 20px;
+    font-size: 17px;
 }
 
 .coord-column mat-icon {
-    font-size: 24px;
+    font-size: 18px;
+    height: 18px;
+    width: 18px;
+    vertical-align: middle;
 }

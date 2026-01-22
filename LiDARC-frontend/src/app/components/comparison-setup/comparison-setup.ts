@@ -11,7 +11,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { ComparisonService } from '../../service/comparison.service';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
-import { GridDefinitionDialogComponent } from '../define-grid/define-grid';
+import { DefineGrid } from '../define-grid/define-grid';
 import { MatCardModule } from '@angular/material/card';
 import { MatIcon } from "@angular/material/icon";
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
@@ -157,30 +157,74 @@ export class ComparisonSetup {
   }
 
   defineGrid(): void {
-    if (this.refService.selectedComparableItem() == null) {
+    const selectedItem = this.refService.selectedComparableItem();
+    if (!selectedItem) {
       return;
     }
-    const item = this.refService.selectedComparableItem()!;
 
-    const dialogRef = this.dialog.open(GridDefinitionDialogComponent, {
-      width: '600px',
+    // 1. Helper to extract Grid Data (EPSG + Bounds) from an item
+    const extractGridData = (obj: any) => {
+      // Logic to get EPSG
+      const getEpsgCode = (target: any): number | null => {
+        // Determine the object that holds the metadata (the target itself or the first file in a folder)
+        let sourceItem = target;
+        if ((!sourceItem.coordinateSystem && !sourceItem.systemIdentifier) && target.files && target.files.length > 0) {
+          sourceItem = target.files[0];
+        }
+
+        // 1. Try to get code from the new 'coordinateSystem' field (Format: "AUTHORITY:CODE")
+        if (sourceItem.coordinateSystem) {
+          const parts = sourceItem.coordinateSystem.split(':');
+          if (parts.length === 2) {
+            const code = parseInt(parts[1], 10);
+            return isNaN(code) ? null : code;
+          }
+        }
+
+        // 2. Fallback to old 'systemIdentifier' logic
+        const ident = sourceItem.systemIdentifier;
+        if (!ident || ident.toUpperCase() === 'OTHER') {
+          return null;
+        }
+
+        const codePart = ident.split(';')[0];
+        const parsed = parseInt(codePart, 10);
+        return isNaN(parsed) ? null : parsed;
+      };
+
+      return {
+        name: obj.name,
+        epsg: getEpsgCode(obj),
+        minX: obj.type === 'File' ?
+          (obj as FileMetadataDTO).minX :
+          getExtremeValue((obj as FolderFilesDTO).files, f => f.minX, 'min'),
+        maxX: obj.type === 'File' ?
+          (obj as FileMetadataDTO).maxX :
+          getExtremeValue((obj as FolderFilesDTO).files, f => f.maxX, 'max'),
+        minY: obj.type === 'File' ?
+          (obj as FileMetadataDTO).minY :
+          getExtremeValue((obj as FolderFilesDTO).files, f => f.minY, 'min'),
+        maxY: obj.type === 'File' ?
+          (obj as FileMetadataDTO).maxY :
+          getExtremeValue((obj as FolderFilesDTO).files, f => f.maxY, 'max')
+      };
+    };
+
+    // 2. Prepare data for the selected (Reference) item
+    const referenceData = extractGridData(selectedItem);
+
+    // 3. Find and prepare data for the other (Non-selected) item
+    const otherItemRaw = this.dataSource.data.find(i => i.id !== selectedItem.id);
+    const otherItemData = otherItemRaw ? extractGridData(otherItemRaw) : null;
+
+    // 4. Open Dialog with both items
+    const dialogRef = this.dialog.open(DefineGrid, {
+      width: '90vw',
+      maxWidth: '95vw',
       height: 'auto',
       data: {
-        item: {
-          name: item.name,
-          minX: item.type === 'File' ?
-            (item as FileMetadataDTO).minX :
-            getExtremeValue((item as FolderFilesDTO).files, f => f.minX, 'min'),
-          maxX: item.type === 'File' ?
-            (item as FileMetadataDTO).maxX :
-            getExtremeValue((item as FolderFilesDTO).files, f => f.maxX, 'max'),
-          minY: item.type === 'File' ?
-            (item as FileMetadataDTO).minY :
-            getExtremeValue((item as FolderFilesDTO).files, f => f.minY, 'min'),
-          maxY: item.type === 'File' ?
-            (item as FileMetadataDTO).maxY :
-            getExtremeValue((item as FolderFilesDTO).files, f => f.maxY, 'max')
-        }
+        item: referenceData,      // The selected reference file
+        otherItem: otherItemData  // The file that was NOT selected
       }
     });
 
@@ -189,12 +233,12 @@ export class ComparisonSetup {
         this.comparison = {
           ...this.comparison,
           grid: {
-            cellWidth: Number(result.cellWidth.toFixed(2)),
-            cellHeight: Number(result.cellHeight.toFixed(2)),
-            xMin: Number(result.xMin.toFixed(3)),
-            xMax: Number(result.xMax.toFixed(3)),
-            yMin: Number(result.yMin.toFixed(3)),
-            yMax: Number(result.yMax.toFixed(3))
+            cellX: Number(result.cellX.toFixed(2)),
+            cellY: Number(result.cellY.toFixed(2)),
+            xMin: Number(result.xMin.toFixed(2)),
+            xMax: Number(result.xMax.toFixed(2)),
+            yMin: Number(result.yMin.toFixed(2)),
+            yMax: Number(result.yMax.toFixed(2))
           }
         };
         this.cdr.markForCheck();

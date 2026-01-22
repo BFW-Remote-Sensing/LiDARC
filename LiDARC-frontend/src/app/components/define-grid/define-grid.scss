@@ -18,3 +18,62 @@ mat-dialog-actions {
     color: red;
     font-weight: bold;
 }
+
+/* 1. Make the dialog wider */
+:host {
+  display: block;
+  width: 100%;      /* Set a specific wide width */
+}
+
+/* 2. Side-by-side Layout */
+.content-container {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;         /* Space between form and map */
+  max-height: 80vh;  /* Allow tall content */
+  padding-bottom: 10px;
+}
+
+/* Left side (Form) */
+.form-section {
+  flex: 0 0 400px;   /* Fixed width for inputs (approx 40%) */
+  overflow-y: auto;  /* Scroll inputs if screen is short */
+}
+
+/* Right side (Map) */
+.map-section {
+  flex: 1;           /* Map takes all remaining space */
+  display: flex;
+  flex-direction: column;
+}
+
+#map {
+  border: 1px solid #ccc;
+  background: #f0f0f0;
+  z-index: 1;
+  flex-grow: 1;      /* Fill the vertical space of the map section */
+  min-height: 400px; /* Ensure the map is tall enough */
+  width: 100%;
+  border-radius: 4px;
+}
+
+/* Existing styles below... */
+.metadata-display {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+mat-dialog-actions {
+  padding: 0 24px 20px;
+}
+
+.input-field-full {
+  width: 100%;
+}
+
+.error-message {
+  color: red;
+  font-weight: bold;
+}
