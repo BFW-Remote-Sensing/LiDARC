@@ -8,12 +8,14 @@ import org.springframework.context.ApplicationEvent;
 public class ChunkingResultReadyEvent extends ApplicationEvent {
 
     private final Long comparisonId;
+    private final Integer chunkSize;
     private final Object result;
 
-    public ChunkingResultReadyEvent(Object source, Long comparisonId, Object result) {
+    public ChunkingResultReadyEvent(Object source, Long comparisonId, Integer chunkSize, Object result) {
         super(source);
         this.comparisonId = comparisonId;
         this.result = result;
+        this.chunkSize = chunkSize;
     }
 
     public Long getComparisonId() {
@@ -22,6 +24,9 @@ public class ChunkingResultReadyEvent extends ApplicationEvent {
 
     public Object getResult() {
         return result;
+    }
+    public Integer getChunkSize() {
+        return chunkSize;
     }
 }
 
