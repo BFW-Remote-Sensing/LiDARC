@@ -1,21 +1,47 @@
 <div class="zoom-info-box">
   <h4>Heatmap Navigation Guide</h4>
+
   <p>
-    Use the <strong>zoom controls</strong> to explore specific regions of the heatmap in more detail.
+    Use the controls above to switch views and explore areas in detail.
+  </p>
+
+  <p>
+    <strong>1) Visible Heatmaps</strong><br />
+    The <strong>toggle group</strong> selects which heatmaps are displayed:
   </p>
   <ul>
-    <li><strong>Horizontal Zoom</strong>: Adjust the bottom slider to zoom in and out along the X-axis.</li>
-    <li><strong>Vertical Zoom</strong>: Use the right slider to control the zoom level on the Y-axis.</li>
+    <li><strong>A + B + Δ</strong>: show both datasets and the difference heatmap.</li>
+    <li><strong>A + B</strong>: show the two linked datasets side-by-side.</li>
+    <li><strong>Δ</strong>: show only the difference heatmap (<em>B − A</em>).</li>
+  </ul>
+
+  <p>
+    <strong>2) Legend (VisualMap)</strong><br />
+    The <strong>VisualMap</strong> button shows/hides the color legend (value → color mapping).
+  </p>
+
+  <p>
+    <strong>3) Zoom Controls</strong><br />
+    The <strong>Zoom</strong> button shows/hides the zoom sliders:
+  </p>
+  <ul>
+    <li><strong>Horizontal Zoom</strong>: use the bottom slider to zoom along the X-axis.</li>
+    <li><strong>Vertical Zoom</strong>: use the right slider to zoom along the Y-axis.</li>
   </ul>
   <p>
-    Both heatmaps are <strong>linked</strong> — any zoom or pan action automatically updates the other chart.
+    <strong>4) Color Scheme</strong><br />
+    The <strong>Scheme</strong> button allows you to select different color schemes for the heatmaps.
   </p>
-  <p>This heatmap has: {{ this.rows }} rows * {{ this.cols }} cols</p>
+
+  <p>
+    This heatmap grid has: <strong>{{ rows }}</strong> rows × <strong>{{ cols }}</strong> cols
+  </p>
 </div>
 
 <mat-button-toggle-group
   [value]="mode"
   (valueChange)="setMode($event)">
+  <title>Select which heatmap shall be visualized</title>
   <mat-button-toggle value="ABD">A + B + Δ</mat-button-toggle>
   <mat-button-toggle value="AB">A + B</mat-button-toggle>
   <mat-button-toggle value="D">Δ</mat-button-toggle>
@@ -23,15 +49,32 @@
 
 <span class="spacer"></span>
 
-<button mat-stroked-button (click)="toggleVisualMap()">
+<button class="toggle-button" mat-stroked-button (click)="toggleVisualMap()">
   <mat-icon>{{ this.showVisualMap ? 'visibility' : 'visibility_off' }}</mat-icon>
   VisualMap
 </button>
 
-<button mat-stroked-button (click)="toggleZoom()">
+<button class="toggle-button" mat-stroked-button (click)="toggleZoom()">
   <mat-icon>{{ showZoom ? 'zoom_in' : 'zoom_out' }}</mat-icon>
   Zoom
 </button>
+
+<button class="toggle-button" mat-stroked-button [matMenuTriggerFor]="schemeMenu">
+  <mat-icon>palette</mat-icon>
+  Scheme: {{ selectedSchemeLabel }}
+</button>
+
+<mat-menu #schemeMenu="matMenu">
+  <button mat-menu-item (click)="setScheme('greens')">
+    Greens
+  </button>
+  <button mat-menu-item (click)="setScheme('browns')">
+    Browns
+  </button>
+  <button mat-menu-item (click)="setScheme('deltas')">
+    Deltas
+  </button>
+</mat-menu>
 
 <div class="grid" [ngClass]="displayedHeatmap">
   <div class="heatmap a" [class.hidden]="!showAB">
@@ -49,5 +92,7 @@
     <div #diffChart class="chart"></div>
   </div>
 </div>
+
+
 
 

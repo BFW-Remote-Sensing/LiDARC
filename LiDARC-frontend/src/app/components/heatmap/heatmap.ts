@@ -27,13 +27,14 @@ import {MatButtonToggle, MatButtonToggleGroup} from '@angular/material/button-to
 echarts.use([TitleComponent, DataZoomComponent, LegacyGridContainLabel, TooltipComponent, VisualMapComponent, BarChart, GridComponent, CanvasRenderer, HeatmapChart, CustomChart]);
 
 type Mode = 'AB' | 'D' | 'ABD';
+type SchemeKey = "greens" | "browns" | "deltas";
 
 
 @Component({
   selector: 'app-heatmap',
   standalone: true,
   imports: [CommonModule,
-    FormsModule, MatButtonToggleGroup, MatButtonToggle, MatIcon, MatButton],
+    FormsModule, MatButtonToggleGroup, MatButtonToggle, MatIcon, MatButton, MatMenu, MatMenuTrigger, MatMenuItem],
   templateUrl: './heatmap.html',
   styleUrl: './heatmap.scss',
   providers: [
@@ -58,12 +59,29 @@ export class Heatmap implements AfterViewInit {
     if (this.mode === 'D') return 'd';
     return 'abd';
   }
+  private readonly COLOR_Schemes: Record<SchemeKey, { label: string; color: string[] }> = {
+    greens: {
+      label: 'Greens',
+      color: ['#e5f5e0', '#a6dba0', '#5aae61', '#1b7837', '#00441b'],
+    },
+    browns: {
+      label: 'Browns',
+      color: ['#8c510a', '#d8b365', '#f6e8c3', '#c7eae5', '#5ab4ac', '#01665e'],
+    },
+    deltas: {
+      label: 'Blue',
+      color: ['#2166ac', '#67a9cf','#f7f7f7','#ef8a62','#b2182b'
+       ]
+    }
+  };
+
 
   private readonly GROUP_AB = 'group-ab';
   private readonly GROUP_ABD = 'group-abd';
 
   showVisualMap = true;
   showZoom = true;
+  selectedColorScheme: SchemeKey = "greens";
 
 
   optionsLeft!: EChartsCoreOption;
@@ -129,6 +147,52 @@ export class Heatmap implements AfterViewInit {
 
   }
 
+  get selectedSchemeLabel():string{
+    return this.COLOR_Schemes[this.selectedColorScheme].label;
+  }
+
+  setScheme(key: SchemeKey): void{
+    this.selectedColorScheme = key;
+    console.log(key);
+    console.log(this.selectedColorScheme);
+    console.log(this.COLOR_Schemes[this.selectedColorScheme].color);
+    this.applyColorScheme();
+  }
+
+  private applyColorScheme(): void {
+    // const colors = this.COLOR_Schemes[this.selectedColorScheme].color;
+    // // Update visual maps with new colors
+    // const opt = {
+    //   ...this.BASE_VirtualMap
+    // };
+    // this.updateVisualMap(this.chartInstance1,true, false);
+    // this.updateVisualMap(this.chartInstance2,false, false);
+  //
+  //   this.chartInstance1?.setOption(opt, {replaceMerge: ['visualMap'] as any});
+  //   this.chartInstance2?.setOption(opt, {replaceMerge: ['visualMap'] as any});
+    const colors = this.COLOR_Schemes[this.selectedColorScheme].color;
+    console.log("apply" + colors);
+
+    const opt = {
+      visualMap: [{
+        ...this.BASE_VisualMap,
+        show: this.showVisualMap,
+        inRange: { color: colors }
+      }]
+    };
+
+    const opt2 = {
+      visualMap: [{
+        ...this.BASE_VisualMap,
+        show: false, //we never want to show the legend for chart2
+        inRange: { color: colors }
+      }]
+    };
+
+    this.chartInstance1?.setOption(opt, { replaceMerge: ['visualMap'] as any });
+    this.chartInstance2?.setOption(opt2, { replaceMerge: ['visualMap'] as any });
+   }
+
   setMode(mode: Mode): void {
     this.mode = mode;
 
@@ -139,9 +203,9 @@ export class Heatmap implements AfterViewInit {
 
   private applyConnections(): void {
     // Alles “entgruppen” (wichtig, sonst hängen alte Verbindungen)
-    this.chartInstance1.group = '';
-    this.chartInstance2.group = '';
-    this.differenceInstance.group = '';
+    // this.chartInstance1.group = '';
+    // this.chartInstance2.group = '';
+    // this.differenceInstance.group = '';
 
     // Vorherige Gruppen trennen
     echarts.disconnect(this.GROUP_AB);
@@ -177,27 +241,47 @@ export class Heatmap implements AfterViewInit {
 
   private updateVisualMap(chart: echarts.ECharts, show: boolean, delta_chart: boolean) {
     let option;
-    delta_chart ? option = this.BASE_DeltaVirtualMap : option = this.BASE_VirtualMap;
-    chart.setOption(
-      {
-        visualMap: [
-          {
-            ...option,
-            show: show,
+    let colors;
+    delta_chart ? option = this.BASE_DeltaVirtualMap : option = this.BASE_VisualMap;
+    delta_chart ? colors = this.COLOR_Schemes.deltas.color : colors = this.COLOR_Schemes[this.selectedColorScheme].color;
 
-          }
-        ]
-      },
-      {replaceMerge: ['visualMap'] as any}
-    );
+    console.log("updateVisualMap" + colors);
+
+    const opt = {
+      visualMap: [
+        {
+          ...option,
+          inRange: {
+            color: colors
+          },
+          show: show
+        }
+      ]
+    }
+    chart?.setOption(opt, { replaceMerge: ['visualMap'] as any });
+
+
+    // chart.setOption(
+    //   {
+    //     visualMap: [
+    //       {
+    //         ...option,
+    //         color: colors,
+    //         show: show
+    //       }
+    //     ]
+    //   },
+    //   {replaceMerge: ['visualMap'] as any}
+    // );
   }
 
   toggleVisualMap(): void {
     this.showVisualMap = !this.showVisualMap;
+    console.log("Toggling visual map to " + this.showVisualMap);
 
     if (this.showAB) {
       this.updateVisualMap(this.chartInstance1, this.showVisualMap, false);
-      this.updateVisualMap(this.chartInstance2, this.showVisualMap, false);
+      //this.updateVisualMap(this.chartInstance2, this.showVisualMap, false);
     }
     if (this.showD) {
       this.updateVisualMap(this.differenceInstance, this.showVisualMap, true);
@@ -233,7 +317,7 @@ export class Heatmap implements AfterViewInit {
     };
 
     this.chartInstance1?.setOption(opt, {replaceMerge: ['dataZoom'] as any});
-    //this.chartInstance2?.setOption(opt, {replaceMerge: ['dataZoom'] as any});
+    this.chartInstance2?.setOption(opt, {replaceMerge: ['dataZoom'] as any});
     this.differenceInstance?.setOption(opt, {replaceMerge: ['dataZoom'] as any});
   }
 
@@ -348,7 +432,7 @@ export class Heatmap implements AfterViewInit {
       });
       this.chartInstance2.setOption({
         //...axisUpdate,
-        tooltip: {
+        tooltip:
           formatter: tooltipFormatter
         },
         series: [{
@@ -537,10 +621,10 @@ export class Heatmap implements AfterViewInit {
       },
       dataZoom: [
         {type: 'slider', xAxisIndex: 0, bottom: 0, filterMode: 'none'},
-        {type: 'slider', yAxisIndex: 0, orient: 'vertical', right: 0, filterMode: 'none'},
+        {type: 'slider', yAxisIndex: 0, orient: 'vertical', right: 0, filterMode: 'none'}
       ],
       visualMap: [{
-        ...this.BASE_VirtualMap,
+        ...this.BASE_VisualMap,
         show: showVisualMap
       }],// We will set the rest in updateHeatmaps
       series: [
@@ -599,21 +683,20 @@ export class Heatmap implements AfterViewInit {
 
   }
 
-  private BASE_VirtualMap: any = {
+  private BASE_VisualMap: any = {
     min: 0,
     max: 30,
     calculable: true,
-    orient: 'horizontal',
-    left: "middle",
-    top: "center",
+    orient: 'vertical',
+    left: -5,
+    top: "middle",
     text: [],   // Beschriftung
     textGap: -5,              // Abstand Text ↔ Farbskala
     inRange: {
-      color: ['#e5f5e0', '#a6dba0', '#5aae61', '#1b7837', '#00441b'],
+      color: this.COLOR_Schemes[this.selectedColorScheme].color //does not change dynamically, has to be set manually
     }
   }
   private BASE_DeltaVirtualMap = {
-
       type: 'continuous',
       min: -10,
       max: 10,
@@ -622,15 +705,11 @@ export class Heatmap implements AfterViewInit {
       top: "middle",
       calculable: true,
       inRange: {
-        color: [
-          '#2166ac', // deep blue (negative)
-          '#67a9cf',
-          '#f7f7f7', // neutral (0)
-          '#ef8a62',
-          '#b2182b'  // deep red (positive)
-        ]
+        color: this.COLOR_Schemes.deltas.color
       }
     }
+
+
 
 
 }
