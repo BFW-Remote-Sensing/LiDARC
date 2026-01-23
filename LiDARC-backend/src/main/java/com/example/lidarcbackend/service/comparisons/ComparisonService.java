@@ -278,7 +278,7 @@ public class ComparisonService implements IComparisonService {
                         JobType.PREPROCESSING,
                         Map.of("comparisonId", comparisonId, "fileId", fileEntity.getId()),
                         Instant.now(),
-                        Duration.ofSeconds(10)
+                        Duration.ofMinutes(10)
                 );
                 jobTrackingService.registerJob(trackedJob);
 

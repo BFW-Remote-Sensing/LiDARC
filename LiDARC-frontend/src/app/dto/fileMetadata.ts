@@ -20,4 +20,5 @@ export interface FileMetadataDTO {
     uploadedAt?: string;
     type?: string;
     folderId?: number;
+    errorMessage?: string;
 }

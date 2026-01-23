@@ -37,6 +37,7 @@ public class MetadataMapper {
         dto.setUploadedAt(entity.getUploadedAt());
         dto.setStatus(entity.getStatus().toString());
         dto.setFolderId(entity.getFolder() != null ? entity.getFolder().getId() : null);
+        dto.setErrorMessage(entity.getErrorMsg());
 
         return dto;
     }

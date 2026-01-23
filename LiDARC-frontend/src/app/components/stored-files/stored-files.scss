@@ -1,16 +1,22 @@
-.status-default {
-  color: black;
-  font-weight: bold;
-}
+.status-column {
+  display: flex;
+  column-gap: 10px;
+  align-items: center;
 
-.status-ready {
-  color: green;
-  font-weight: bold;
-}
+  .status-default {
+    color: blue;
+    font-weight: bold;
+  }
 
-.status-error {
-  color: red;
-  font-weight: bold;
+  .status-ready {
+    color: green;
+    font-weight: bold;
+  }
+
+  .status-error {
+    color: red;
+    font-weight: bold;
+  }
 }
 
 .upper-section {
