@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -145,8 +146,10 @@ public class FolderService implements IFolderService {
   public UploadedFolderDto folderUploaded(StatusOfUploadedFolderDto folderDto) {
     Folder folder = folderRepository.findById(folderDto.getId())
         .orElseThrow(() -> new BadRequestException("Folder with ID " + folderDto.getId() + " not found"));
-    folder.setStatus(folderDto.getStatus());
-    folder = folderRepository.save(folder);
+    if(Objects.equals(folder.getStatus(), "UPLOADING")){
+        folder.setStatus(folderDto.getStatus());
+        folder = folderRepository.save(folder);
+    }
     return folderMapper.folderToDto(folder);
   }
 
