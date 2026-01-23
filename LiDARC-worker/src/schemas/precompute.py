@@ -49,6 +49,11 @@ schema = {
         "fileId": {
             "type": "integer",
             "minimum": 1
+        },
+        "individualPercentile" : {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 99.99
         }
     },
     "additionalProperties": False

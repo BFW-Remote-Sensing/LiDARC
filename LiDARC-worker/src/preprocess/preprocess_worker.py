@@ -158,7 +158,7 @@ def clean_val(val, error_val=-1):
         return error_val
     return f_val
 
-def create_result_df(precomp_grid):
+def create_result_df(precomp_grid, individual_percentile=None):
     rows_indices, cols_indices = np.indices(precomp_grid["count"].shape)
     rows = rows_indices.flatten()
     cols = cols_indices.flatten()
@@ -171,16 +171,21 @@ def create_result_df(precomp_grid):
     digests = precomp_grid["veg_height_digest"]
     p90 = []
     p95 = []
+    custom_p = [] if individual_percentile is not None else None
     for r, c in zip(rows, cols):
         d = digests[r, c]
         if precomp_grid["count"][r,c] > 0:
             p90.append(d.percentile(90))
             p95.append(d.percentile(95))
+            if custom_p is not None:
+                custom_p.append(d.percentile(individual_percentile))
         else:
             p90.append(np.nan)
             p95.append(np.nan)
+            if custom_p is not None:
+                custom_p.append(np.nan)
 
-    return pd.DataFrame({
+    data = {
         "x0": x_min + cols * grid_width,
         "x1": x_min + (cols + 1) * grid_width,
         "y0": y_min + rows * grid_height,
@@ -192,7 +197,13 @@ def create_result_df(precomp_grid):
         "veg_height_min": precomp_grid["veg_height_min"][rows, cols],
         "veg_p90": p90,
         "veg_p95": p95,
-    })
+    }
+
+    if custom_p is not None:
+        col_name = f"max_height_p{individual_percentile}"
+        data[col_name] = custom_p
+
+    return pd.DataFrame(data)
 
 
 #TODO: LOOK at how to maybe process points better or use less resources? Any suggestions are warmly welcome
@@ -224,6 +235,9 @@ def process_req(ch, method, properties, body):
     las_file = request["file"]
     grid = request["grid"]
     bboxes = request["bboxes"]
+    individual_percentile = request.get("individualPercentile")
+
+
 
     temp_dir = tempfile.mkdtemp()
     try:
@@ -243,7 +257,7 @@ def process_req(ch, method, properties, body):
                 process_points(points, precomp_grid, bboxes)
                 del points
 
-        df = create_result_df(precomp_grid)
+        df = create_result_df(precomp_grid, individual_percentile)
         upload_result = file_handler.upload_file_by_type(f"pre-process-job-{job_id}-output.csv", df)
 
         processing_time = int((time.time() - start_time) * 1000)

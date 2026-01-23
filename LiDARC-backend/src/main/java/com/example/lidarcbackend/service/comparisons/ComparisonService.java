@@ -160,7 +160,7 @@ public class ComparisonService implements IComparisonService {
             } else {
                 groupName = firstFile.getOriginalFilename();
             }
-            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderAFiles(), comparisonRequest.getGrid(), savedComparison.getId(), groupName));
+            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderAFiles(), comparisonRequest.getGrid(), savedComparison, groupName));
         }
         if (comparisonRequest.getFolderBFiles() != null && !comparisonRequest.getFolderBFiles().isEmpty()) {
             File firstFile = fileRepository.findById(comparisonRequest.getFolderBFiles().getFirst()).orElseThrow(() ->
@@ -172,10 +172,10 @@ public class ComparisonService implements IComparisonService {
             } else {
                 groupName = firstFile.getOriginalFilename();
             }
-            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderBFiles(), comparisonRequest.getGrid(), savedComparison.getId(), groupName));
+            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderBFiles(), comparisonRequest.getGrid(), savedComparison, groupName));
         }
         if (fileMetadataIds != null && !fileMetadataIds.isEmpty()) {
-            fullPlan.merge(processFolderGroup(fileMetadataIds, comparisonRequest.getGrid(), savedComparison.getId(), "legacy"));
+            fullPlan.merge(processFolderGroup(fileMetadataIds, comparisonRequest.getGrid(), savedComparison, "legacy"));
         }
 
         //Saving all files (excluded and included)
@@ -220,7 +220,7 @@ public class ComparisonService implements IComparisonService {
         }
     }
 
-    private ComparisonPlan processFolderGroup(List<Long> fileIds, GridParameters grid, Long comparisonId, String groupName) throws NotFoundException {
+    private ComparisonPlan processFolderGroup(List<Long> fileIds, GridParameters grid, Comparison savedComparison, String groupName) throws NotFoundException {
         ComparisonPlan plan = new ComparisonPlan();
         if (fileIds == null || fileIds.isEmpty()) return plan;
 
@@ -245,26 +245,32 @@ public class ComparisonService implements IComparisonService {
             }
 
             ComparisonFile cf = new ComparisonFile();
-            cf.setComparisonId(comparisonId);
+            cf.setComparisonId(savedComparison.getId());
             cf.setFileId(fileEntity.getId());
                 cf.setGroupName(groupName);
 
             if (!validRegions.isEmpty()) {
                 cf.setIncluded(true);
                 String uniqueJobId = String.format("c%d_%s_f%d_%s",
-                        comparisonId,
+                        savedComparison.getId(),
                         groupName,
                         fileEntity.getId(),
                         UUID.randomUUID().toString().substring(0, 8)
                 );
-                StartPreProcessJobDto jobDto = StartPreProcessJobDto.builder()
+
+                StartPreProcessJobDto.StartPreProcessJobDtoBuilder builder = StartPreProcessJobDto.builder()
                         .jobId(uniqueJobId)
                         .grid(grid)
                         .bboxes(validRegions)
-                        .comparisonId(comparisonId)
+                        .comparisonId(savedComparison.getId())
                         .file(new MinioObjectDto("basebucket", fileEntity.getFilename()))
-                        .fileId(fileEntity.getId())
-                        .build();
+                        .fileId(fileEntity.getId());
+
+                if(savedComparison.getIndividualStatisticsPercentile() != null) {
+                    builder.individualPercentile(savedComparison.getIndividualStatisticsPercentile());
+                }
+                StartPreProcessJobDto jobDto = builder.build();
+
                 plan.addIncludedFile(cf, jobDto);
 
                 restrictedZones.add(snappedBox);
