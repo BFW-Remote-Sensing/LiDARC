@@ -519,6 +519,15 @@ export class Heatmap implements AfterViewInit {
         return null;
       }
 
+      const rectShape = { x, y, width, height };
+
+      // ✅ Clip gegen den sichtbaren Plotbereich
+      // (Verhindert das Zeichnen außerhalb des sichtbaren Bereichs) bei data Zoom
+      const clipped = echarts.graphic.clipRectByRect(rectShape, params.coordSys);
+
+      // Wenn komplett außerhalb -> nicht zeichnen
+      if (!clipped) return null;
+
       return {
         type: 'rect',
         shape: {x, y, width, height},
