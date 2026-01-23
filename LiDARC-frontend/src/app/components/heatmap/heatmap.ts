@@ -139,10 +139,10 @@ export class Heatmap implements AfterViewInit {
     this.chartInstance2.setOption(this.optionsRight);
     this.differenceInstance.setOption(this.differenceOptions);
 
-    this.setHighlightBorderOnMouseover(this.chartInstance1, this.chartInstance2);
+    this.setupHoverInteractions();
 
     // connect initial mode
-    this.applyConnections();
+    //this.applyConnections();
 
   }
 
@@ -196,7 +196,7 @@ export class Heatmap implements AfterViewInit {
     this.mode = mode;
 
     // update connections based on current mode
-    this.applyConnections();
+    //this.applyConnections();
   }
 
 
@@ -530,12 +530,15 @@ export class Heatmap implements AfterViewInit {
 
       return {
         type: 'rect',
-        shape: {x, y, width, height},
+        shape: clipped,
         style: api.style({
           fill: api.visual('color'),
           stroke: '#444',
           lineWidth: 0.2
-        })
+        }),
+        emphasis: {
+          style: { stroke: '#000', lineWidth: 1.2 }
+        }
       };
     };
 
@@ -575,6 +578,7 @@ export class Heatmap implements AfterViewInit {
     this.chartInstance1.setOption({
       ...axisUpdate,
       tooltip: {
+        trigger: "item",
         formatter: tooltipFormatter
       },
       series: [{
@@ -587,6 +591,7 @@ export class Heatmap implements AfterViewInit {
     this.chartInstance2.setOption({
       ...axisUpdate,
       tooltip: {
+        trigger: "item",
         formatter: tooltipFormatter
       },
       series: [{
@@ -598,6 +603,7 @@ export class Heatmap implements AfterViewInit {
     this.differenceInstance.setOption({
       ...axisUpdate,
       tooltip: {
+        trigger: "item",
         formatter: tooltipFormatter
       },
       series: [{
@@ -643,53 +649,160 @@ export class Heatmap implements AfterViewInit {
     };
   }
 
+  private setupHoverInteractions(): void {
+    const isSeriesItem = (p: any) =>
+      p && p.componentType === 'series' && p.dataIndex != null;
 
+    const bind = (source: echarts.ECharts, targets: echarts.ECharts[]) => {
+      // Smooth hover sync (tooltip + highlight)
+      source.on('mousemove', (p: any) => {
+        if (!isSeriesItem(p)) return;
 
+        for (const t of targets) {
+          t.dispatchAction({
+            type: 'showTip',
+            seriesIndex: p.seriesIndex ?? 0,
+            dataIndex: p.dataIndex
+          });
 
-
-  private setHighlightBorderOnMouseover(chart1: echarts.ECharts, chart2: echarts.ECharts) {
-    chart1.on('mouseover', (params: any) => {
-      if (params.seriesType !== 'heatmap') return;
-
-      chart1.dispatchAction({
-        type: 'highlight',
-        seriesIndex: params.seriesIndex ?? 0,
-        dataIndex: params.dataIndex,
+          t.dispatchAction({
+            type: 'highlight',
+            seriesIndex: p.seriesIndex ?? 0,
+            dataIndex: p.dataIndex
+          });
+        }
       });
-    });
 
-    chart1.on('mouseout', (params: any) => {
-      if (params.seriesType !== 'heatmap') return;
+      // Clear on leaving an item
+      source.on('mouseout', (p: any) => {
+        if (!isSeriesItem(p)) return;
 
-      chart1.dispatchAction({
-        type: 'downplay',
-        seriesIndex: params.seriesIndex ?? 0,
-        dataIndex: params.dataIndex,
+        for (const t of targets) {
+          t.dispatchAction({ type: 'hideTip' });
+          t.dispatchAction({
+            type: 'downplay',
+            seriesIndex: p.seriesIndex ?? 0,
+            dataIndex: p.dataIndex
+          });
+        }
       });
-    });
 
-
-    chart2.on('mouseover', (params: any) => {
-      if (params.seriesType !== 'heatmap') return;
-
-      chart1.dispatchAction({
-        type: 'highlight',
-        seriesIndex: params.seriesIndex ?? 0,
-        dataIndex: params.dataIndex,
+      // Clear on leaving the chart completely
+      source.on('globalout', () => {
+        for (const t of targets) {
+          t.dispatchAction({ type: 'hideTip' });
+          // downplay all in series 0 is usually fine; adjust if you have multiple series
+          t.dispatchAction({ type: 'downplay', seriesIndex: 0 });
+        }
       });
-    });
+    };
 
-    chart2.on('mouseout', (params: any) => {
-      if (params.seriesType !== 'heatmap') return;
+    // A ↔ B
+    //bind(this.chartInstance1, [this.chartInstance2]);
+    //bind(this.chartInstance2, [this.chartInstance1]);
 
-      chart1.dispatchAction({
-        type: 'downplay',
-        seriesIndex: params.seriesIndex ?? 0,
-        dataIndex: params.dataIndex,
-      });
-    });
-
+    // If you want A/B hover to also affect Delta:
+     bind(this.chartInstance1, [this.chartInstance2, this.differenceInstance]);
+     bind(this.chartInstance2, [this.chartInstance1, this.differenceInstance]);
+     bind(this.differenceInstance, [this.chartInstance1, this.chartInstance2]);
   }
+
+
+
+
+
+
+  // private setHighlightBorderOnMouseover(chart1: echarts.ECharts, chart2: echarts.ECharts) {
+  //   chart1.on('mouseover', (params: any) => {
+  //     if (params.seriesType !== 'heatmap') return;
+  //
+  //     chart1.dispatchAction({
+  //       type: 'highlight',
+  //       seriesIndex: params.seriesIndex ?? 0,
+  //       dataIndex: params.dataIndex,
+  //     });
+  //   });
+  //
+  //   chart1.on('mouseout', (params: any) => {
+  //     if (params.seriesType !== 'heatmap') return;
+  //
+  //     chart1.dispatchAction({
+  //       type: 'downplay',
+  //       seriesIndex: params.seriesIndex ?? 0,
+  //       dataIndex: params.dataIndex,
+  //     });
+  //   });
+  //
+  //
+  //   chart2.on('mouseover', (params: any) => {
+  //     if (params.seriesType !== 'heatmap') return;
+  //
+  //     chart1.dispatchAction({
+  //       type: 'highlight',
+  //       seriesIndex: params.seriesIndex ?? 0,
+  //       dataIndex: params.dataIndex,
+  //     });
+  //   });
+  //
+  //   chart2.on('mouseout', (params: any) => {
+  //     if (params.seriesType !== 'heatmap') return;
+  //
+  //     chart1.dispatchAction({
+  //       type: 'downplay',
+  //       seriesIndex: params.seriesIndex ?? 0,
+  //       dataIndex: params.dataIndex,
+  //     });
+  //   });
+  //
+  // }
+
+  private setupHoverSync(): void {
+    const link = (source: echarts.ECharts, targets: echarts.ECharts[]) => {
+      // Smooth sync while moving
+      source.on('mousemove', (p: any) => {
+        if (p?.dataIndex == null) return;
+
+        for (const t of targets) {
+          t.dispatchAction({
+            type: 'showTip',
+            seriesIndex: p.seriesIndex ?? 0,
+            dataIndex: p.dataIndex
+          });
+          t.dispatchAction({
+            type: 'highlight',
+            seriesIndex: p.seriesIndex ?? 0,
+            dataIndex: p.dataIndex
+          });
+        }
+      });
+
+      // Leaving an item
+      source.on('mouseout', () => {
+        for (const t of targets) {
+          t.dispatchAction({ type: 'hideTip' });
+          t.dispatchAction({ type: 'downplay', seriesIndex: 0 });
+        }
+      });
+
+      // Leaving the whole chart area
+      source.on('globalout', () => {
+        for (const t of targets) {
+          t.dispatchAction({ type: 'hideTip' });
+          t.dispatchAction({ type: 'downplay', seriesIndex: 0 });
+        }
+      });
+    };
+
+    // A ↔ B hover sync (zoom remains independent because no connect())
+    link(this.chartInstance1, [this.chartInstance2]);
+    link(this.chartInstance2, [this.chartInstance1]);
+
+    // Optional: also sync to delta in ABD mode
+    // link(this.chartInstance1, [this.differenceInstance]);
+    // link(this.chartInstance2, [this.differenceInstance]);
+    // link(this.differenceInstance, [this.chartInstance1, this.chartInstance2]);
+  }
+
 
   private BASE_VisualMap: any = {
     min: 0,
