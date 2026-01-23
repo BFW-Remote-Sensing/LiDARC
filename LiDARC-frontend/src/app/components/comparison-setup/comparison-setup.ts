@@ -233,8 +233,8 @@ export class ComparisonSetup {
         this.comparison = {
           ...this.comparison,
           grid: {
-            cellX: Number(result.cellX.toFixed(2)),
-            cellY: Number(result.cellY.toFixed(2)),
+            cellWidth: Number(result.cellX.toFixed(2)),
+            cellHeight: Number(result.cellY.toFixed(2)),
             xMin: Number(result.xMin.toFixed(2)),
             xMax: Number(result.xMax.toFixed(2)),
             yMin: Number(result.yMin.toFixed(2)),
