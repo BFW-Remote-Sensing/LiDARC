@@ -7,6 +7,7 @@ export type CreateComparison = {
     needOutlierDetection: boolean;
     needStatisticsOverScenery: boolean;
     needMostDifferences: boolean;
+    individualStatisticsPercentile: number | null;
     folderAId?: number;
     folderBId?: number;
     folderAFiles: number[];

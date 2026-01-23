@@ -22,6 +22,8 @@ public class CreateComparisonRequest {
 
     private Boolean needMostDifferences;
 
+    private Double individualStatisticsPercentile;
+
     private Long folderAId;
 
     private Long folderBId;

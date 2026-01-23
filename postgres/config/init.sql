@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS comparisons (
     need_outlier_detection BOOLEAN DEFAULT FALSE,
     need_statistics_over_scenery BOOLEAN DEFAULT FALSE,
     need_most_differences BOOLEAN DEFAULT FALSE,
+    individual_statistics_percentile DOUBLE PRECISION,
     created_at TIMESTAMP,
     status VARCHAR(32) NOT NULL DEFAULT 'PENDING' CHECK (status in ('PENDING', 'COMPLETED', 'FAILED')),
     error_message TEXT,

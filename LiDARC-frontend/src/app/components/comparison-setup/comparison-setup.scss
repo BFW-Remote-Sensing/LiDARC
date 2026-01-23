@@ -96,3 +96,21 @@
     width: 18px;
     vertical-align: middle;
 }
+
+.individualStatisticsPercentileInput {
+  margin-left: 32px;
+  margin-top: 6px;
+}
+
+.percentile-field {
+  width: 90px;
+
+  .mat-mdc-form-field-infix {
+    padding: 6px 8px;
+  }
+
+  input {
+    font-size: 13px;
+    text-align: center;
+  }
+}
