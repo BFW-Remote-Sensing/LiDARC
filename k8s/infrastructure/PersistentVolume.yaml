@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: lidarc-data-pv
+  labels:
+    role: lidarc-data-pv
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/eodc/private/bfw/lidarc_ws25/dind_data"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lidarc-pvc
+  namespace: default
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
