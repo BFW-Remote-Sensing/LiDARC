@@ -278,7 +278,7 @@ public class ComparisonService implements IComparisonService {
                         JobType.PREPROCESSING,
                         Map.of("comparisonId", comparisonId, "fileId", fileEntity.getId()),
                         Instant.now(),
-                        Duration.ofSeconds(10)
+                        Duration.ofMinutes(10)
                 );
                 jobTrackingService.registerJob(trackedJob);
 
@@ -357,18 +357,21 @@ public class ComparisonService implements IComparisonService {
         if (dto == null) return null;
         reportRepository.findTopByComparisonIdOrderByCreationDateDesc(dto.getId())
                 .ifPresent(report -> dto.setLatestReport("/reports/" + report.getId() + "/download"));
+
         List<Long> fileMetadataIds = comparisonFileRepository.getComparisonFilesByComparisonId(comparisonId);
         List<String> fileMetadataIdStrings = fileMetadataIds.stream()
                 .map(String::valueOf)
                 .toList();
-
         setComparisonFolders(comparisonId, dto);
 
-        dto.setFiles(
-                metadataService.getMetadataList(fileMetadataIdStrings).stream()
-                        .filter(f -> f.getFolderId() == null)
-                        .toList()
-        );
+        List<Long> comparisonFolderIds = comparisonFolderRepository.getComparisonFoldersByComparisonId(comparisonId);
+
+        List<FileMetadataDTO> files = metadataService.getMetadataList(fileMetadataIdStrings);
+        List<FileMetadataDTO> independentFilesInComparison = files.stream()
+                .filter(f -> !comparisonFolderIds.contains(f.getFolderId()))
+                .toList();
+
+        dto.setFiles(independentFilesInComparison);
 
         return dto;
     }

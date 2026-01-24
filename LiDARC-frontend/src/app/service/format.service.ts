@@ -46,7 +46,8 @@ export class FormatService {
             ? formattedFiles.reduce((acc, file) => acc + (file.sizeBytes || 0), 0)
             : null,
           uploadedAt: item.createdDate,
-          fileCount: formattedFiles.length
+          fileCount: formattedFiles.length,
+          errorMessage: formattedFiles.some(f => f.errorMessage || f.errorMessage !== '') ? "Details on the Folder Details Page" : null
         };
       } else {
         return {
@@ -70,7 +71,7 @@ export class FormatService {
   formatMetadata(metadata: FileMetadataDTO): FileMetadataDTO {
     return {
       ...metadata,
-      status: metadata.status === 'UPLOADED' ? 'PROCESSED' : metadata.status,
+      status: metadata.status,
       systemIdentifier: 'EPSG 31256',
       type: 'File'
     };
