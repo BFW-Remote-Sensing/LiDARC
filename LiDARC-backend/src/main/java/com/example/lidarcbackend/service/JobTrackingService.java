@@ -38,11 +38,22 @@ public class JobTrackingService implements IJobTrackingService {
     @Override
     public void registerJob(TrackedJob job) {
         jobs.put(job.getJobId(), job);
+        log.info("Registered job: id={}, type={}, expiresAt={}",
+                job.getJobId(),
+                job.getJobType(),
+                job.getTimeout());
     }
 
     @Override
     public void completeJob(UUID jobId) {
-        jobs.remove(jobId);
+        TrackedJob removed = jobs.remove(jobId);
+        if (removed != null) {
+            log.info("Job completed and removed: id={}, type={}",
+                    removed.getJobId(),
+                    removed.getJobType());
+        } else {
+            log.warn("Attempted to complete job, but it was not found: id={}", jobId);
+        }
     }
 
     @Override
@@ -53,12 +64,18 @@ public class JobTrackingService implements IJobTrackingService {
     @Scheduled(fixedDelay = 30_000)
     @Transactional
     public void checkForTimeouts() {
+        log.info("Checking for job timeouts...");
         Instant now = Instant.now();
         for(TrackedJob job : jobs.values()){
             if(job.isExpired(now)) {
-                if (!jobs.remove(job.getJobId(), job)) {
+                boolean removed = jobs.remove(job.getJobId(), job);
+                if (!removed) {
                     continue;
                 }
+                log.warn("Job timed out and was removed: id={}, type={}, expiredAt={}",
+                        job.getJobId(),
+                        job.getJobType(),
+                        job.getTimeout());
                 setJobToFailed(job);
             }
         }

@@ -273,12 +273,14 @@ public class ComparisonService implements IComparisonService {
 
                 restrictedZones.add(snappedBox);
 
+                UUID jobUuid = UUID.fromString(uniqueJobId);
+
                 TrackedJob trackedJob = new TrackedJob(
-                        UUID.fromString(UUID.nameUUIDFromBytes(uniqueJobId.getBytes()).toString()),
+                        jobUuid,
                         JobType.PREPROCESSING,
                         Map.of("comparisonId", comparisonId, "fileId", fileEntity.getId()),
                         Instant.now(),
-                        Duration.ofMinutes(10)
+                        Duration.ofMinutes(15)
                 );
                 jobTrackingService.registerJob(trackedJob);
 
@@ -642,13 +644,14 @@ public class ComparisonService implements IComparisonService {
                     .map(cf -> new ComparisonWorkerInputFileDto(cf.getBucket(), cf.getObjectKey(), cf.getGroupName()))
                     .toList();
 
+            UUID comparisonJobId = UUID.randomUUID();
             StartComparisonJobDto dto = new StartComparisonJobDto(
-                    jobId,
+                    comparisonJobId.toString(),
                     comparisonId.toString(),
                     filesDto
             );
 
-            UUID comparisonJobId = UUID.randomUUID();
+
             TrackedJob trackedJob = new TrackedJob(
               comparisonJobId,
               JobType.COMPARISON,
