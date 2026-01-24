@@ -169,21 +169,17 @@ def create_result_df(precomp_grid, individual_percentile=None):
     y_min = precomp_grid["y_min"]
 
     digests = precomp_grid["veg_height_digest"]
-    p90 = []
-    p95 = []
-    custom_p = [] if individual_percentile is not None else None
-    for r, c in zip(rows, cols):
-        d = digests[r, c]
-        if precomp_grid["count"][r,c] > 0:
-            p90.append(d.percentile(90))
-            p95.append(d.percentile(95))
-            if custom_p is not None:
-                custom_p.append(d.percentile(individual_percentile))
-        else:
-            p90.append(np.nan)
-            p95.append(np.nan)
-            if custom_p is not None:
-                custom_p.append(np.nan)
+    custom_p = None
+    if individual_percentile is not None:
+        custom_p = []
+        for r, c in zip(rows, cols):
+            d = digests[r, c]
+            if precomp_grid["count"][r, c] > 0:
+                if custom_p is not None:
+                    custom_p.append(d.percentile(individual_percentile))
+            else:
+                if custom_p is not None:
+                    custom_p.append(np.nan)
 
     data = {
         "x0": x_min + cols * grid_width,
@@ -195,12 +191,10 @@ def create_result_df(precomp_grid, individual_percentile=None):
         "z_min": precomp_grid["z_min"][rows, cols],
         "veg_height_max": precomp_grid["veg_height_max"][rows, cols],
         "veg_height_min": precomp_grid["veg_height_min"][rows, cols],
-        "veg_p90": p90,
-        "veg_p95": p95,
     }
 
-    if custom_p is not None:
-        col_name = f"max_height_p{individual_percentile}"
+    if individual_percentile is not None:
+        col_name = f"veg_height_p{individual_percentile}"
         data[col_name] = custom_p
 
     return pd.DataFrame(data)

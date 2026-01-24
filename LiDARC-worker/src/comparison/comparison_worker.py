@@ -84,12 +84,25 @@ def round_floats(obj, ndigits=2):
     return obj
 
 def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b: str) -> dict:
+    percentile_columns = [col for col in merged.columns if col.endswith("_a") and col.startswith("veg_height_p")]
+
     for col in ["veg_height_max_a", "veg_height_max_b"]:
         merged[col] = (
             merged[col]
             .replace([np.inf, -np.inf], np.nan)
             .fillna(0.0)
         )
+
+    for col in percentile_columns:
+        col_b = col.replace("_a", "_b")
+        diff_col = col.replace("_a", "_diff")
+        if col not in merged.columns:
+            merged[col] = 0.0
+        if col_b not in merged.columns:
+            merged[col_b] = 0.0
+        merged[col] = merged[col].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        merged[col_b] = merged[col_b].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        merged[diff_col] = merged[col_b] - merged[col]
 
     merged["delta_z"] = merged["veg_height_max_b"] - merged["veg_height_max_a"]
     logging.debug("Calculating statistics on %d grid cells", len(merged))
@@ -203,6 +216,10 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
             "veg_height_max_a": row["veg_height_max_a"],
             "veg_height_max_b": row["veg_height_max_b"],
             "delta_z": row["delta_z"],
+            **{col: row[col] for col in percentile_columns},
+            **{col.replace("_a", "_b"): row[col.replace("_a", "_b")] for col in percentile_columns},
+            ** {col.replace("_a", "_diff"): row[col.replace("_a", "_diff")] for col in percentile_columns}
+
         },
         axis=1
     ).tolist()
@@ -235,7 +252,11 @@ def build_merged_dataframe(
         if max_val > 100:
             logging.debug("Detected veg height in mm → converting to meters")
             df["veg_height_max"] /= 1000.0
+        for col in df.columns:
+            if col.startswith("veg_height_p"):
+                df[col] /= 1000.0 if df[col].max() > 100 else 1.0
         return df
+
 
     for f in files:
         group = f["groupName"]
@@ -258,17 +279,26 @@ def build_merged_dataframe(
             df = pd.read_csv(local_path)
             df = normalize_df(df)
 
-            for row in df.itertuples(index=False):
-                key = (row.x0, row.x1, row.y0, row.y1)
+            percentile_cols = [col for col in df.columns if col.startswith("veg_height_p")]
+
+            for idx, row in df.iterrows():
+                key = (row["x0"], row["x1"], row["y0"], row["y1"])
 
                 if key not in cells:
                     cells[key] = {"a": None, "b": None}
 
-                cells[key][slot] = row.veg_height_max
+                cells[key][slot] = row["veg_height_max"]
                 if slot == "a":
-                    cells[key]["count_a"] = getattr(row, "count", 0)
+                    cells[key]["count_a"] = row.get("count", 0) if "count" in row else 0
                 if slot == "b":
-                    cells[key]["count_b"] = getattr(row, "count", 0)
+                    cells[key]["count_b"] = row.get("count", 0) if "count" in row else 0
+
+                for col in percentile_cols:
+                    if "percentiles" not in cells[key]:
+                        cells[key]["percentiles"] = {}
+                    if col not in cells[key]["percentiles"]:
+                        cells[key]["percentiles"][col] = {"a": None, "b": None}
+                    cells[key]["percentiles"][col][slot] = row[col]
 
 
         finally:
@@ -277,7 +307,7 @@ def build_merged_dataframe(
     rows = []
     for (x0, x1, y0, y1), values in cells.items():
         if values["a"] is not None and values["b"] is not None:
-            rows.append({
+            row_data = {
                 "x0": x0,
                 "x1": x1,
                 "y0": y0,
@@ -286,7 +316,11 @@ def build_merged_dataframe(
                 "veg_height_max_b": values["b"],
                 "count_a": values.get("count_a", 0),
                 "count_b": values.get("count_b", 0),
-            })
+            }
+            for col, col_vals in values.get("percentiles", {}).items():
+                row_data[f"{col}_a"] = col_vals["a"]
+                row_data[f"{col}_b"] = col_vals["b"]
+            rows.append(row_data)
 
     merged = pd.DataFrame(rows)
     logging.debug("Merged into %d matched grid cells", len(merged))
