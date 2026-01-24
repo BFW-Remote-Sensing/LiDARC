@@ -94,7 +94,7 @@
                             Uploaded At
                         </span>
                         <span>
-                            {{ metadata()?.uploadedAt ? (metadata()!.uploadedAt | date:'medium') : 'N/A' }}
+                            {{ metadata()?.uploadedAt ? (metadata()!.uploadedAt | date: 'MMM d, y, HH:mm') : 'N/A' }}
                         </span>
                     </div>
                 </mat-list-item>
@@ -107,7 +107,8 @@
                             File Created At
                         </span>
                         <span>
-                            {{ metadata()?.fileCreationDate ? (metadata()!.fileCreationDate | date:'medium') : 'N/A' }}
+                            {{ metadata()?.fileCreationDate ? (metadata()!.fileCreationDate | date: 'MMM d, y, HH:mm') :
+                            'N/A' }}
                         </span>
                     </div>
                 </mat-list-item>

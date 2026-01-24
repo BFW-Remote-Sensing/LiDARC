@@ -72,7 +72,7 @@
                             Created At
                         </span>
                         <span>
-                            {{ folder()?.createdDate ? (folder()!.createdDate | date:'medium') : 'N/A' }}
+                            {{ folder()?.createdDate ? (folder()!.createdDate | date: 'MMM d, y, HH:mm') : 'N/A' }}
                         </span>
                     </div>
                 </mat-list-item>

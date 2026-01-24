@@ -60,7 +60,7 @@
               Created At
             </span>
             <span>
-              {{ comparison()?.createdAt ? (comparison()!.createdAt | date:'medium') : 'N/A' }}
+              {{ comparison()?.createdAt ? (comparison()!.createdAt | date: 'MMM d, y, HH:mm') : 'N/A' }}
             </span>
           </div>
         </mat-list-item>
