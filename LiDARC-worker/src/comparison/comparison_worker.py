@@ -156,8 +156,13 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
     sum_y = np.sum(y)
     sum_xy = (x*y).sum()
     sum_x2 = (x*x).sum()
-    slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x**2)
-    intercept = (sum_y - slope * sum_x) / n
+    den = n * sum_x2 - sum_x ** 2
+    if den == 0:
+        slope = None
+        intercept = None
+    else:
+        slope = (n * sum_xy - sum_x * sum_y) / den
+        intercept = (sum_y - slope * sum_x) / n
 
     stats_diff = {
         "description": f"vegetational height of {group_b} - vegetational height of {group_a}",
@@ -176,12 +181,11 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
             "p90": float(np.percentile(diffs, 90)),
         },
         "histogram": histogram,
-        # TODO also calculate the slope for visualization?
         "correlation": {
             "pearson_correlation": float(merged["veg_height_max_a"].corr(merged["veg_height_max_b"])),
             "regression_line": {
-                "slope": float(slope),
-                "intercept": float(intercept),
+                "slope": None if slope is None else float(slope),
+                "intercept": None if intercept is None else float(intercept),
                 "x_min": float(x.min()),
                 "x_max": float(x.max()),
             }
