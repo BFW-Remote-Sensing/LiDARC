@@ -59,10 +59,60 @@ public class PresignedUrlService implements IPresignedUrlService {
   public void invalidateUrls() {
     // Try to refresh and recover silently on errors so scheduler keeps running
     urlRepository.getUrlsByExpiresAtBefore(Instant.now()).forEach(url -> {
-      log.info("Deleting expired URL for file: {}", url.getFile() != null ? url.getFile().getFilename() : "unknown");
+      File file = url.getFile();
+      if (file == null) {
+        log.warn("URL has no associated file, deleting expired URL");
+        urlRepository.delete(url);
+        return;
+      }
+
+      log.info("Deleting expired URL for file: {}", file.getFilename());
       urlRepository.delete(url);
+
+      // Fetch a fresh URL only for uploaded files with GET method
+      if (file.getUploaded() && url.getMethod() == Method.GET) {
+        log.info("Creating new fetch url for {}", file.getFilename());
+        refreshPresignedUrl(file);
+      }
     });
 
+  }
+
+  /**
+   * Refreshes the presigned URL for an uploaded file
+   *
+   * @param file the file to refresh the URL for
+   */
+  private void refreshPresignedUrl(File file) {
+    try {
+      String fileName = file.getFilename();
+      String originalFileName = file.getOriginalFilename();
+
+      GetPresignedObjectUrlArgs presignedObjectUrlArgs = getPresignedObjectUrlArgs(fileName, Method.GET);
+      if (presignedObjectUrlArgs == null) {
+        log.warn("Could not create presigned URL args for file: {}", fileName);
+        return;
+      }
+
+      Instant expiresAt = Instant.now().plusSeconds(minioProperties.getDefaultExpiryTime());
+      Optional<FileInfoDto> fileInfo = getUrl(presignedObjectUrlArgs, fileName, originalFileName);
+
+      if (fileInfo.isPresent()) {
+        Url newUrl = new Url();
+        newUrl.setFile(file);
+        newUrl.setPresignedURL(fileInfo.get().getPresignedURL());
+        newUrl.setMethod(Method.GET);
+        newUrl.setCreatedAt(Instant.now());
+        newUrl.setExpiresAt(expiresAt);
+
+        urlRepository.save(newUrl);
+        log.info("Successfully refreshed presigned URL for file: {}", fileName);
+      } else {
+        log.warn("Failed to generate fresh presigned URL for file: {}", fileName);
+      }
+    } catch (Exception e) {
+      log.error("Error refreshing presigned URL for file: {}", file.getFilename(), e);
+    }
   }
 
   @PostConstruct

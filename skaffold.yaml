@@ -1,0 +1,77 @@
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+  name: lidarc
+build:
+  local:
+    useDockerCLI: true
+  artifacts:
+    - image: backend
+      context: LiDARC-backend
+      docker:
+        dockerfile: Dockerfile
+    - image: frontend
+      context: LiDARC-frontend
+      docker:
+        dockerfile: Dockerfile
+    - image: postgres
+      context: postgres
+      docker:
+        dockerfile: Dockerfile
+        buildArgs:
+          CI_BUILD: "true"
+    - image: rabbitmq
+      context: rabbitmq
+      docker:
+        dockerfile: Dockerfile
+    - image: preprocess
+      context: LiDARC-worker
+      docker:
+        dockerfile: Dockerfile-preprocess-worker
+    - image: comparison
+      context: LiDARC-worker
+      docker:
+        dockerfile: Dockerfile-comparison-worker
+    - image: metadata
+      context: LiDARC-worker
+      docker:
+        dockerfile: Dockerfile-metadata-worker
+    - image: visualization-chunking
+      context: LiDARC-worker
+      docker:
+        dockerfile: Dockerfile-visualization-worker
+manifests:
+  rawYaml:
+    - k8s/infrastructure/*.yaml
+    - k8s/backend/*.yaml
+    - k8s/frontend/*.yaml
+    - k8s/workers/*.yaml
+    - k8s/local/*.yaml
+deploy:
+  kubectl: { }
+
+profiles:
+  - name: prod
+    manifests:
+      rawYaml:
+        - k8s/infrastructure/ingress.yaml
+        - k8s/infrastructure/postgres.yaml
+        - k8s/infrastructure/PersistentVolume.yaml
+        - k8s/infrastructure/rabbitmq.yaml
+        - k8s/infrastructure/redis.yaml
+        - k8s/infrastructure/minio-ghost.yaml
+        - k8s/backend/*.yaml
+        - k8s/frontend/*.yaml
+        - k8s/workers/*.yaml
+    deploy:
+      helm:
+        releases:
+          - name: keda
+            repo: https://kedacore.github.io/charts
+            remoteChart: keda
+            namespace: keda
+            createNamespace: true
+            version: 2.18.3
+            wait: true
+      kubectl: { }
+

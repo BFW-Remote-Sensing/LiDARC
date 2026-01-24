@@ -1,0 +1,22 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: preprocess-worker-scaler
+  namespace: default
+spec:
+  scaleTargetRef:
+    name: preprocess-worker
+  minReplicaCount: 2
+  maxReplicaCount: 6
+  pollingInterval: 10
+  cooldownPeriod: 300
+  triggers:
+    - type: rabbitmq
+      metadata:
+        host: amqp://rabbitmq.default.svc.cluster.local:5672/
+        protocol: amqp
+        queueName: worker.preprocessing.job
+        mode: QueueLength
+        value: "1"
+        usernameFromEnv: RABBITMQ_DEFAULT_USER
+        passwordFromEnv: RABBITMQ_DEFAULT_PASS
