@@ -1,60 +1,88 @@
 .metadata-display {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
 mat-dialog-actions {
-    padding: 0 24px 20px;
+  padding: 0 24px 20px;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.tools-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+
+  .label {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+  }
 }
 
 .input-field-full {
-    width: 100%;
-    margin-bottom: 10px;
+  width: 100%;
+  margin-bottom: 10px;
 }
 
 .error-message {
-    color: red;
-    font-weight: bold;
+  color: red;
+  font-weight: bold;
 }
 
 /* 1. Make the dialog wider */
 :host {
-  display: block;
-  width: 100%;      /* Set a specific wide width */
+  display: flex;
+  flex-direction: column;
+  width: 100%; /* Set a specific wide width */
+  height: 100%;
 }
 
 /* 2. Side-by-side Layout */
 .content-container {
   display: flex;
   flex-direction: row;
-  gap: 24px;         /* Space between form and map */
-  max-height: 80vh;  /* Allow tall content */
+  gap: 24px; /* Space between form and map */
+  flex: 1;
+  max-height: none;
+  height: auto;
+  overflow: hidden;
   padding-bottom: 10px;
 }
 
 /* Left side (Form) */
 .form-section {
-  flex: 0 0 400px;   /* Fixed width for inputs (approx 40%) */
-  overflow-y: auto;  /* Scroll inputs if screen is short */
+  flex: 0 0 400px; /* Fixed width for inputs (approx 40%) */
+  overflow-y: auto; /* Scroll inputs if screen is short */
 }
 
 /* Right side (Map) */
 .map-section {
-  flex: 1;           /* Map takes all remaining space */
+  flex: 1; /* Map takes all remaining space */
   display: flex;
   flex-direction: column;
+  position: relative;
 }
+
 
 #map {
   border: 1px solid #ccc;
   background: #f0f0f0;
   z-index: 1;
-  flex-grow: 1;      /* Fill the vertical space of the map section */
+  flex: 1; /* Fill the vertical space of the map section */
   min-height: 400px; /* Ensure the map is tall enough */
   width: 100%;
+  height: 100%;
   border-radius: 4px;
+  transform: none !important;
+  perspective: none !important;
+  transform-style: flat !important;
 }
 
 /* Existing styles below... */

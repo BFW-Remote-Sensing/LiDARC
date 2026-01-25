@@ -10,42 +10,45 @@
       <div class="metadata-display">
         <mat-form-field appearance="fill" class="input-field">
           <mat-label>X Min</mat-label>
-          <input matInput type="number" [(ngModel)]="xMin" (ngModelChange)="updatePreview()" name="minX" required [min]="selectedItem.minX" [max]="selectedItem.maxX">
+          <input matInput type="number" [(ngModel)]="xMin" (ngModelChange)="updatePreview()" name="minX" required
+                 [min]="this.minXMin" [max]="this.maxXMax">
         </mat-form-field>
 
         <mat-form-field appearance="fill" class="input-field">
           <mat-label>X Max</mat-label>
-          <input matInput type="number" [(ngModel)]="xMax" (ngModelChange)="updatePreview()" name="maxX" required [min]="selectedItem.minX" [max]="selectedItem.maxX">
+          <input matInput type="number" [(ngModel)]="xMax" (ngModelChange)="updatePreview()" name="maxX" required
+                 [min]="this.minXMin" [max]="this.maxXMax">
         </mat-form-field>
 
         <mat-form-field appearance="fill" class="input-field">
           <mat-label>Y Min</mat-label>
-          <input matInput type="number" [(ngModel)]="yMin" (ngModelChange)="updatePreview()" name="minY" required [min]="selectedItem.minY" [max]="selectedItem.maxY">
+          <input matInput type="number" [(ngModel)]="yMin" (ngModelChange)="updatePreview()" name="minY" required
+                 [min]="this.minYMin" [max]="this.maxYMax">
         </mat-form-field>
 
         <mat-form-field appearance="fill" class="input-field">
           <mat-label>Y Max</mat-label>
-          <input matInput type="number" [(ngModel)]="yMax" (ngModelChange)="updatePreview()" name="maxY" required [min]="selectedItem.minY" [max]="selectedItem.maxY">
+          <input matInput type="number" [(ngModel)]="yMax" (ngModelChange)="updatePreview()" name="maxY" required
+                 [min]="this.minYMin" [max]="this.maxYMax">
         </mat-form-field>
       </div>
 
       <h3>Define New Cell Dimensions</h3>
       <div class="metadata-display">
         <mat-form-field appearance="fill" class="input-field-full">
-          <mat-label>Cell X Dimension</mat-label>
+          <mat-label>Cell Width Dimension</mat-label>
           <input matInput type="number" [(ngModel)]="cellX" name="cellX" required min="1">
-          <mat-hint>Define the cell's X dimension in meters</mat-hint>
+          <mat-hint>Define the width of a cell in meters</mat-hint>
         </mat-form-field>
 
         <mat-form-field appearance="fill" class="input-field-full">
-          <mat-label>Cell Y Dimension</mat-label>
+          <mat-label>Cell Height Dimension</mat-label>
           <input matInput type="number" [(ngModel)]="cellY" name="cellY" required min="1">
-          <mat-hint>Define the cell's Y dimension in meters</mat-hint>
+          <mat-hint>Define the height of a cell in meters</mat-hint>
         </mat-form-field>
       </div>
     </form>
   </div>
-
   <div class="map-section">
     <h3>AOI Preview</h3>
     <div id="map" [style.visibility]="currentZone ? 'visible' : 'hidden'"></div>
@@ -54,10 +57,22 @@
       <p>Please select a Coordinate Zone to view the map.</p>
     </div>
   </div>
-
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
+  <button mat-icon-button
+          matTooltip="Auto-match overlapping area"
+          class="match-icon-btn"
+          (click)="automatedAOIMatch()">
+    <mat-icon>auto_fix_high</mat-icon>
+  </button>
+
+  <button mat-icon-button
+          matTooltip="Reset to original size"
+          class="reset-icon-btn"
+          (click)="resetAoi()">
+    <mat-icon>restart_alt</mat-icon>
+  </button>
   <button mat-button (click)="onCancel()">Cancel</button>
   <button mat-raised-button color="primary"
           [disabled]="!currentZone || cellX === null || cellY === null || xMin === null || xMax === null || yMin === null || yMax === null || xMin >= xMax || yMin >= yMax || xMin < selectedItem.minX || xMax > selectedItem.maxX || yMin < selectedItem.minY || yMax > selectedItem.maxY"
