@@ -244,9 +244,11 @@ export class ComparisonDetails implements OnInit {
     console.log("initial chunking size calculation:" + totalCells);
     console.log("comparison size calculation:" + cellsX + "x" + cellsY + " cells");
 
-    if (totalCells <= 256) return 2;
-    if (totalCells <= 1024) return 5;
-    if (totalCells <= 4096) return 10;
+    if (totalCells <= 10000) return 1;
+    if (totalCells <= 40000) return 2;
+    if (totalCells <= 60000) return 3;
+    if (totalCells <= 100000) return 5
+    if (totalCells <= 200000) return 8;
     return 15;
   }
 
