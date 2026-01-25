@@ -83,8 +83,100 @@ def round_floats(obj, ndigits=2):
         return [round_floats(v, ndigits) for v in obj]
     return obj
 
+def calculate_difference_statistics(
+        diffs: pd.Series,
+        veg_height_a: pd.Series,
+        veg_height_b: pd.Series,
+        group_a: str,
+        group_b: str,
+        name: str,
+        bins: int = 10,
+) -> dict:
+
+    neg = diffs[diffs <= 0]
+    pos = diffs[diffs >= 0]
+
+    # calculate histogram of difference
+    min_diff = diffs.min()
+    max_diff = diffs.max()
+    if min_diff == max_diff:
+        min_diff -= 0.5
+        max_diff += 0.5
+    q_low, q_high = np.percentile(diffs, [1, 99])
+    bin_edges = np.linspace(q_low, q_high, bins + 1)
+    counts, _ = np.histogram(diffs, bins=bin_edges)
+    histogram = {
+        "bin_edges": bin_edges.tolist(),
+        "counts": counts.tolist()
+    }
+
+    # calculate linear regression of B vs A
+    x = veg_height_a
+    y = veg_height_b
+    n = len(x)
+    sum_x = np.sum(x)
+    sum_y = np.sum(y)
+    sum_xy = (x * y).sum()
+    sum_x2 = (x * x).sum()
+    den = n * sum_x2 - sum_x ** 2
+    if den == 0:
+        slope = None
+        intercept = None
+    else:
+        slope = (n * sum_xy - sum_x * sum_y) / den
+        intercept = (sum_y - slope * sum_x) / n
+
+    return {
+        "name": name,
+        "mean": diffs.mean(),
+        "median": diffs.median(),
+        "std": diffs.std(),
+        "most_negative": float(neg.min()) if not neg.empty else None,
+        "least_negative": float(neg.max()) if not neg.empty else None,
+        "smallest_positive": float(pos.min()) if not pos.empty else None,
+        "largest_positive": float(pos.max()) if not pos.empty else None,
+        "percentiles": {
+            "p10": float(np.percentile(diffs, 10)),
+            "p25": float(np.percentile(diffs, 25)),
+            "p50": float(np.percentile(diffs, 50)),
+            "p75": float(np.percentile(diffs, 75)),
+            "p90": float(np.percentile(diffs, 90)),
+        },
+        "histogram": histogram,
+        "correlation": {
+            "pearson_correlation": float(veg_height_a.corr(veg_height_b)),
+            "regression_line": {
+                "slope": None if slope is None else float(slope),
+                "intercept": None if intercept is None else float(intercept),
+                "x_min": float(x.min()),
+                "x_max": float(x.max()),
+            }
+        }
+    }
+
+
+def calculate_file_statistics(data: pd.Series, name: str) -> dict:
+    return {
+        "name": name,
+        "mean_veg_height": data.mean(),
+        "median_veg_height": data.median(),
+        "std_veg_height": data.std(),
+        "min_veg_height": data.min(),
+        "max_veg_height": data.max(),
+        "percentiles": {
+            "p10": float(np.percentile(data, 10)),
+            "p25": float(np.percentile(data, 25)),
+            "p50": float(np.percentile(data, 50)),
+            "p75": float(np.percentile(data, 75)),
+            "p90": float(np.percentile(data, 90))
+        }
+    }
+
 def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b: str) -> dict:
     percentile_columns = [col for col in merged.columns if col.endswith("_a") and col.startswith("veg_height_p")]
+    percentile_a = percentile_columns[0] if percentile_columns else None
+    percentile_b = percentile_a.replace("_a", "_b") if percentile_a else None
+    percentile_diff = percentile_a.replace("_a", "_diff") if percentile_a else None
 
     for col in ["veg_height_max_a", "veg_height_max_b"]:
         merged[col] = (
@@ -108,103 +200,55 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
     logging.debug("Calculating statistics on %d grid cells", len(merged))
 
     # basic metrics of veg_height b
-    stats_b = {
-        "mean_veg_height": merged["veg_height_max_b"].mean(),
-        "median_veg_height": merged["veg_height_max_b"].median(),
-        "std_veg_height": merged["veg_height_max_b"].std(),
-        "min_veg_height": merged["veg_height_max_b"].min(),
-        "max_veg_height": merged["veg_height_max_b"].max(),
-        "percentiles": {
-            "p10": float(np.percentile(merged["veg_height_max_b"], 10)),
-            "p25": float(np.percentile(merged["veg_height_max_b"], 25)),
-            "p50": float(np.percentile(merged["veg_height_max_b"], 50)),
-            "p75": float(np.percentile(merged["veg_height_max_b"], 75)),
-            "p90": float(np.percentile(merged["veg_height_max_b"], 90)),
-        },
-        "mean_points_per_grid_cell": float(merged["count_b"].mean())
-    }
+    stats_b = calculate_file_statistics(merged["veg_height_max_b"], "stats of veg_height_max_b")
+    stats_b["mean_points_per_grid_cell"] = float(merged["count_b"].mean())
 
-    # basic metrics of veg_height b
-    stats_a = {
-        "mean_veg_height": merged["veg_height_max_a"].mean(),
-        "median_veg_height": merged["veg_height_max_a"].median(),
-        "std_veg_height": merged["veg_height_max_a"].std(),
-        "min_veg_height": merged["veg_height_max_a"].min(),
-        "max_veg_height": merged["veg_height_max_a"].max(),
-        "percentiles": {
-            "p10": float(np.percentile(merged["veg_height_max_a"], 10)),
-            "p25": float(np.percentile(merged["veg_height_max_a"], 25)),
-            "p50": float(np.percentile(merged["veg_height_max_a"], 50)),
-            "p75": float(np.percentile(merged["veg_height_max_a"], 75)),
-            "p90": float(np.percentile(merged["veg_height_max_a"], 90)),
-        },
-        "mean_points_per_grid_cell": float(merged["count_a"].mean())
-    }
+    # basic metrics of veg_height a
+    stats_a = calculate_file_statistics(merged["veg_height_max_a"], "stats of veg_height_max_a")
+    stats_a["mean_points_per_grid_cell"] = float(merged["count_a"].mean())
+
 
     # calculate basic statistics of the difference
     diffs = merged["delta_z"]
-    neg = diffs[diffs <= 0]
-    pos = diffs[diffs >= 0]
+    stats_diff = calculate_difference_statistics(
+        diffs=diffs,
+        veg_height_a=merged["veg_height_max_a"],
+        veg_height_b=merged["veg_height_max_b"],
+        group_a=group_a,
+        group_b=group_b,
+        name=f"stats of difference of max height {group_b} - {group_a}",
+        bins=10
+    )
 
-    # calculate histogram of difference
-    bins = 10
-    min_diff = diffs.min()
-    max_diff = diffs.max()
-    if min_diff == max_diff:
-        min_diff -= 0.5
-        max_diff += 0.5
-    q_low, q_high = np.percentile(diffs, [1, 99])
-    bin_edges = np.linspace(q_low, q_high, bins + 1)
-    counts, _ = np.histogram(diffs, bins=bin_edges)
-    histogram = {
-        "bin_edges": bin_edges.tolist(),
-        "counts": counts.tolist()
-    }
+    stats_p = None
+    if percentile_a is not None:
+        stats_p_b = calculate_file_statistics(
+            merged[percentile_b],
+            "stats of veg_height_p_b"
+        )
+        stats_p_b["mean_points_per_grid_cell"] = float(merged["count_b"].mean())
 
-    # calculate linear regression of B vs A
-    x = merged["veg_height_max_a"]
-    y = merged["veg_height_max_b"]
-    n = len(x)
-    sum_x = np.sum(x)
-    sum_y = np.sum(y)
-    sum_xy = (x*y).sum()
-    sum_x2 = (x*x).sum()
-    den = n * sum_x2 - sum_x ** 2
-    if den == 0:
-        slope = None
-        intercept = None
-    else:
-        slope = (n * sum_xy - sum_x * sum_y) / den
-        intercept = (sum_y - slope * sum_x) / n
+        stats_p_a = calculate_file_statistics(
+            merged[percentile_a],
+            "stats of veg_height_p_a"
+        )
+        stats_p_a["mean_points_per_grid_cell"] = float(merged["count_a"].mean())
+        # difference stats for percentile heights
+        stats_p_diff = calculate_difference_statistics(
+            diffs=merged[percentile_diff],
+            veg_height_a=merged[percentile_a],
+            veg_height_b=merged[percentile_b],
+            group_a=group_a,
+            group_b=group_b,
+            name=f"stats of difference of percentile height {group_b} - {group_a}",
+            bins=10
+        )
 
-    stats_diff = {
-        "description": f"vegetational height of {group_b} - vegetational height of {group_a}",
-        "mean": diffs.mean(),
-        "median": diffs.median(),
-        "std": diffs.std(),
-        "most_negative": float(neg.min()) if not neg.empty else None,
-        "least_negative": float(neg.max()) if not neg.empty else None,
-        "smallest_positive": float(pos.min()) if not pos.empty else None,
-        "largest_positive": float(pos.max()) if not pos.empty else None,
-        "percentiles": {
-            "p10": float(np.percentile(diffs, 10)),
-            "p25": float(np.percentile(diffs, 25)),
-            "p50": float(np.percentile(diffs, 50)),
-            "p75": float(np.percentile(diffs, 75)),
-            "p90": float(np.percentile(diffs, 90)),
-        },
-        "histogram": histogram,
-        "correlation": {
-            "pearson_correlation": float(merged["veg_height_max_a"].corr(merged["veg_height_max_b"])),
-            "regression_line": {
-                "slope": None if slope is None else float(slope),
-                "intercept": None if intercept is None else float(intercept),
-                "x_min": float(x.min()),
-                "x_max": float(x.max()),
-            }
+        stats_p = {
+            "file_a": stats_p_a,
+            "file_b": stats_p_b,
+            "difference": stats_p_diff
         }
-    }
-
 
 
     cells = merged.apply(
@@ -236,6 +280,10 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
             "difference": stats_diff
         }
     }
+
+    if stats_p is not None:
+        result["statistics_p"] = stats_p
+
     return round_floats(result)
 
 
