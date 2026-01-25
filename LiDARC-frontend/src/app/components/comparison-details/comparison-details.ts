@@ -1,4 +1,4 @@
-import { Component, inject, Input, OnInit, signal, WritableSignal , ViewChild} from '@angular/core';
+import { Component, inject, Input, OnInit, signal, WritableSignal, ViewChild } from '@angular/core';
 import { ComparisonService } from '../../service/comparison.service';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { FormatService } from '../../service/format.service';
@@ -15,10 +15,11 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { TextCard } from '../text-card/text-card';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatTooltip } from '@angular/material/tooltip';
+import { MatCheckbox } from '@angular/material/checkbox';
 
 
 import * as echarts from 'echarts/core';
-import { EChartsCoreOption , ECElementEvent} from 'echarts/core';
+import { EChartsCoreOption, ECElementEvent } from 'echarts/core';
 import { NgxEchartsDirective, provideEchartsCore } from "ngx-echarts";
 import { BarChart, BoxplotChart, HeatmapChart, LineChart, ScatterChart } from 'echarts/charts';
 import {
@@ -91,7 +92,8 @@ echarts.use([
     Heatmap,
     MatButton,
     ChunkingSettings,
-    FormsModule
+    FormsModule,
+    MatCheckbox
   ],
   templateUrl: './comparison-details.html',
   styleUrls: ['./comparison-details.scss', '../file-details/file-details.scss'],
@@ -105,12 +107,13 @@ export class ComparisonDetails implements OnInit {
 
   public loading: WritableSignal<boolean> = signal(true);
   public errorMessage = signal<string | null>(null);
-  private chartInstances: { [key: string]: ECharts} = {};
+  private chartInstances: { [key: string]: ECharts } = {};
   private scatterInstance!: ECharts;
   reportsLimit: number = 3;
   chunkingSize: number = 5;
   reportsLoading = signal<boolean>(false);
   hasMoreReports = signal<boolean>(true);
+  showOutlierDots = signal<boolean>(true);
 
   constructor(
     private comparisonService: ComparisonService,
@@ -254,14 +257,19 @@ export class ComparisonDetails implements OnInit {
       return;
     }
 
+    const flattenedCells = this.flattenCells(result.chunked_cells);
+    console.log('[FLATTENED CELLS COUNT]', flattenedCells.length);
+    console.log('[SAMPLE CELLS]', flattenedCells.slice(0, 5));
+    console.log('[BACKEND STATISTICS]', result.statistics);
+    console.log('[DIFFERENCE METRICS FROM BACKEND]', result.statistics?.difference);
+
     this.vegetationStats.set({
-      cells: this.flattenCells(result.chunked_cells),
+      cells: flattenedCells,
       fileA_metrics: result.statistics.file_a,
       fileB_metrics: result.statistics.file_b,
       difference_metrics: result.statistics.difference,
       group_mapping: result.group_mapping,
     });
-    console.log('[FLATTENED CELLS COUNT]', this.vegetationStats().cells.length);
 
     this.buildAllCharts();
   }
@@ -380,7 +388,7 @@ export class ComparisonDetails implements OnInit {
       //TODO: Add some error handling?
       console.error(`Failed to export image for ${name}`, error);
     }
-    }
+  }
 
   private dataURItoBlob(dataURI: string): Blob {
     const byteString = atob(dataURI.split(',')[1]);
@@ -634,10 +642,14 @@ export class ComparisonDetails implements OnInit {
     };
   }
 
+  onOutlierToggle(): void {
+    this.showOutlierDots.update((value) => !value);
+  }
+
   private buildDifferenceHistogramChart(): EChartsCoreOption {
     const histogram = this.vegetationStats().difference_metrics.histogram;
 
-        if (!histogram) {
+    if (!histogram) {
       console.warn('No hisogram data available')
       return {};
     }

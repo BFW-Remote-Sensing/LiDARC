@@ -126,3 +126,183 @@
   perspective: none !important;
   transform-style: flat !important;
 }
+
+.point-filter-card {
+    max-width: 500px;
+    margin: 20px 0;
+
+    mat-card-header {
+        margin-bottom: 16px;
+
+        mat-card-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 18px;
+            font-weight: 600;
+
+            mat-icon {
+                color: #1976d2;
+            }
+        }
+    }
+
+    mat-card-content {
+        padding-top: 0;
+    }
+
+    mat-card-actions {
+        padding: 16px;
+        display: flex;
+        justify-content: flex-end;
+
+        button {
+            mat-icon {
+                margin-right: 8px;
+            }
+        }
+    }
+}
+
+.point-filter-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .filter-bound-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 0;
+
+        .bound-icon {
+            color: #666;
+            font-size: 20px;
+            width: 20px;
+            height: 20px;
+        }
+
+        .bound-label {
+            font-size: 14px;
+            color: rgba(0, 0, 0, 0.6);
+            flex: 1;
+        }
+
+        .bound-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1976d2;
+        }
+    }
+
+    mat-divider {
+        margin: 4px 0;
+    }
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    text-align: center;
+
+    .empty-state-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+        color: rgba(0, 0, 0, 0.38);
+        margin-bottom: 12px;
+    }
+
+    .empty-state-text {
+        color: rgba(0, 0, 0, 0.6);
+        font-size: 14px;
+        font-style: italic;
+        margin: 0;
+        line-height: 1.5;
+    }
+}
+
+.sigma-settings-card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); // Matches grid-definition-card
+  padding: 0; // Padding handled by children
+  max-width: 500px;
+  margin: 20px 0;
+  overflow: hidden;
+
+  .card-header {
+    background-color: #f8f9fa;
+    padding: 12px 20px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    mat-icon {
+      color: #1976d2; // Matches point-filter-card accent
+    }
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+    }
+  }
+
+  .card-content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .description-text {
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.6);
+    line-height: 1.4;
+  }
+
+  .sigma-factor-field {
+    width: 100%;
+
+    // Increase input text visibility
+    .sigma-input {
+      font-weight: 500;
+      color: #333;
+      letter-spacing: 0.5px;
+    }
+
+    // Style the Prefix Icon
+    .input-icon {
+      color: rgba(0,0,0,0.54);
+      margin-right: 8px;
+    }
+
+    // Style the "σ" suffix
+    .unit-suffix {
+      font-size: 18px;
+      font-weight: 400;
+      color: rgba(0,0,0,0.6);
+      padding-left: 4px;
+    }
+
+    // Make hint pop slightly more
+    .mat-mdc-form-field-hint {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: rgba(0, 0, 0, 0.54);
+      margin-top: 4px;
+
+      .hint-icon {
+        font-size: 14px;
+        height: 14px;
+        width: 14px;
+      }
+    }
+  }
+}

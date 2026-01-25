@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, ElementRef, Input, OnInit, SimpleChanges, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, Input, OnInit, OnChanges,SimpleChanges, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {provideEchartsCore} from 'ngx-echarts';
 import {EChartsCoreOption} from 'echarts/core';
@@ -7,13 +7,16 @@ import {connect} from 'echarts/core';
 // import echarts core
 import * as echarts from 'echarts/core';
 // import necessary echarts components
-import {BarChart, HeatmapChart, CustomChart} from 'echarts/charts';
-import {TooltipComponent, VisualMapComponent} from 'echarts/components';
-import {GridComponent} from 'echarts/components';
+import {BarChart, CustomChart, HeatmapChart} from 'echarts/charts';
+import {
+  DataZoomComponent,
+  GridComponent,
+  TitleComponent,
+  TooltipComponent,
+  VisualMapComponent
+} from 'echarts/components';
 import {CanvasRenderer} from 'echarts/renderers';
 import {LegacyGridContainLabel} from 'echarts/features';
-import {TitleComponent} from 'echarts/components'
-import {DataZoomComponent} from 'echarts/components'
 import {max, Subject} from 'rxjs';
 import {ChunkedCell, ChunkingResult} from '../../dto/chunking';
 import {FormsModule} from '@angular/forms';
@@ -43,7 +46,7 @@ type SchemeKey = "greens" | "browns" | "deltas";
   ]
 })
 
-export class Heatmap implements AfterViewInit {
+export class Heatmap implements AfterViewInit, OnChanges {
   mode: Mode = 'ABD'
 
   // --- UI helpers ---
@@ -85,7 +88,6 @@ export class Heatmap implements AfterViewInit {
   showZoom = true;
   selectedColorScheme: SchemeKey = "greens"; //default color scheme
 
-
   optionsLeft!: EChartsCoreOption;
   optionsRight!: EChartsCoreOption;
   differenceOptions!: EChartsCoreOption;
@@ -109,6 +111,7 @@ export class Heatmap implements AfterViewInit {
   private groupSizeChange$ = new Subject<number>();
 
   @Input() data?: ChunkingResult; //fetch result from parent component
+  @Input() showOutliers: boolean = true;
 
   constructor() {
   }
@@ -119,6 +122,10 @@ export class Heatmap implements AfterViewInit {
     if (changes["data"]?.currentValue) {
       console.log("Heatmap received new data:", changes['data'].currentValue['chunked_cells']);
       this.updateHeatmaps(changes['data'].currentValue['chunked_cells']);
+    }
+    if (changes["showOutliers"]?.currentValue !== changes["showOutliers"]?.previousValue && this.data) {
+      console.log("Outlier visibility toggled, rebuilding heatmaps...");
+      this.updateHeatmaps(this.data['chunked_cells']);
     }
   }
 
@@ -138,10 +145,8 @@ export class Heatmap implements AfterViewInit {
     this.differenceInstance = echarts.init(this.diffElement?.nativeElement);
 
 
-    this.optionsLeft = this.createHeatmapOptionsWithoutDataset("SetA", true);
-    this.optionsRight = this.createHeatmapOptionsWithoutDataset("SetB", false);
-    this.differenceOptions = this.createDeltaHeatmapOptions("Delta_z", true);
-
+    this.optionsLeft = this.createHeatmapOptionsWithoutDataset( "SetA", true);
+    this.optionsRight = this.createHeatmapOptionsWithoutDataset( "SetB", false);this.differenceOptions = this.createDeltaHeatmapOptions("Delta_z", true);
 
     this.chartInstance1.setOption(this.optionsLeft);
     this.chartInstance2.setOption(this.optionsRight);
@@ -359,119 +364,7 @@ export class Heatmap implements AfterViewInit {
     return {...options, ...visMap};
   }
 
-  /*
-    private updateHeatmapRevision(matrix: ChunkedCell[][]) {
-      if (!matrix || !Array.isArray(matrix) || matrix.length === 0) {
-        console.warn("Received invalid heatmap data:", matrix);
-        return;
-      }
 
-      this.rows = matrix.length;
-      this.cols = Math.max(...matrix.map(row => row.length));
-      //const cols = matrix[0].length;
-      console.log(`Updating chart with dimensions: ${this.rows}x${this.cols}`);
-
-      const seriesDataA: any[] = [];
-      const seriesDataB: any[] = [];
-      let minX = Number.POSITIVE_INFINITY;
-      let maxX = Number.NEGATIVE_INFINITY;
-      let minY = Number.POSITIVE_INFINITY;
-      let maxY = Number.NEGATIVE_INFINITY;
-
-      for(let yIndex = 0; yIndex < this.rows; yIndex++) {
-        for(let xIndex = 0; xIndex < this.cols; xIndex++) {
-          const cell = matrix[yIndex][xIndex];
-          if (!cell) continue;
-
-          const xi = xIndex;
-          const yi = yIndex;
-
-          const x0 = Number(cell.x0);
-          const x1 = Number(cell.x1);
-          const y0 = Number(cell.y0);
-          const y1 = Number(cell.y1);
-          const valA = cell.veg_height_max_a ?? 0;
-          const valB = cell.veg_height_max_b ?? 0;
-          seriesDataA.push([xi, yi, valA, x0, y0, x1, y1]);
-          seriesDataB.push([xi, yi, valB, x0, y0, x1, y1]);
-
-          // Track bounding box for axes
-          const localMinX = Math.min(x0, x1);
-          const localMaxX = Math.max(x0, x1);
-          const localMinY = Math.min(y0, y1);
-          const localMaxY = Math.max(y0, y1);
-
-          if (localMinX < minX) minX = localMinX;
-          if (localMaxX > maxX) maxX = localMaxX;
-          if (localMinY < minY) minY = localMinY;
-          if (localMaxY > maxY) maxY = localMaxY;
-        }
-      }
-      console.log(seriesDataA);
-      console.log(seriesDataB);
-
-      this.setEchartsOption(seriesDataA, seriesDataB, minX,minY,maxX,maxY);
-    }
-
-    private setEchartsOption(seriesDataA: any[], seriesDataB: any[], minX: number, minY: number, maxX: number, maxY: number ) {
-      // const seriesTemplate = {
-      //   type: 'heatmap',
-      //   encode: {
-      //     x: 0,
-      //     y: 1,
-      //     value: 2
-      //     // tooltip isn't strictly required here; we'll use params.data in tooltip formatter
-      //   }
-      // };
-      // const axisUpdate = {
-      //   xAxis: {
-      //     min: minX,
-      //     max: maxX,
-      //     type: 'value',
-      //     splitLine: { show: false }
-      //   },
-      //   yAxis: {
-      //     min: minY,
-      //     max: maxY,
-      //     type: 'value',
-      //     inverse: true,
-      //     splitLine: { show: false }
-      //   }
-      // };
-
-      const tooltipFormatter = (params: any) => {
-        // params.data is: [xi, yi, value, x0, y0, x1, y1]
-        const d = params?.data;
-        if (!d || d.length < 5) return '';
-        const xi = d[0], yi = d[1], value = d[2];
-        const x0 = d[3], y0 = d[4], x1 = d[5], y1 = d[6];
-        const sx = Math.min(x0, x1), ex = Math.max(x0, x1);
-        const sy = Math.min(y0, y1), ey = Math.max(y0, y1);
-        return `X: ${sx} - ${ex}<br/>Y: ${sy} - ${ey}<br/>Value: ${typeof value === 'number' ? value.toFixed(3) : value}`;
-      };
-      this.chartInstance1.setOption({
-        //...axisUpdate,
-        tooltip: {
-          formatter: tooltipFormatter
-        },
-        series: [{
-          //...seriesTemplate,
-          data: seriesDataA
-        }]
-      });
-      this.chartInstance2.setOption({
-        //...axisUpdate,
-        tooltip:
-          formatter: tooltipFormatter
-        },
-        series: [{
-         // ...seriesTemplate,
-          data: seriesDataB
-        }]
-      })
-    }
-
-  */
   private updateHeatmaps(matrix: ChunkedCell[][]) {
     if (!matrix || !Array.isArray(matrix) || matrix.length === 0) {
       console.warn("Received invalid heatmap data:", matrix);
@@ -501,9 +394,11 @@ export class Heatmap implements AfterViewInit {
         const y1 = Number(cell.y1);
         const valA = cell.veg_height_max_a ?? 0;
         const valB = cell.veg_height_max_b ?? 0;
+        const outA = cell.out_a ?? 0;
+        const outB = cell.out_b ?? 0;
         const delta_z = cell.delta_z ?? 0;
-        seriesDataA.push([x0, y0, x1, y1, valA]);
-        seriesDataB.push([x0, y0, x1, y1, valB]);
+        seriesDataA.push([x0, y0, x1, y1, valA, outA]);
+        seriesDataB.push([x0, y0, x1, y1, valB, outB]);
         differenceData.push([x0, y0, x1, y1, delta_z]);
 
         // Track bounding box for axes
@@ -528,13 +423,11 @@ export class Heatmap implements AfterViewInit {
       const x1 = api.value(2);
       const y1 = api.value(3);
       const value = api.value(4);
+      const outlierCount = api.value(5) ?? 0;
       const sx = Math.min(x0, x1);
       const ex = Math.max(x0, x1);
       const sy = Math.min(y0, y1);
       const ey = Math.max(y0, y1);
-
-      const p1 = api.coord([x0, y0]);
-      const p2 = api.coord([x1, y1]);
 
       const pStart = api.coord([sx, sy]);
       const pEnd = api.coord([ex, ey]);
@@ -549,28 +442,56 @@ export class Heatmap implements AfterViewInit {
         return null;
       }
 
-      const rectShape = { x, y, width, height };
+      // Get the color from the visual map based on value
+      const color = api.visual('color');
 
-      // ✅ Clip gegen den sichtbaren Plotbereich
-      // (Verhindert das Zeichnen außerhalb des sichtbaren Bereichs) bei data Zoom
+      // Clip against the visible plot area
+      // (Prevents drawing outside the visible range) for dataZoom
+      const rectShape = { x, y, width, height };
       const clipped = echarts.graphic.clipRectByRect(rectShape, params.coordSys);
 
-      // Wenn komplett außerhalb -> nicht zeichnen
+      // If completely outside -> don't draw
       if (!clipped) return null;
 
-      return {
-        type: 'rect',
-        shape: clipped,
-        style: api.style({
-          fill: api.visual('color'),
-          stroke: '#444',
-          lineWidth: 0.2
-        }),
-        emphasis: {
-          style: { stroke: '#000', lineWidth: 1.2 }
+      // Build children array with clipped rect
+      const children: any[] = [
+        {
+          type: 'rect',
+          shape: clipped,
+          style: {
+            fill: color,
+            stroke: 'none',
+            lineWidth: 0,
+            borderWidth: 0
+          }
         }
+      ];
+
+      // Add outlier indicator if outliers exist
+      if (this.showOutliers && outlierCount > 0) {
+        const dotRadius = Math.max(2, Math.min(clipped.width, clipped.height) * 0.15); // ensure at least 2px
+        children.push({
+          type: 'circle',
+          shape: {
+            cx: clipped.x + clipped.width / 2,
+            cy: clipped.y + clipped.height / 2,
+            r: dotRadius
+          },
+          style: {
+            fill: 'rgba(255, 0, 0, 0.85)',
+            stroke: '#fff',
+            lineWidth: 0.5
+          },
+          z: 10
+        });
+      }
+
+      return {
+        type: 'group',
+        children: children
       };
     };
+
 
     const seriesTemplate = {
       type: 'custom',
@@ -578,8 +499,8 @@ export class Heatmap implements AfterViewInit {
       encode: {
         x: 0,
         y: 1,
-        // tooltip isn't strictly required here; we'll use params.data in tooltip formatter
-      }
+      },
+      dimensions: ['x0', 'y0', 'x1', 'y1', 'value', 'outlierCount']
     };
     const axisUpdate = {
       xAxis: {
@@ -597,13 +518,18 @@ export class Heatmap implements AfterViewInit {
       }
     };
     const tooltipFormatter = (params: any) => {
-      // params.data is: [x0, y0, x1, y1, value]
+      // params.data is: [x0, y0, x1, y1, value, outlierCount]
       const d = params?.data;
       if (!d || d.length < 5) return '';
       const x0 = d[0], y0 = d[1], x1 = d[2], y1 = d[3], value = d[4];
+      const outlierCount = d[5] ?? 0;
       const sx = Math.min(x0, x1), ex = Math.max(x0, x1);
       const sy = Math.min(y0, y1), ey = Math.max(y0, y1);
-      return `X: ${sx} - ${ex}<br/>Y: ${sy} - ${ey}<br/>Value: ${typeof value === 'number' ? value.toFixed(3) : value}`;
+      let tooltip = `X: ${sx} - ${ex}<br/>Y: ${sy} - ${ey}<br/>Value: ${typeof value === 'number' ? value.toFixed(3) : value}`;
+      if (outlierCount > 0) {
+        tooltip += `<br/><span style="color:red">Outliers: ${outlierCount}</span>`;
+      }
+      return tooltip;
     };
     this.chartInstance1.setOption({
       ...axisUpdate,
@@ -611,6 +537,9 @@ export class Heatmap implements AfterViewInit {
         trigger: "item",
         formatter: tooltipFormatter,
           },
+      visualMap: {
+        dimension: 4  // Use dimension 4 (value) for color mapping
+      },
       series: [{
         ...seriesTemplate,
         data: seriesDataA
@@ -624,6 +553,9 @@ export class Heatmap implements AfterViewInit {
         trigger: "item",
         formatter: tooltipFormatter,
            },
+      visualMap: {
+        dimension: 4  // Use dimension 4 (value) for color mapping
+      },
       series: [{
         ...seriesTemplate,
         data: seriesDataB
@@ -636,6 +568,10 @@ export class Heatmap implements AfterViewInit {
         trigger: "item",
         formatter: tooltipFormatter,
      },
+      visualMap: [{
+        ...this.BASE_DeltaVirtualMap,
+        show: this.showVisualMap
+      }],
       series: [{
         ...seriesTemplate,
         data: differenceData
@@ -808,6 +744,7 @@ export class Heatmap implements AfterViewInit {
       left: 0,
       top: "middle",
       calculable: true,
+      dimension: 4,
       inRange: {
         color: this.COLOR_Schemes.deltas.color
       }
@@ -817,4 +754,3 @@ export class Heatmap implements AfterViewInit {
 
 
 }
-

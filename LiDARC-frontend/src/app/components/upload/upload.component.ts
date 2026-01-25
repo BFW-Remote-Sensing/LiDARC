@@ -175,7 +175,6 @@ export class UploadComponent implements OnInit, OnDestroy {
 
     const sub = this.uploadService
       .uploadFileUsingPresign(fileUpload.file, fileUpload)
-      .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: event => {
           this.handleUploadEvent(event, fileUpload);

@@ -4,7 +4,7 @@ import {MatAnchor, MatButtonModule} from "@angular/material/button";
 import {FormsModule} from '@angular/forms';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatInputModule} from '@angular/material/input';
-import {MatDivider} from '@angular/material/divider';
+import {MatDivider, MatDividerModule} from '@angular/material/divider';
 import {MatCheckbox} from '@angular/material/checkbox';
 import {CreateComparison} from '../../dto/comparison';
 import {MatProgressSpinner} from '@angular/material/progress-spinner';
@@ -15,6 +15,11 @@ import {DefineGrid} from '../define-grid/define-grid';
 import {MatCardModule} from '@angular/material/card';
 import {MatIcon} from "@angular/material/icon";
 import {ConfirmationDialogComponent, ConfirmationDialogData} from '../confirmation-dialog/confirmation-dialog';
+import {
+  PointFilterDialogData,
+  PointFilterDialogue,
+  PointFilterResult
+} from '../point-filter-dialogue/point-filter-dialogue';
 import {ReferenceFileService} from '../../service/referenceFile.service';
 import {ComparableListItem} from '../../dto/comparableItem';
 import {MatTableDataSource, MatTableModule} from '@angular/material/table';
@@ -29,8 +34,7 @@ import {FolderFilesDTO} from '../../dto/folderFiles';
 import {getExtremeValue} from '../../helpers/extremeValue';
 import {CdkDragDrop, DragDropModule, moveItemInArray} from '@angular/cdk/drag-drop';
 import {CoordinateService} from '../../service/coordinate.service';
-import {finalize} from 'rxjs';
-import {MatSnackBar, MatSnackBarModule} from '@angular/material/snack-bar';
+import {finalize} from 'rxjs';import {MatSnackBar, MatSnackBarModule} from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-comparison-setup',
@@ -43,7 +47,7 @@ import {MatSnackBar, MatSnackBarModule} from '@angular/material/snack-bar';
     CommonModule,
     MatInputModule,
     MatFormFieldModule,
-    MatDivider,
+    MatDividerModule,
     MatCheckbox,
     RouterModule,
     MatProgressSpinner,
@@ -73,7 +77,11 @@ export class ComparisonSetup {
     needMostDifferences: false,
     folderAFiles: [],
     folderBFiles: [],
-    grid: null
+    grid: null,
+    pointFilterLowerBound: null,
+    pointFilterUpperBound: null,
+    needPointFilter: false,
+    outlierDeviationFactor: 2.0
   };
   public loadingStart: WritableSignal<boolean> = signal(false);
   public errorMessage: WritableSignal<string | null> = signal(null);
@@ -138,6 +146,7 @@ export class ComparisonSetup {
         this.comparison.needHighestVegetation === false &&
         this.comparison.needOutlierDetection === false &&
         this.comparison.needStatisticsOverScenery === false &&
+        this.comparison.needPointFilter === false &&
         this.comparison.needMostDifferences === false
       );
   }
@@ -266,6 +275,22 @@ export class ComparisonSetup {
   }
 
   startComparison(): void {
+    // Validate and auto-correct outlier detection
+    if (this.comparison.needOutlierDetection) {
+      if (!this.comparison.outlierDeviationFactor || this.comparison.outlierDeviationFactor <= 0) {
+        console.warn('Outlier detection enabled but no valid sigma factor configured. Disabling outlier detection.');
+        this.comparison.needOutlierDetection = false;
+      }
+    }
+
+    // Validate and auto-correct point filter
+    if (this.comparison.needPointFilter) {
+      if (this.comparison.pointFilterLowerBound === null || this.comparison.pointFilterUpperBound === null) {
+        console.warn('Point filter enabled but no bounds configured. Disabling point filter.');
+        this.comparison.needPointFilter = false;
+      }
+    }
+
     this.loadingStart.set(true);
     const firstItem = Array.from(this.selectedItemService.items)[0];
     const secondItem = Array.from(this.selectedItemService.items)[1];
@@ -333,6 +358,37 @@ export class ComparisonSetup {
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         this.startComparison();
+      }
+    });
+  }
+
+  openPointFilterDialog(): void {
+    const data: PointFilterDialogData = {
+      title: 'Configure Point Filter',
+      subtitle: 'Specify lower and upper bounds (0-100) to filter points by percentile. Everything under lower bound and over upper bound will be excluded from calculations.',
+      primaryButtonText: 'Apply',
+      secondaryButtonText: 'Cancel',
+      initialLowerBound: this.comparison.pointFilterLowerBound,
+      initialUpperBound: this.comparison.pointFilterUpperBound
+    };
+
+    const dialogRef = this.dialog.open(PointFilterDialogue, {
+      width: '500px',
+      data,
+      disableClose: true
+    });
+
+    dialogRef.afterClosed().subscribe((result: PointFilterResult | { cleared: boolean } | null | undefined) => {
+      if (result !== null && result !== undefined) {
+        if ('cleared' in result && result.cleared) {
+          this.comparison.pointFilterLowerBound = null;
+          this.comparison.pointFilterUpperBound = null;
+        } else if ('lowerBound' in result && 'upperBound' in result) {
+          this.comparison.pointFilterLowerBound = result.lowerBound;
+          this.comparison.pointFilterUpperBound = result.upperBound;
+          this.comparison.needPointFilter = true;
+        }
+        this.cdr.markForCheck();
       }
     });
   }

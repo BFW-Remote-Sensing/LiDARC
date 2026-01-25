@@ -41,8 +41,8 @@ public class Comparison {
     @Column(nullable = false, length = 32)
     private Status status = Status.PENDING;
 
-    //@Column(name = "result_report_url")
-    //private String resultReportUrl;
+    // @Column(name = "result_report_url")
+    // private String resultReportUrl;
 
     @Column(name = "result_bucket")
     private String resultBucket;
@@ -73,6 +73,18 @@ public class Comparison {
 
     @Column(name = "grid_max_y")
     private Double gridMaxY;
+
+    @Column(name = "point_filter_lower_bound")
+    private Integer pointFilterLowerBound;
+
+    @Column(name = "point_filter_upper_bound")
+    private Integer pointFilterUpperBound;
+
+    @Column(name = "need_point_filter")
+    private Boolean needPointFilter;
+
+    @Column(name = "outlier_deviation_factor")
+    private Double outlierDeviationFactor;
 
     public enum Status {
         PENDING,
