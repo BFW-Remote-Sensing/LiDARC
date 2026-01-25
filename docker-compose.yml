@@ -161,6 +161,12 @@ services:
       rabbitmq:
         condition: service_started
         restart: true
+      redis:
+        condition: service_started
+        restart: true
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     networks:
       - ase-network
   comparison-worker:
@@ -179,6 +185,12 @@ services:
       postgres:
         condition: service_started
         restart: true
+      redis:
+        condition: service_started
+        restart: true
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     networks:
       - ase-network
 
@@ -198,6 +210,12 @@ services:
       postgres:
         condition: service_started
         restart: true
+      redis:
+        condition: service_started
+        restart: true
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     networks:
       - ase-network
 

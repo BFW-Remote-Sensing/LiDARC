@@ -11,7 +11,7 @@ import redis
 # Redis configuration from environment variables
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-REDIS_TTL_MINUTES = int(os.getenv("REDIS_CHUNKING_TTL_MINUTES", "30"))
+REDIS_TTL_MINUTES = int(os.getenv("REDIS_CHUNKING_TTL_MINUTES", "2"))
 
 # Cache key prefix (must match backend)
 CACHE_KEY_PREFIX = "chunking:result:"
