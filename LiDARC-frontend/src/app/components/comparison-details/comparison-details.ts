@@ -55,7 +55,6 @@ import { FormsModule } from '@angular/forms';
 import { FolderDTO } from '../../dto/folder';
 import {MatSlideToggleModule} from '@angular/material/slide-toggle';
 
-//====HARDCODED VIS===//
 echarts.use([
   HeatmapChart,
   ScatterChart,
