@@ -69,7 +69,7 @@ export class Heatmap implements AfterViewInit {
       color: ['#8c510a', '#d8b365', '#f6e8c3', '#c7eae5', '#5ab4ac', '#01665e'],
     },
     deltas: {
-      label: 'Blue',
+      label: 'Deltas',
       color: ['#2166ac', '#67a9cf','#f7f7f7','#ef8a62','#b2182b']
     }
   };
@@ -755,53 +755,6 @@ export class Heatmap implements AfterViewInit {
   //   });
   //
   // }
-
-  private setupHoverSync(): void {
-    const link = (source: echarts.ECharts, targets: echarts.ECharts[]) => {
-      // Smooth sync while moving
-      source.on('mousemove', (p: any) => {
-        if (p?.dataIndex == null) return;
-
-        for (const t of targets) {
-          t.dispatchAction({
-            type: 'showTip',
-            seriesIndex: p.seriesIndex ?? 0,
-            dataIndex: p.dataIndex
-          });
-          t.dispatchAction({
-            type: 'highlight',
-            seriesIndex: p.seriesIndex ?? 0,
-            dataIndex: p.dataIndex
-          });
-        }
-      });
-
-      // Leaving an item
-      source.on('mouseout', () => {
-        for (const t of targets) {
-          t.dispatchAction({ type: 'hideTip' });
-          t.dispatchAction({ type: 'downplay', seriesIndex: 0 });
-        }
-      });
-
-      // Leaving the whole chart area
-      source.on('globalout', () => {
-        for (const t of targets) {
-          t.dispatchAction({ type: 'hideTip' });
-          t.dispatchAction({ type: 'downplay', seriesIndex: 0 });
-        }
-      });
-    };
-
-    // A ↔ B hover sync (zoom remains independent because no connect())
-    link(this.chartInstance1, [this.chartInstance2]);
-    link(this.chartInstance2, [this.chartInstance1]);
-
-    // Optional: also sync to delta in ABD mode
-    // link(this.chartInstance1, [this.differenceInstance]);
-    // link(this.chartInstance2, [this.differenceInstance]);
-    // link(this.differenceInstance, [this.chartInstance1, this.chartInstance2]);
-  }
 
 
   private BASE_VisualMap: any = {
