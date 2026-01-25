@@ -19,6 +19,7 @@ public class ComparisonMapper {
         dto.setNeedOutlierDetection(entity.getNeedOutlierDetection());
         dto.setNeedStatisticsOverScenery(entity.getNeedStatisticsOverScenery());
         dto.setNeedMostDifferences(entity.getNeedMostDifferences());
+        dto.setIndividualStatisticsPercentile(entity.getIndividualStatisticsPercentile());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setStatus(entity.getStatus().toString());
         dto.setErrorMessage(entity.getErrorMessage());

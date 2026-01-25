@@ -42,7 +42,7 @@ import { ComparisonResponse } from '../../dto/comparisonResponse';
   styleUrls: ['./comparisons.scss', '../stored-files/stored-files.scss'],
 })
 export class Comparisons {
-  displayedColumns: string[] = ['name', 'status', 'filesLength', 'highestVegetation', 'outlierDetection', 'statisticsOverScenery', 'mostDifferences', 'resultReportUrl', 'createdAt', 'actions'];
+  displayedColumns: string[] = ['name', 'status', 'filesLength', 'highestVegetation', 'outlierDetection', 'statisticsOverScenery', 'mostDifferences', 'individualStatisticsPercentile', 'resultReportUrl', 'createdAt', 'actions'];
   dataSource = new MatTableDataSource<ComparisonDTO>([]);
   private readonly comparisonService = inject(ComparisonService);
   public loading: WritableSignal<boolean> = signal(true);
@@ -73,7 +73,7 @@ export class Comparisons {
         debounceTime(400),
         distinctUntilChanged())
       .subscribe(filterValue => {
-        this.paginator.pageIndex = 0; // Reset to page 0 
+        this.paginator.pageIndex = 0; // Reset to page 0
         this.fetchAndProcessComparisons(this.pageIndex, this.pageSize); // Trigger reload
       });
     // First load

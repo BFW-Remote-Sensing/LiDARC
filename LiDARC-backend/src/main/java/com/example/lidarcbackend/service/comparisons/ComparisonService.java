@@ -437,6 +437,9 @@ public class ComparisonService implements IComparisonService {
         if(payload.containsKey("group_mapping")) {
             visualizationResult.put("group_mapping", payload.get("group_mapping"));
         }
+        if(payload.containsKey("statistics_p")) {
+            visualizationResult.put("statistics_p", payload.get("statistics_p"));
+        }
         chunkedComparisonsStorage.put(comparisonId, visualizationResult);
     }
 

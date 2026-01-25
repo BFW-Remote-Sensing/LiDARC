@@ -111,6 +111,27 @@
             </span>
           </div>
         </mat-list-item>
+        <mat-divider></mat-divider>
+
+        <mat-list-item role="listitem">
+          <mat-icon matListItemIcon>bar_chart_4_bars</mat-icon>
+          <div matListItemTitle class="mat-list-item-row">
+            <span>
+              Individual Percentile
+            </span>
+            <span>
+              <ng-container *ngIf="comparison.individualStatisticsPercentile; else noPercentile">
+                <span class="percentile-badge">
+                  {{ comparison.individualStatisticsPercentile }}
+                </span>
+              </ng-container>
+
+              <ng-template #noPercentile>
+                <mat-icon color="warn">cancel</mat-icon>
+              </ng-template>
+            </span>
+          </div>
+        </mat-list-item>
       </mat-list>
       <h2 style="margin-top: 20px;">
         <mat-icon>folder</mat-icon>
