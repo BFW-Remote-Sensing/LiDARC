@@ -94,7 +94,7 @@ export class ComparisonService {
 
   startChunkingResult(id: number, chunkSize: number): Observable<void> {
     const params = new HttpParams()
-      .set('chunkSize', String(chunkSize))
+      .set('chunkSize', String(chunkSize));
     return this.httpClient.post<void>(
       this.globals.backendUri + defaultComparisonPath + `/${id}/chunking`, null, { params }
     );
@@ -112,12 +112,19 @@ export class ComparisonService {
    * Creates an EventSource for SSE streaming of chunking results.
    * Returns an Observable that emits the chunking result when received.
    * Results are cached per chunkSize, so the same chunkSize must be used.
+   * Handles streaming of large results in chunks for memory efficiency.
    */
   streamChunkingResult(id: number, chunkSize: number): Observable<any> {
     return new Observable(observer => {
       const url = this.globals.backendUri + defaultComparisonPath + `/${id}/chunking/stream?chunkSize=${chunkSize}`;
       const eventSource = new EventSource(url);
 
+      // Buffer for accumulating streamed chunks
+      let chunks: string[] = [];
+      let totalChunks = 0;
+      let isStreaming = false;
+
+      // Handle legacy single-event response (for backwards compatibility)
       eventSource.addEventListener('chunking-result', (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data);
@@ -125,6 +132,46 @@ export class ComparisonService {
           observer.complete();
           eventSource.close();
         } catch (e) {
+          observer.error(e);
+          eventSource.close();
+        }
+      });
+
+      // Handle streaming start event
+      eventSource.addEventListener('chunking-result-start', (event: MessageEvent) => {
+        try {
+          const metadata = JSON.parse(event.data);
+          totalChunks = metadata.totalChunks || 0;
+          chunks = new Array(totalChunks);
+          isStreaming = true;
+          console.log(`Starting to receive ${totalChunks} chunks, total size: ${metadata.totalSize} bytes`);
+        } catch (e) {
+          console.error('Error parsing streaming start event:', e);
+        }
+      });
+
+      // Handle streaming chunk events
+      eventSource.addEventListener('chunking-result-chunk', (event: MessageEvent) => {
+        if (isStreaming && event.lastEventId) {
+          const chunkIndex = parseInt(event.lastEventId, 10);
+          chunks[chunkIndex] = event.data;
+        }
+      });
+
+      // Handle streaming end event - reassemble and parse the complete JSON
+      eventSource.addEventListener('chunking-result-end', (event: MessageEvent) => {
+        try {
+          if (isStreaming) {
+            // Reassemble the complete JSON from chunks
+            const completeJson = chunks.join('');
+            const data = JSON.parse(completeJson);
+            observer.next(data);
+            observer.complete();
+            console.log('Successfully received and parsed streamed chunking result');
+          }
+          eventSource.close();
+        } catch (e) {
+          console.error('Error parsing reassembled streaming data:', e);
           observer.error(e);
           eventSource.close();
         }

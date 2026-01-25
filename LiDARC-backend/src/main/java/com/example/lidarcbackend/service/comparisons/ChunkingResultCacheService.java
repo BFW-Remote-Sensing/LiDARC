@@ -77,6 +77,22 @@ public class ChunkingResultCacheService {
     }
 
     /**
+     * Get raw JSON string from Redis for streaming.
+     * Avoids double serialization overhead for large results.
+     */
+    public Optional<String> getRawJson(Long comparisonId, int chunkSize) {
+        String key = buildKey(comparisonId, chunkSize);
+        try {
+            String jsonResult = stringRedisTemplate.opsForValue().get(key);
+            return Optional.ofNullable(jsonResult);
+        } catch (Exception e) {
+            log.error("Failed to get raw JSON from Redis for comparisonId={}, chunkSize={}: {}",
+                    comparisonId, chunkSize, e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    /**
      * Delete chunking result from Redis for a specific chunk size.
      */
     public void delete(Long comparisonId, int chunkSize) {

@@ -42,6 +42,15 @@ services:
       - "6379:6379"
     volumes:
       - ${LIDAR_DATA_ROOT:-./data}/redis:/data
+    command: >
+      redis-server
+      --maxmemory ${REDIS_MAXMEMORY:-512mb}
+      --maxmemory-policy ${REDIS_MAXMEMORY_POLICY:-allkeys-lru}
+      --save 60 1
+      --appendonly no
+    environment:
+      - REDIS_MAXMEMORY=${REDIS_MAXMEMORY:-512mb}
+      - REDIS_MAXMEMORY_POLICY=${REDIS_MAXMEMORY_POLICY:-allkeys-lru}
     restart: unless-stopped
     networks:
       - ase-network
