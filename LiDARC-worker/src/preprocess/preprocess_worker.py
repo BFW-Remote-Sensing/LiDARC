@@ -175,6 +175,7 @@ def process_points(points, precomp_grid, bboxes, global_stats, lower_bound=0, up
     x = points.x
     y = points.y
     z = np.array(points.z)
+    classification = np.array(points.classification)
 
     veg_height = points[precomp_grid["veg_height_key"]]
     bbox_mask = np.zeros(x.shape, dtype=bool)
@@ -198,7 +199,7 @@ def process_points(points, precomp_grid, bboxes, global_stats, lower_bound=0, up
             percentile_mask = (veg_height >= lower_percentile_value) & (veg_height <= upper_percentile_value)
 
     # Combine both masks
-    combined_mask = bbox_mask & percentile_mask
+    combined_mask = bbox_mask & (classification != 7) & percentile_mask
     if not np.any(combined_mask):
         return
 
@@ -220,7 +221,7 @@ def process_points(points, precomp_grid, bboxes, global_stats, lower_bound=0, up
     ix, iy, z, veg_height = ix[valid], iy[valid], z[valid], veg_height[valid]
 
     # Detect outliers: points 2 std deviations away from median
-    veg_is_outlier = np.zeros(x.shape, dtype=bool)
+    veg_is_outlier = np.zeros(veg_height.shape, dtype=bool)
     if outlier_detection_enabled and global_stats is not None:
         veg_median = global_stats["veg_height_median"]
         veg_std = global_stats["veg_height_std"]
