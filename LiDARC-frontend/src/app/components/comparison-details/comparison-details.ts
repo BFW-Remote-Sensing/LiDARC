@@ -53,6 +53,7 @@ import { HttpResponse } from '@angular/common/http';
 import { ChunkingSettings } from '../chunking-settings/chunking-settings';
 import { FormsModule } from '@angular/forms';
 import { FolderDTO } from '../../dto/folder';
+import {MatSlideToggleModule} from '@angular/material/slide-toggle';
 
 //====HARDCODED VIS===//
 echarts.use([
@@ -91,7 +92,8 @@ echarts.use([
     Heatmap,
     MatButton,
     ChunkingSettings,
-    FormsModule
+    FormsModule,
+    MatSlideToggleModule
   ],
   templateUrl: './comparison-details.html',
   styleUrls: ['./comparison-details.scss', '../file-details/file-details.scss'],
@@ -110,6 +112,8 @@ export class ComparisonDetails implements OnInit {
   reportsLimit: number = 3;
   reportsLoading = signal<boolean>(false);
   hasMoreReports = signal<boolean>(true);
+  showPercentiles = signal(false);
+  percentilesAvailable = signal(false);
 
   constructor(
     private comparisonService: ComparisonService,
@@ -213,6 +217,13 @@ export class ComparisonDetails implements OnInit {
             this.comparison = comparison;
             this.reports.set(reports);
             this.checkIfMoreReportsExist(reports.length);
+            if (this.comparison?.individualStatisticsPercentile) {
+              this.percentilesAvailable.set(true);
+              this.showPercentiles.set(false);
+            } else {
+              this.percentilesAvailable.set(false);
+              this.showPercentiles.set(false);
+            }
           },
           error: (err) => {
             console.error(err);
@@ -228,12 +239,16 @@ export class ComparisonDetails implements OnInit {
       console.warn('Chunking result incomplete, skipping chart update.', result);
       return;
     }
+    const usePercentiles = this.showPercentiles() && result.statistics_p;
+    const statsToUse = (this.showPercentiles() && result.statistics_p)
+      ? result.statistics_p!
+      : result.statistics;
 
     this.vegetationStats.set({
       cells: this.flattenCells(result.chunked_cells),
-      fileA_metrics: result.statistics.file_a,
-      fileB_metrics: result.statistics.file_b,
-      difference_metrics: result.statistics.difference,
+      fileA_metrics: statsToUse.file_a,
+      fileB_metrics: statsToUse.file_b,
+      difference_metrics: statsToUse.difference,
       group_mapping: result.group_mapping,
     });
     console.log('[FLATTENED CELLS COUNT]', this.vegetationStats().cells.length);
@@ -256,6 +271,12 @@ export class ComparisonDetails implements OnInit {
     this.boxplotOption = { ...this.buildBoxplotChart() };
 
 
+  }
+
+  toggleStatisticsView(): void {
+    if (!this.percentilesAvailable()) return;
+    this.showPercentiles.set(!this.showPercentiles());
+    this.handleChunkingResult(this.sharedChunkingResult!);
   }
 
   private flattenCells(matrix: any[][]): CellEntry[] {

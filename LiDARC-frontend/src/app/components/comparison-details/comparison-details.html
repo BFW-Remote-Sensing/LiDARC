@@ -326,6 +326,15 @@
   <h2>
     <mat-icon>analytics</mat-icon>
     Comparison Results
+    <div *ngIf="percentilesAvailable()" class="chart-toggle">
+      <mat-slide-toggle
+        [checked]="showPercentiles()"
+        (change)="toggleStatisticsView()"
+        color="primary"
+      >
+        Show p{{comparison.individualStatisticsPercentile}} Statistics
+      </mat-slide-toggle>
+    </div>
   </h2>
   <app-chunking-settings (visualizationData)="onChunkingSliderChange($event)"
     [comparisonId]="comparisonId"></app-chunking-settings>

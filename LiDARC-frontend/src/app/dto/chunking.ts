@@ -55,6 +55,11 @@ export interface ChunkingResult {
     difference: DifferenceMetrics;
     categorized: CategorizedCounts;
   };
+  statistics_p?:{
+    file_a: FileMetrics;
+    file_b: FileMetrics;
+    difference: DifferenceMetrics;
+  }
   group_mapping: GroupMapping;
 }
 
