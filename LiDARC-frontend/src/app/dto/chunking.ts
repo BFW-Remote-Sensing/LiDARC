@@ -6,6 +6,10 @@ export interface ChunkedCell {
   veg_height_max_a: number;
   veg_height_max_b: number;
   delta_z: number;
+  out_a?: number;
+  out_b?: number;
+  out_c7_a?: number;
+  out_c7_b?: number;
 }
 
 export interface Percentiles {

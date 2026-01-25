@@ -64,6 +64,9 @@ def calculate_grid(grid: dict):
     veg_height_min = np.full(grid_shape, np.inf, dtype=np.float32)
     veg_height_max = np.full(grid_shape, -np.inf, dtype=np.float32)
     veg_height_digest = np.empty(grid_shape, dtype=object)
+    veg_height_outlier_count = np.zeros(grid_shape, dtype=np.uint32)
+    veg_height_outlier_class7_count = np.zeros(grid_shape, dtype=np.uint32)
+    class7_count = np.zeros(grid_shape, dtype=np.uint32)
 
     for r in range(grid_shape[0]):
         for c in range(grid_shape[1]):
@@ -79,7 +82,10 @@ def calculate_grid(grid: dict):
         "count": count,
         "x_min": x_min,
         "y_min": y_min,
-        "veg_height_digest": veg_height_digest
+        "veg_height_digest": veg_height_digest,
+        "veg_height_outlier_count": veg_height_outlier_count,
+        "veg_height_outlier_class7_count": veg_height_outlier_class7_count,
+        "class7_count": class7_count
     }
 
 
@@ -92,7 +98,79 @@ def validate_request(json_req):
     return True
 
 
-def process_points(points, precomp_grid, bboxes):
+def calculate_global_stats(file_path, veg_height_key, bboxes):
+    """
+    Calculate global statistics (std deviation and median) for vegetation height.
+    This is done in a quick pass before processing individual cells.
+    Uses Welford's online algorithm for std deviation and TDigest for median
+    to minimize memory usage.
+    """
+    logging.info("Calculating global statistics for the entire file...")
+
+    # Welford's online algorithm variables for std deviation
+    veg_count = 0
+    veg_mean = 0.0
+    veg_m2 = 0.0
+
+    # TDigest for approximate median calculation
+    veg_digest = TDigest()
+
+    with laspy.open(file_path) as f:
+        for points in f.chunk_iterator(500_000):
+            x = points.x
+            y = points.y
+            veg_height = points[veg_height_key]
+            classification = np.array(points.classification)
+
+            # Apply bounding box filter
+            bbox_mask = np.zeros(x.shape, dtype=bool)
+            for bbox in bboxes:
+                in_box = (
+                    (x >= bbox["xMin"]) & (x < bbox["xMax"]) &
+                    (y >= bbox["yMin"]) & (y < bbox["yMax"])
+                )
+                bbox_mask |= in_box
+
+            # Exclude class 7 points before computing global stats
+            valid_mask = bbox_mask & (classification != 7) # TODO: Should we remove classification 7 points before calculating this  tighter std deviation, usually won't find any that are outliers in both
+
+            if np.any(valid_mask):
+                filtered_veg = veg_height[valid_mask]
+
+                # Update TDigest for median approximation
+                veg_digest.batch_update(filtered_veg)
+
+                # Update Welford's algorithm for std deviation (vectorized)
+                n_new = len(filtered_veg)
+                if n_new > 0:
+                    # Vectorized Welford's algorithm
+                    # Calculate deltas from current mean for all new values
+                    delta = filtered_veg - veg_mean
+                    # Update mean with all new values at once
+                    veg_mean += np.sum(delta) / (veg_count + n_new)
+                    # Calculate deltas from updated mean for M2 calculation
+                    delta2 = filtered_veg - veg_mean
+                    # Update M2 and count
+                    veg_m2 += np.sum(delta * delta2)
+                    veg_count += n_new
+
+            del points
+
+    # Calculate final statistics
+    veg_height_std = math.sqrt(veg_m2 / veg_count) if veg_count > 0 else 0.0
+    veg_height_median = veg_digest.percentile(50) if veg_count > 0 else 0.0
+
+    stats = {
+        "veg_height_std": float(veg_height_std),
+        "veg_height_median": float(veg_height_median),
+        "total_points": veg_count,
+        "veg_digest": veg_digest
+    }
+
+    return stats
+
+
+def process_points(points, precomp_grid, bboxes, global_stats, lower_bound=0, upper_bound=100, point_filter_enabled=True, outlier_detection_enabled=True, outlier_deviation_factor=2.0):
     logging.debug("Processing points: {}".format(points))
     x = points.x
     y = points.y
@@ -108,10 +186,27 @@ def process_points(points, precomp_grid, bboxes):
         bbox_mask |= in_box
     if not np.any(bbox_mask):
         return
-    x = x[bbox_mask]
-    y = y[bbox_mask]
-    z = z[bbox_mask]
-    veg_height = veg_height[bbox_mask]
+
+    # Create percentile mask
+    percentile_mask = np.ones(x.shape, dtype=bool)
+    if point_filter_enabled and global_stats is not None:
+        if lower_bound > 0 or upper_bound < 100:
+            # Calculate percentile thresholds using the global veg_digest
+            lower_percentile_value = global_stats["veg_digest"].percentile(lower_bound)
+            upper_percentile_value = global_stats["veg_digest"].percentile(upper_bound)
+            logging.debug(f"Applying percentile filter: {lower_bound}% ({lower_percentile_value:.2f}) to {upper_bound}% ({upper_percentile_value:.2f})")
+            percentile_mask = (veg_height >= lower_percentile_value) & (veg_height <= upper_percentile_value)
+
+    # Combine both masks
+    combined_mask = bbox_mask & percentile_mask
+    if not np.any(combined_mask):
+        return
+
+    # Apply combined mask
+    x = x[combined_mask]
+    y = y[combined_mask]
+    z = z[combined_mask]
+    veg_height = veg_height[combined_mask]
 
     grid_h, grid_w = precomp_grid["veg_height_digest"].shape[:2]
 
@@ -124,11 +219,32 @@ def process_points(points, precomp_grid, bboxes):
 
     ix, iy, z, veg_height = ix[valid], iy[valid], z[valid], veg_height[valid]
 
+    # Detect outliers: points 2 std deviations away from median
+    veg_is_outlier = np.zeros(x.shape, dtype=bool)
+    if outlier_detection_enabled and global_stats is not None:
+        veg_median = global_stats["veg_height_median"]
+        veg_std = global_stats["veg_height_std"]
+
+        veg_is_outlier = np.abs(veg_height - veg_median) > (outlier_deviation_factor * veg_std)
+
     np.add.at(precomp_grid["count"], (iy, ix), 1)
     np.minimum.at(precomp_grid["z_min"], (iy, ix), z)
     np.maximum.at(precomp_grid["z_max"], (iy, ix), z)
     np.minimum.at(precomp_grid["veg_height_min"], (iy, ix), veg_height)
     np.maximum.at(precomp_grid["veg_height_max"], (iy, ix), veg_height)
+
+    # Add outlier counts
+    np.add.at(precomp_grid["veg_height_outlier_count"], (iy[veg_is_outlier], ix[veg_is_outlier]), 1)
+
+    # Check for outliers with classifier == 7
+    classifier = np.array(points.classification)[combined_mask]
+    classifier_filtered = classifier[valid]
+    veg_is_outlier_class7 = veg_is_outlier & (classifier_filtered == 7)
+    np.add.at(precomp_grid["veg_height_outlier_class7_count"], (iy[veg_is_outlier_class7], ix[veg_is_outlier_class7]), 1)
+
+    # Count class 7 points in each cell
+    is_class7 = classifier_filtered == 7
+    np.add.at(precomp_grid["class7_count"], (iy[is_class7], ix[is_class7]), 1)
 
     n_rows, n_cols = precomp_grid["count"].shape
     cell_index = iy * grid_w + ix
@@ -203,6 +319,9 @@ def create_result_df(precomp_grid):
         "veg_height_min": precomp_grid["veg_height_min"][rows, cols],
         "veg_p90": p90,
         "veg_p95": p95,
+        "veg_height_outlier_count": precomp_grid["veg_height_outlier_count"][rows, cols],
+        "veg_height_outlier_class7_count": precomp_grid["veg_height_outlier_class7_count"][rows, cols],
+        "class7_count": precomp_grid["class7_count"][rows, cols],
     })
 
 
@@ -211,6 +330,10 @@ def process_req(ch, method, properties, body):
     publisher = ResultPublisher(ch)
     start_time = time.time()
     request = json.loads(body)
+
+    # Log the entire RabbitMQ message
+    logging.info(f"Received RabbitMQ message: {json.dumps(request, indent=2)}")
+
     if "jobId" not in request:
         logging.warning("The precompute job is cancelled because there is no job id")
         publisher.publish_preprocessing_result(BaseMessage(type="preprocessing",
@@ -234,9 +357,24 @@ def process_req(ch, method, properties, body):
         return
 
     # Process request
+    # Process request
     las_file = request["file"]
     grid = request["grid"]
     bboxes = request["bboxes"]
+    lower_bound = request.get("pointFilterLowerBound")
+    if lower_bound is None: lower_bound = 0
+    upper_bound = request.get("pointFilterUpperBound")
+    if upper_bound is None: upper_bound = 100
+    point_filter_enabled = request.get("pointFilterEnabled", True)
+    outlier_detection_enabled = request.get("outlierDetectionEnabled", True)
+    outlier_deviation_factor = request.get("outlierDeviationFactor")
+    if outlier_deviation_factor is None: outlier_deviation_factor = 2.0
+
+    # Debug logging to identify the actual keys in the request
+    logging.debug(f"Request keys: {request.keys()}")
+    logging.debug(f"Lower bound extracted: {lower_bound}, Upper bound extracted: {upper_bound}")
+    logging.info(f"Point filter bounds - Lower: {lower_bound}%, Upper: {upper_bound}%")
+    logging.info(f"Point Filter Enabled: {point_filter_enabled}, Outlier Detection Enabled: {outlier_detection_enabled}, Outlier Factor: {outlier_deviation_factor}")
 
     temp_dir = tempfile.mkdtemp()
     try:
@@ -250,10 +388,22 @@ def process_req(ch, method, properties, body):
                 logging.info("Using 'ndsm' dimension for vegetation height")
                 precomp_grid["veg_height_key"] = "ndsm"
 
+        # Calculate global statistics first
+        global_stats = None
+        need_global_stats = point_filter_enabled or outlier_detection_enabled
+        
+        if need_global_stats:
+            global_stats = calculate_global_stats(downloaded_file_fn, precomp_grid["veg_height_key"], bboxes)
+        else:
+            logging.info("Skipping global statistics calculation (Point filter and Outlier detection disabled)")
+
+        # Process individual cells
+        with laspy.open(downloaded_file_fn) as f:
             logging.info(f"Processing file: {downloaded_file_fn} with {len(bboxes)} bounding regions")
             logging.info(f"Bounding Regions: {bboxes}")
+            logging.info(f"Point filter: {lower_bound}th to {upper_bound}th percentile")
             for points in f.chunk_iterator(500_000):
-                process_points(points, precomp_grid, bboxes)
+                process_points(points, precomp_grid, bboxes, global_stats, lower_bound, upper_bound, point_filter_enabled, outlier_detection_enabled, outlier_deviation_factor)
                 del points
 
         df = create_result_df(precomp_grid)

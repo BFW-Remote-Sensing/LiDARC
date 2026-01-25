@@ -203,6 +203,12 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
             "veg_height_max_a": row["veg_height_max_a"],
             "veg_height_max_b": row["veg_height_max_b"],
             "delta_z": row["delta_z"],
+            "count_a": row["count_a"],
+            "count_b": row["count_b"],
+            "out_a": row["out_a"],
+            "out_b": row["out_b"],
+            "out_c7_a": row["out_c7_a"],
+            "out_c7_b": row["out_c7_b"],
         },
         axis=1
     ).tolist()
@@ -267,8 +273,12 @@ def build_merged_dataframe(
                 cells[key][slot] = row.veg_height_max
                 if slot == "a":
                     cells[key]["count_a"] = getattr(row, "count", 0)
+                    cells[key]["out_a"] = getattr(row, "veg_height_outlier_count", 0)
+                    cells[key]["out_c7_a"] = getattr(row, "veg_height_outlier_class7_count", 0)
                 if slot == "b":
                     cells[key]["count_b"] = getattr(row, "count", 0)
+                    cells[key]["out_b"] = getattr(row, "veg_height_outlier_count", 0)
+                    cells[key]["out_c7_b"] = getattr(row, "veg_height_outlier_class7_count", 0)
 
 
         finally:
@@ -286,6 +296,10 @@ def build_merged_dataframe(
                 "veg_height_max_b": values["b"],
                 "count_a": values.get("count_a", 0),
                 "count_b": values.get("count_b", 0),
+                "out_a": values.get("out_a", 0),
+                "out_b": values.get("out_b", 0),
+                "out_c7_a": values.get("out_c7_a", 0),
+                "out_c7_b": values.get("out_c7_b", 0),
             })
 
     merged = pd.DataFrame(rows)

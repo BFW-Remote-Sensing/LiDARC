@@ -321,6 +321,10 @@ def chunking_func(cells_matrix: Matrix, chunk_size: int) -> List[Cell]:
             sum_a = 0.0
             sum_b = 0.0
             count = 0
+            sum_out_a = 0
+            sum_out_b = 0
+            sum_out_c7_a = 0
+            sum_out_c7_b = 0
 
             # iterate over block (edge cases get included as far as possible)
             r_end = min(br + chunk_size, rows)
@@ -341,6 +345,12 @@ def chunking_func(cells_matrix: Matrix, chunk_size: int) -> List[Cell]:
                     sum_a += float(cell["veg_height_max_a"])
                     sum_b += float(cell["veg_height_max_b"])
                     count += 1
+
+                    # Aggregate outlier counts
+                    sum_out_a += int(cell.get("out_a", 0) or 0)
+                    sum_out_b += int(cell.get("out_b", 0) or 0)
+                    sum_out_c7_a += int(cell.get("out_c7_a", 0) or 0)
+                    sum_out_c7_b += int(cell.get("out_c7_b", 0) or 0)
 
             # Koordinaten des Blocks: aus Grid + chunk_size, unabhängig von Daten
             #    Dadurch sind ALLE reduced-Zellen gleich groß.
@@ -371,6 +381,10 @@ def chunking_func(cells_matrix: Matrix, chunk_size: int) -> List[Cell]:
                 # Optional hilfreich für Debug/Rendering:
                 "count": count,
                 "coverage": count / float(chunk_size * chunk_size),
+                "out_a": sum_out_a,
+                "out_b": sum_out_b,
+                "out_c7_a": sum_out_c7_a,
+                "out_c7_b": sum_out_c7_b,
             }
             reduced_row.append(reduced_cell)
 
