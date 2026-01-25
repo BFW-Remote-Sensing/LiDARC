@@ -337,109 +337,110 @@
   </h2>
   <app-chunking-settings [groupSizeInput]="chunkingSize" (visualizationData)="onChunkingSliderChange($event)"
     [comparisonId]="comparisonId"></app-chunking-settings>
-  <div class="comparison-container">
+      <div class="comparison-container">
+        <!-- ===== File Metrics Section ===== -->
+        <mat-card class="section-card">
+          <mat-card-title>File Specific Metrics of Highest Vegetational Points</mat-card-title>
+          <mat-divider></mat-divider>
+          <mat-card-content>
+            <div class="metrics-list">
+              <mat-list>
+                <h4>A: {{ vegetationStats().group_mapping.a }}</h4>
+                <mat-list-item>Mean: {{ vegetationStats().fileA_metrics.mean_veg_height }}</mat-list-item>
+                <mat-list-item>Median: {{ vegetationStats().fileA_metrics.median_veg_height }}</mat-list-item>
+                <mat-list-item>Std: {{ vegetationStats().fileA_metrics.std_veg_height }}</mat-list-item>
+                <mat-list-item>Min: {{ vegetationStats().fileA_metrics.min_veg_height }}</mat-list-item>
+                <mat-list-item>Max: {{ vegetationStats().fileA_metrics.max_veg_height }}</mat-list-item>
+                <mat-list-item>Avg. Points: {{ vegetationStats().fileA_metrics.mean_points_per_grid_cell }}</mat-list-item>
+              </mat-list>
 
-    <!-- ===== File Metrics Section ===== -->
-    <mat-card class="section-card">
-      <mat-card-title>File Specific Metrics of Highest Vegetational Points</mat-card-title>
-      <mat-divider></mat-divider>
-      <mat-card-content>
-        <div class="metrics-list">
-          <mat-list>
-            <h4>A: {{ vegetationStats().group_mapping.a }}</h4>
-            <mat-list-item>Mean: {{ vegetationStats().fileA_metrics.mean_veg_height }}</mat-list-item>
-            <mat-list-item>Median: {{ vegetationStats().fileA_metrics.median_veg_height }}</mat-list-item>
-            <mat-list-item>Std: {{ vegetationStats().fileA_metrics.std_veg_height }}</mat-list-item>
-            <mat-list-item>Min: {{ vegetationStats().fileA_metrics.min_veg_height }}</mat-list-item>
-            <mat-list-item>Max: {{ vegetationStats().fileA_metrics.max_veg_height }}</mat-list-item>
-            <mat-list-item>Avg. Points: {{ vegetationStats().fileA_metrics.mean_points_per_grid_cell }}</mat-list-item>
-          </mat-list>
-
-          <mat-list>
-            <h4>B: {{vegetationStats().group_mapping.b}}</h4>
-            <mat-list-item>Mean: {{ vegetationStats().fileB_metrics.mean_veg_height }}</mat-list-item>
-            <mat-list-item>Median: {{ vegetationStats().fileB_metrics.median_veg_height }}</mat-list-item>
-            <mat-list-item>Std: {{ vegetationStats().fileB_metrics.std_veg_height }}</mat-list-item>
-            <mat-list-item>Min: {{ vegetationStats().fileB_metrics.min_veg_height }}</mat-list-item>
-            <mat-list-item>Max: {{ vegetationStats().fileB_metrics.max_veg_height }}</mat-list-item>
-            <mat-list-item>Avg. Points: {{ vegetationStats().fileB_metrics.mean_points_per_grid_cell }}</mat-list-item>
-          </mat-list>
-        </div>
-
-        <div class="charts-grid">
-          <div echarts [options]="{}" [merge]="scatterOption" (chartInit)="onChartInit($event, 'scatter')"
-            class="chart"></div>
-          <div echarts [options]="{}" [merge]="boxplotOption" (chartInit)="onChartInit($event, 'boxplot')"
-            class="chart"></div>
-          <div echarts [options]="{}" [merge]="fileDistributionOption" (chartInit)="onChartInit($event, 'distribution')"
-            class="chart"></div>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- ===== Difference Metrics Section ===== -->
-    <mat-card class="section-card">
-      <mat-card-title>Difference Metrics (B - A)</mat-card-title>
-      <mat-divider></mat-divider>
-      <mat-card-content>
-        <p>The difference metrics show how much the maximum vegetational height of File B differs from the one of File
-          A for each cell.</p>
-
-        <mat-list>
-          <mat-list-item>Mean: {{ vegetationStats().difference_metrics.mean }}</mat-list-item>
-          <mat-list-item>Median: {{ vegetationStats().difference_metrics.median }}</mat-list-item>
-          <mat-list-item>Std: {{ vegetationStats().difference_metrics.std }}</mat-list-item>
-          <mat-list-item>Most Negative: {{ vegetationStats().difference_metrics.most_negative }}</mat-list-item>
-          <mat-list-item>Least Negative: {{ vegetationStats().difference_metrics.least_negative }}</mat-list-item>
-          <mat-list-item>Smallest Positive: {{ vegetationStats().difference_metrics.smallest_positive }}
-          </mat-list-item>
-          <mat-list-item>Largest Positive: {{ vegetationStats().difference_metrics.largest_positive }}</mat-list-item>
-        </mat-list>
-
-        <div class="charts-grid">
-          <div echarts [options]="{}" [merge]="diffDistributionOption"
-            (chartInit)="onChartInit($event, 'distribution_diff')" class="chart"></div>
-          <div echarts [options]="{}" [merge]="diffHistogramOption" (chartInit)="onChartInit($event, 'histo_diff')"
-            class="chart"></div>
-          <!-- TODO check if needed
-            <div echarts [options]="categoryBarChart" class="chart"></div>
-            -->
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card class="section-card">
-      <mat-card-title>
-        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-          <span>Heatmaps of Vegetational Heights</span>
-          @if (comparison.needOutlierDetection) {
-          <div style="display: flex; align-items: center; gap: 20px; font-size: 0.8em; font-weight: normal;">
-            <span>Std Dev Factor: <strong>{{ comparison.outlierDeviationFactor }}</strong></span>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <mat-checkbox [checked]="showOutlierDots()" (change)="onOutlierToggle()" color="primary">
-                Show Outliers
-              </mat-checkbox>
-              <mat-icon
-                style="font-size: 18px; width: 18px; height: 18px; color: #666; cursor: help;"
-                matTooltip="Toggle visibility of red dots on the heatmaps. Red dots indicate grid cells containing outlier points that exceed the specified standard deviation threshold. This is a visual-only toggle and does not affect the statistical calculations."
-                matTooltipPosition="below"
-                matTooltipClass="outlier-info-tooltip">
-                info_outline
-              </mat-icon>
+              <mat-list>
+                <h4>B: {{vegetationStats().group_mapping.b}}</h4>
+                <mat-list-item>Mean: {{ vegetationStats().fileB_metrics.mean_veg_height }}</mat-list-item>
+                <mat-list-item>Median: {{ vegetationStats().fileB_metrics.median_veg_height }}</mat-list-item>
+                <mat-list-item>Std: {{ vegetationStats().fileB_metrics.std_veg_height }}</mat-list-item>
+                <mat-list-item>Min: {{ vegetationStats().fileB_metrics.min_veg_height }}</mat-list-item>
+                <mat-list-item>Max: {{ vegetationStats().fileB_metrics.max_veg_height }}</mat-list-item>
+                <mat-list-item>Avg. Points: {{ vegetationStats().fileB_metrics.mean_points_per_grid_cell }}</mat-list-item>
+              </mat-list>
             </div>
-          </div>
-          }
-        </div>
-      </mat-card-title>
-      <mat-divider></mat-divider>
-      <mat-card-content>
-        <app-heatmap  [data]="sharedChunkingResult" [showOutliers]="showOutlierDots()">
-        </app-heatmap>
-      </mat-card-content>
-    </mat-card>
+
+            <div class="charts-grid">
+              <div echarts [options]="{}" [merge]="scatterOption" (chartInit)="onChartInit($event, 'scatter')"
+                   class="chart"></div>
+              <div echarts [options]="{}" [merge]="boxplotOption" (chartInit)="onChartInit($event, 'boxplot')"
+                   class="chart"></div>
+              <div echarts [options]="{}" [merge]="fileDistributionOption" (chartInit)="onChartInit($event, 'distribution')"
+                   class="chart"></div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- ===== Difference Metrics Section ===== -->
+        <mat-card class="section-card">
+          <mat-card-title>Difference Metrics (B - A)</mat-card-title>
+          <mat-divider></mat-divider>
+          <mat-card-content>
+            <p>The difference metrics show how much the maximum vegetational height of File B differs from the one of File
+              A for each cell.</p>
+
+            <mat-list>
+              <mat-list-item>Mean: {{ vegetationStats().difference_metrics.mean }}</mat-list-item>
+              <mat-list-item>Median: {{ vegetationStats().difference_metrics.median }}</mat-list-item>
+              <mat-list-item>Std: {{ vegetationStats().difference_metrics.std }}</mat-list-item>
+              <mat-list-item>Most Negative: {{ vegetationStats().difference_metrics.most_negative }}</mat-list-item>
+              <mat-list-item>Least Negative: {{ vegetationStats().difference_metrics.least_negative }}</mat-list-item>
+              <mat-list-item>Smallest Positive: {{ vegetationStats().difference_metrics.smallest_positive }}
+              </mat-list-item>
+              <mat-list-item>Largest Positive: {{ vegetationStats().difference_metrics.largest_positive }}</mat-list-item>
+            </mat-list>
+
+            <div class="charts-grid">
+              <div echarts [options]="{}" [merge]="diffDistributionOption"
+                   (chartInit)="onChartInit($event, 'distribution_diff')" class="chart"></div>
+              <div echarts [options]="{}" [merge]="diffHistogramOption" (chartInit)="onChartInit($event, 'histo_diff')"
+                   class="chart"></div>
+              <!-- TODO check if needed
+                <div echarts [options]="categoryBarChart" class="chart"></div>
+                -->
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="section-card">
+          <mat-card-title>
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <span>Heatmaps of Vegetational Heights</span>
+              @if (comparison.needOutlierDetection) {
+                <div style="display: flex; align-items: center; gap: 20px; font-size: 0.8em; font-weight: normal;">
+                  <span>Std Dev Factor: <strong>{{ comparison.outlierDeviationFactor }}</strong></span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <mat-checkbox [checked]="showOutlierDots()" (change)="onOutlierToggle()" color="primary">
+                      Show Outliers
+                    </mat-checkbox>
+                    <mat-icon
+                      style="font-size: 18px; width: 18px; height: 18px; color: #666; cursor: help;"
+                      matTooltip="Toggle visibility of red dots on the heatmaps. Red dots indicate grid cells containing outlier points that exceed the specified standard deviation threshold. This is a visual-only toggle and does not affect the statistical calculations."
+                      matTooltipPosition="below"
+                      matTooltipClass="outlier-info-tooltip">
+                      info_outline
+                    </mat-icon>
+                  </div>
+                </div>
+              }
+            </div>
+          </mat-card-title>
+          <mat-divider></mat-divider>
+          <mat-card-content>
+            <app-heatmap [groupMapping]="groupMapping()" [data]="sharedChunkingResult" [showOutliers]="showOutlierDots()">
+            </app-heatmap>
+          </mat-card-content>
+        </mat-card>
 
 
-  </div>
+      </div>
+
+
 
 
 </div>

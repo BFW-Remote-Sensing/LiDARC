@@ -1,4 +1,4 @@
-import { Component, inject, Input, OnInit, signal, WritableSignal, ViewChild } from '@angular/core';
+import {Component, inject, Input, OnInit, signal, WritableSignal, ViewChild, computed} from '@angular/core';
 import { ComparisonService } from '../../service/comparison.service';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { FormatService } from '../../service/format.service';
@@ -173,8 +173,11 @@ export class ComparisonDetails implements OnInit {
     }
 
   });
+
+  groupMapping = computed(() => this.vegetationStats().group_mapping);
   private pollingSubscription?: Subscription;
   private chunkSize$ = new Subject<number>();
+
 
 
   scatterOption!: EChartsCoreOption;
@@ -217,6 +220,7 @@ export class ComparisonDetails implements OnInit {
             this.chunkingSize = this.computeInitialChunkingSize();
             this.reports.set(reports);
             this.checkIfMoreReportsExist(reports.length);
+            console.log("next block with comparison: ", comparison);
           },
           error: (err) => {
             console.error(err);
@@ -227,7 +231,7 @@ export class ComparisonDetails implements OnInit {
   }
 
   computeInitialChunkingSize(): number {
-    if (!this.comparison) return 16;
+    if (!this.comparison?.grid) return 16;
 
     const cellWidth = this.comparison.grid?.cellWidth ?? 10;
     const cellHeight = this.comparison.grid?.cellHeight ?? 10;
@@ -237,19 +241,28 @@ export class ComparisonDetails implements OnInit {
     console.log(this.comparison.grid?.xMax);
     console.log(this.comparison.grid?.xMin);
     console.log("xRange: " + xRange + ", yRange: " + yRange);
+
+
     const cellsX = Math.ceil(xRange / cellWidth);
     const cellsY = Math.ceil(yRange / cellHeight);
     const totalCells = cellsX * cellsY;
 
-    console.log("initial chunking size calculation:" + totalCells);
-    console.log("comparison size calculation:" + cellsX + "x" + cellsY + " cells");
+    // Ziel: ~100 × 100 = 10 000
+    const TARGET_CELLS = 10_000;
 
-    if (totalCells <= 10000) return 1;
-    if (totalCells <= 40000) return 2;
-    if (totalCells <= 60000) return 3;
-    if (totalCells <= 100000) return 5
-    if (totalCells <= 200000) return 8;
-    return 15;
+    // Grober Faktor (wie stark wir zusammenfassen müssten)
+    const roughFactor = Math.sqrt(totalCells / TARGET_CELLS);
+
+    console.log("Initial chunking size calculation:" + roughFactor + " factor for " + totalCells + " total cells.");
+
+    // 🎯 Nur ca. 6 Rückgabewerte
+    if (totalCells <= 0) return 5;
+    if (roughFactor <= 1.2) return 1;
+    if (roughFactor <= 1.8) return 2;
+    if (roughFactor <= 2.5) return 4;
+    if (roughFactor <= 3.5) return 6;
+    if (roughFactor <= 5.0) return 8;
+    return 12;
   }
 
   private handleChunkingResult(result: ChunkingResult): void {
@@ -265,6 +278,7 @@ export class ComparisonDetails implements OnInit {
     console.log('[BACKEND STATISTICS]', result.statistics);
     console.log('[DIFFERENCE METRICS FROM BACKEND]', result.statistics?.difference);
 
+
     this.vegetationStats.set({
       cells: flattenedCells,
       fileA_metrics: result.statistics.file_a,
@@ -272,7 +286,6 @@ export class ComparisonDetails implements OnInit {
       difference_metrics: result.statistics.difference,
       group_mapping: result.group_mapping,
     });
-
     this.buildAllCharts();
   }
 
