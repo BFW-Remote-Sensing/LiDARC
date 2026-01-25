@@ -56,7 +56,7 @@ export class Reports implements OnInit, AfterViewInit {
   private defaultSortActive = 'creationDate';
   private defaultSortDirection = 'desc';
 
-  constructor(private reportService: ReportSerivce,
+  constructor(private reportService: ReportService,
     private dialog: MatDialog,
     public globals: Globals,) {
   }

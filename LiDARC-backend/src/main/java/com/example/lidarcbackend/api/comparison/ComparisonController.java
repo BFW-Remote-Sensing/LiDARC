@@ -60,19 +60,19 @@ public class ComparisonController {
 
     @GetMapping("/paged")
     public ResponseEntity<ComparisonResponse> getPagedComparisons(
-            @RequestParam(required = false) String search,
-            @Valid @ModelAttribute ComparisonRequest request) {
+        @RequestParam(required = false) String search,
+        @Valid @ModelAttribute ComparisonRequest request) {
         Sort sort = request.isAscending() ?
-                Sort.by(request.getSortBy()).ascending() :
-                Sort.by(request.getSortBy()).descending();
+            Sort.by(request.getSortBy()).ascending() :
+            Sort.by(request.getSortBy()).descending();
 
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
         Page<ComparisonDTO> result = comparisonService.getPagedComparisons(pageable, search);
         ComparisonResponse response = new ComparisonResponse(
-                result.getContent(),
-                result.getTotalElements(),
-                result.getNumber(),
-                request.getSize()
+            result.getContent(),
+            result.getTotalElements(),
+            result.getNumber(),
+            request.getSize()
         );
 
         return ResponseEntity.ok(response);
@@ -92,7 +92,7 @@ public class ComparisonController {
         try {
             comparisonService.startChunkingComparisonJob(id, chunkSize);
         } catch (NotFoundException e) {
-            logClientError(HttpStatus.NOT_FOUND, "Comparison not found for Report", e);
+            logClientError(HttpStatus.NOT_FOUND, "Comparison not found", e);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
         }
         return ResponseEntity.accepted().build();
@@ -107,13 +107,13 @@ public class ComparisonController {
 
     @PostMapping
     public ResponseEntity<ComparisonDTO> saveComparison(
-            @RequestBody @Valid CreateComparisonRequest request
+        @RequestBody @Valid CreateComparisonRequest request
     ) throws ValidationException {
         try {
             ComparisonDTO saved = comparisonService.saveComparison(request, request.getFileMetadataIds());
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (NotFoundException e) {
-            logClientError(HttpStatus.NOT_FOUND, "Comparison not found for Report", e);
+            logClientError(HttpStatus.NOT_FOUND, "Files for comparison not found", e);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
         }
     }
@@ -142,20 +142,20 @@ public class ComparisonController {
 
     @PostMapping(path = "/{id}/reports", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Resource> createReport(
-            @PathVariable Long id,
-            @Parameter(description = "Report JSON", required = true, content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                    schema = @Schema(implementation = CreateReportDto.class)))
-            @Valid @RequestPart("report") CreateReportDto report,
-            @Parameter(description = "Report images", content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE))
-            @RequestPart(value = "files", required = false) MultipartFile[] files) {
+        @PathVariable Long id,
+        @Parameter(description = "Report JSON", required = true, content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = CreateReportDto.class)))
+        @Valid @RequestPart("report") CreateReportDto report,
+        @Parameter(description = "Report images", content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE))
+        @RequestPart(value = "files", required = false) MultipartFile[] files) {
         log.info("POST /api/v1/reports");
         try {
             ReportInfoDto createdReport = reportService.createReport(id, report, files);
             Resource resource = new UrlResource(Paths.get(UPLOAD_DIRECTORY).resolve(createdReport.getFileName()).toUri());
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + createdReport.getFileName() + "\"")
-                    .body(resource);
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + createdReport.getFileName() + "\"")
+                .body(resource);
         } catch (IOException e) {
             log.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

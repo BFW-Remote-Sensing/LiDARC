@@ -20,7 +20,7 @@ const headers = new HttpHeaders({
 @Injectable({
   providedIn: 'root',
 })
-export class ReportSerivce {
+export class ReportService {
   constructor(
     private httpClient: HttpClient,
     private globals: Globals,

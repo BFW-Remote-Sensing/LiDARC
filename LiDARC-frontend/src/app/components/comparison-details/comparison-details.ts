@@ -19,9 +19,9 @@ import { MatCheckbox } from '@angular/material/checkbox';
 
 
 import * as echarts from 'echarts/core';
-import { EChartsCoreOption, ECElementEvent } from 'echarts/core';
-import { NgxEchartsDirective, provideEchartsCore } from "ngx-echarts";
-import { BarChart, BoxplotChart, HeatmapChart, LineChart, ScatterChart } from 'echarts/charts';
+import {EChartsCoreOption} from 'echarts/core';
+import {NgxEchartsDirective, provideEchartsCore} from "ngx-echarts";
+import {BarChart, BoxplotChart, HeatmapChart, LineChart, ScatterChart} from 'echarts/charts';
 import {
   GraphicComponent,
   GridComponent,
@@ -31,17 +31,17 @@ import {
   TooltipComponent,
   VisualMapComponent
 } from 'echarts/components';
-import { CanvasRenderer } from 'echarts/renderers';
-import { LegacyGridContainLabel } from 'echarts/features';
-import { MatGridListModule } from '@angular/material/grid-list';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatCardModule } from '@angular/material/card';
-import { Heatmap } from '../heatmap/heatmap';
-import { ReportCreationDialogComponent } from '../report-creation-dialog-component/report-creation-dialog-component';
-import { MatDialog } from '@angular/material/dialog';
-import { ChartData } from '../../dto/report';
-import { ECharts } from 'echarts';
-import { Globals, pollingIntervalMs, snackBarDurationMs } from '../../globals/globals';
+import {CanvasRenderer} from 'echarts/renderers';
+import {LegacyGridContainLabel} from 'echarts/features';
+import {MatGridListModule} from '@angular/material/grid-list';
+import {MatDividerModule} from '@angular/material/divider';
+import {MatCardModule} from '@angular/material/card';
+import {Heatmap} from '../heatmap/heatmap';
+import {ReportCreationDialogComponent} from '../report-creation-dialog-component/report-creation-dialog-component';
+import {MatDialog} from '@angular/material/dialog';
+import {ChartData, ReportType} from '../../dto/report';
+import {ECharts} from 'echarts';
+import {Globals, pollingIntervalMs, snackBarDurationMs } from '../../globals/globals';
 
 import {
   ChunkingResult,
@@ -93,15 +93,15 @@ echarts.use([
     MatCardModule,
     MatDividerModule,
     MatGridListModule,
-    Heatmap,
     MatButton,
     ChunkingSettings,
     FormsModule,
-    MatCheckbox
+    MatCheckbox,
+    Heatmap
   ],
   templateUrl: './comparison-details.html',
   styleUrls: ['./comparison-details.scss', '../file-details/file-details.scss', '../stored-files/stored-files.scss'],
-  providers: [provideEchartsCore({ echarts })]
+  providers: [provideEchartsCore({echarts})]
 })
 export class ComparisonDetails implements OnInit {
   @Input() comparisonId: number | null = null;
@@ -145,7 +145,7 @@ export class ComparisonDetails implements OnInit {
       mean_veg_height: 0,
       std_veg_height: 0,
       median_veg_height: 0,
-      percentiles: { p10: 0, p25: 0, p50: 0, p75: 0, p90: 0 },
+      percentiles: {p10: 0, p25: 0, p50: 0, p75: 0, p90: 0},
       mean_points_per_grid_cell: 0
     },
     fileB_metrics: {
@@ -154,7 +154,7 @@ export class ComparisonDetails implements OnInit {
       mean_veg_height: 0,
       std_veg_height: 0,
       median_veg_height: 0,
-      percentiles: { p10: 0, p25: 0, p50: 0, p75: 0, p90: 0 },
+      percentiles: {p10: 0, p25: 0, p50: 0, p75: 0, p90: 0},
       mean_points_per_grid_cell: 0
     },
     difference_metrics: {
@@ -201,6 +201,7 @@ export class ComparisonDetails implements OnInit {
   onChartInit(instance: any, chartName: string): void {
     this.chartInstances[chartName] = instance
   }
+
   onChunkingSliderChange(data: ChunkingResult) {
     console.log("Chunking data change detected in comparison-details: ", data);
     this.sharedChunkingResult = data;
@@ -208,10 +209,10 @@ export class ComparisonDetails implements OnInit {
   }
 
   get comparedItems(): { id: number; name: string; type: 'file' | 'folder' }[] {
-    const files = this.comparison()?.files.map(f => ({ id: f.id, name: f.originalFilename, type: 'file' as const })) ?? [];
+    const files = this.comparison()?.files.map(f => ({id: f.id, name: f.originalFilename, type: 'file' as const})) ?? [];
     const folders = [this.comparison()?.folderA, this.comparison()?.folderB]
       .filter(f => f != null)
-      .map(f => ({ id: f.id, name: f.name, type: 'folder' as const }));
+      .map(f => ({id: f.id, name: f.name, type: 'folder' as const}));
     return [...files, ...folders];
   }
 
@@ -407,11 +408,11 @@ export class ComparisonDetails implements OnInit {
 
     console.log('[BUILDING CHARTS]');
 
-    this.scatterOption = { ...this.buildScatterChart() };
-    this.fileDistributionOption = { ...this.buildDistributionChart() };
-    this.diffDistributionOption = { ...this.buildDifferenceDistributionChart() };
-    this.diffHistogramOption = { ...this.buildDifferenceHistogramChart() };
-    this.boxplotOption = { ...this.buildBoxplotChart() };
+    this.scatterOption = {...this.buildScatterChart()};
+    this.fileDistributionOption = {...this.buildDistributionChart()};
+    this.diffDistributionOption = {...this.buildDifferenceDistributionChart()};
+    this.diffHistogramOption = {...this.buildDifferenceHistogramChart()};
+    this.boxplotOption = {...this.buildBoxplotChart()};
 
 
   }
@@ -458,23 +459,33 @@ export class ComparisonDetails implements OnInit {
     if (this.heatmapComponent) {
       if (this.heatmapComponent.chartInstance1) {
         //TODO: Choose a better fiting name && See if we can make them more interactive / important for the report? Currently flat image of vis.
-        this.pushChartImage(chartImages, this.heatmapComponent.chartInstance1, 'Vegetation Heatmap Left', 'heatmap_left.png')
+        this.pushChartImage(chartImages, this.heatmapComponent.chartInstance1, 'Vegetation Heatmap Left', 'heatmap_left.png', ReportType.HEATMAP)
       }
       if (this.heatmapComponent.chartInstance2) {
-        this.pushChartImage(chartImages, this.heatmapComponent.chartInstance2, 'Vegetation Heatmap Right', 'heatmap_right.png')
+        this.pushChartImage(chartImages, this.heatmapComponent.chartInstance2, 'Vegetation Heatmap Right', 'heatmap_right.png', ReportType.HEATMAP)
       }
     }
     const chartsToExport = [
-      { key: 'scatter', name: 'Vegetation Height Scatter Plot', fileName: 'scatter_plot.png' },
-      { key: 'boxplot', name: 'Vegetation Height Box Plot', fileName: 'box_plot.png' },
-      { key: 'distribution', name: 'Vegetation Height Distribution', fileName: 'distribution.png' },
-      { key: 'distribution_diff', name: 'Vegetation Height Distribution Differences', fileName: 'distribution_diff.png' },
-      { key: 'histo_diff', name: 'Histogram Differences', fileName: 'histo_diff.png' }
+      {key: 'scatter', name: 'Vegetation Height Scatter Plot', fileName: 'scatter_plot.png', type: ReportType.SCATTER},
+      {key: 'boxplot', name: 'Vegetation Height Box Plot', fileName: 'box_plot.png', type: ReportType.BOXPLOT},
+      {
+        key: 'distribution',
+        name: 'Vegetation Height Distribution',
+        fileName: 'distribution.png',
+        type: ReportType.DISTRIBUTION
+      },
+      {
+        key: 'distribution_diff',
+        name: 'Vegetation Height Distribution Differences',
+        fileName: 'distribution_diff.png',
+        type: ReportType.DISTRIBUTION
+      },
+      {key: 'histo_diff', name: 'Histogram Differences', fileName: 'histo_diff.png', type: ReportType.HISTO}
     ];
     chartsToExport.forEach(chart => {
       const instance = this.chartInstances[chart.key];
       if (instance) {
-        this.pushChartImage(chartImages, instance, chart.name, chart.fileName)
+        this.pushChartImage(chartImages, instance, chart.name, chart.fileName, chart.type)
       } else {
         console.warn(`Instance not found for ${chart.name}. Is the chart visible in the DOM?`);
       }
@@ -496,8 +507,11 @@ export class ComparisonDetails implements OnInit {
     })
   }
 
-  private pushChartImage(array: ChartData[], instance: any, name: string, fileName: string) {
+  private pushChartImage(array: ChartData[], instance: any, name: string, fileName: string, type: ReportType) {
     try {
+      if (!type) {
+        type = ReportType.SIMPLE;
+      }
       const dataUrl = instance.getDataURL({
         type: 'png',
         pixelRatio: 2,
@@ -507,10 +521,12 @@ export class ComparisonDetails implements OnInit {
       array.push({
         name: name,
         fileName: fileName,
+        type: type,
         blob: this.dataURItoBlob(dataUrl)
       });
     } catch (error) {
-      //TODO: Add some error handling?
+      //TODO: Add some error handling -> Check this
+      //this.errorMessage.set(`Failed to export image for ${name}`)
       console.error(`Failed to export image for ${name}`, error);
     }
   }
@@ -523,7 +539,7 @@ export class ComparisonDetails implements OnInit {
     for (let i = 0; i < byteString.length; i++) {
       ia[i] = byteString.charCodeAt(i);
     }
-    return new Blob([ab], { type: mimeString });
+    return new Blob([ab], {type: mimeString});
   }
 
   private checkIfMoreReportsExist(countLoaded: number) {
@@ -533,7 +549,6 @@ export class ComparisonDetails implements OnInit {
       this.hasMoreReports.set(true);
     }
   }
-
 
 
   buildScatterChart(): EChartsCoreOption {
@@ -589,7 +604,7 @@ export class ComparisonDetails implements OnInit {
           type: 'line',
           data: lineData,
           showSymbol: false,
-          lineStyle: { type: 'dashed', width: 2, color: 'red' },
+          lineStyle: {type: 'dashed', width: 2, color: 'red'},
           name: 'Regression Line'
         }
       ]
@@ -655,7 +670,7 @@ export class ComparisonDetails implements OnInit {
           type: 'line',
           smooth: true,
           data: xValues.map((x, i) => [x, fileA_Y[i]]),
-          lineStyle: { width: 2, color: 'blue' },
+          lineStyle: {width: 2, color: 'blue'},
           showSymbol: false
         },
         {
@@ -663,7 +678,7 @@ export class ComparisonDetails implements OnInit {
           type: 'line',
           smooth: true,
           data: xValues.map((x, i) => [x, fileB_Y[i]]),
-          lineStyle: { width: 2, color: 'red' },
+          lineStyle: {width: 2, color: 'red'},
           showSymbol: false
         }
       ]
@@ -682,7 +697,7 @@ export class ComparisonDetails implements OnInit {
 
     const steps = 200;
     const step = (maxX - minX) / steps;
-    const xValues = Array.from({ length: steps + 1 }, (_, i) => minX + i * step);
+    const xValues = Array.from({length: steps + 1}, (_, i) => minX + i * step);
 
     const yValues = xValues.map(x => normalPDF(x));
 
@@ -716,32 +731,32 @@ export class ComparisonDetails implements OnInit {
           type: 'line',
           smooth: true,
           data: xValues.map((x, i) => [x, yValues[i]]),
-          lineStyle: { width: 2, color: 'green' },
+          lineStyle: {width: 2, color: 'green'},
           showSymbol: false
         },
         {
           name: 'Mean',
           type: 'line',
           data: [[mean, 0], [mean, maxY]],
-          lineStyle: { type: 'dashed', width: 2 },
+          lineStyle: {type: 'dashed', width: 2},
           showSymbol: false,
-          tooltip: { show: false }
+          tooltip: {show: false}
         },
         {
           name: '+2σ',
           type: 'line',
           data: [[mean + 2 * std, 0], [mean + 2 * std, maxY]],
-          lineStyle: { type: 'dashed' },
+          lineStyle: {type: 'dashed'},
           showSymbol: false,
-          tooltip: { show: false }
+          tooltip: {show: false}
         },
         {
           name: '-2σ',
           type: 'line',
           data: [[mean - 2 * std, 0], [mean - 2 * std, maxY]],
-          lineStyle: { type: 'dashed' },
+          lineStyle: {type: 'dashed'},
           showSymbol: false,
-          tooltip: { show: false }
+          tooltip: {show: false}
         }
       ]
     };
@@ -785,7 +800,7 @@ export class ComparisonDetails implements OnInit {
         type: 'category',
         name: 'Difference B - A',
         data: binLabels,
-        axisLabel: { rotate: 45 }
+        axisLabel: {rotate: 45}
       },
       yAxis: {
         type: 'value',
@@ -796,7 +811,7 @@ export class ComparisonDetails implements OnInit {
           name: 'Count',
           type: 'bar',
           data: counts,
-          itemStyle: { color: 'steelblue' },
+          itemStyle: {color: 'steelblue'},
           barGap: 0,
           barCategoryGap: '0%'
         }
@@ -867,7 +882,7 @@ export class ComparisonDetails implements OnInit {
           name: 'Boxplot',
           type: 'boxplot',
           data: data,
-          itemStyle: { color: 'lightblue' }
+          itemStyle: {color: 'lightblue'}
         }
       ]
     };

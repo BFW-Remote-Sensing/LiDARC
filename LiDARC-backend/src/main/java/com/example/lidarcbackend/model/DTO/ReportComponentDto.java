@@ -14,6 +14,6 @@ import lombok.Setter;
 @Setter
 public class ReportComponentDto {
     @NotBlank
-    private String type; //"heatmap_single"
+    private ReportType type; //"heatmap_single"
     private String fileName; //"img.png -> echarts .getImage?"
 }

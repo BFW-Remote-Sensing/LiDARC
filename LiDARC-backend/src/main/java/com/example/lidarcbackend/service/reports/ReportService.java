@@ -50,7 +50,7 @@ public class ReportService implements IReportService {
     public ReportInfoDto createReport(Long id, CreateReportDto report, MultipartFile[] files) throws IOException, NotFoundException {
         //TODO: Read config for report aka fetch comparison from table + possible metadata
         Comparison comparison = comparisonRepository.findById(id).orElseThrow(
-                () -> new NotFoundException("Comparison with id " + id + " not found"));
+            () -> new NotFoundException("Comparison with id " + id + " not found"));
         String filename = generateUniqueReportName();
         Document document = assembleReport(report, filename, files);
         Report toCreate = Report.builder().title(report.getTitle()).fileName(filename).comparison(comparison).build();
@@ -61,30 +61,30 @@ public class ReportService implements IReportService {
     @Override
     public ReportInfoDto getReport(Long reportId) throws NotFoundException {
         Report report = reportRepository.findById(reportId).orElseThrow(
-                () -> new NotFoundException("Report with id " + reportId + " not found")
+            () -> new NotFoundException("Report with id " + reportId + " not found")
         );
         return ReportInfoDto.builder()
-                .id(report.getId())
-                .title(report.getTitle())
-                .fileName(report.getFileName())
-                .build();
+            .id(report.getId())
+            .title(report.getTitle())
+            .fileName(report.getFileName())
+            .build();
     }
 
     @Override
-    public List<ReportInfoDto> getReportsOfComparsion(Long comparisonId, Integer limit) throws NotFoundException {
+    public List<ReportInfoDto> getReportsOfComparsion(Long comparisonId, Integer limit) {
         Pageable pageable = PageRequest.of(0, limit, Sort.by("creationDate").descending());
         List<Report> reports = this.reportRepository.findByComparisonId(comparisonId, pageable);
         if (reports.isEmpty()) {
             return Collections.emptyList();
         }
         return reports.stream()
-                .map(report -> ReportInfoDto.builder()
-                        .id(report.getId())
-                        .title(report.getTitle())
-                        .fileName(report.getFileName())
-                        .creationDate(report.getCreationDate())
-                        .build())
-                .toList();
+            .map(report -> ReportInfoDto.builder()
+                .id(report.getId())
+                .title(report.getTitle())
+                .fileName(report.getFileName())
+                .creationDate(report.getCreationDate())
+                .build())
+            .toList();
     }
 
     @Override
@@ -97,12 +97,12 @@ public class ReportService implements IReportService {
             reports = reportRepository.findAll(pageable);
         }
         return reports.map(report -> ReportInfoDto.builder()
-                .id(report.getId())
-                .title(report.getTitle())
-                .fileName(report.getFileName())
-                .creationDate(report.getCreationDate())
-                .comparisonId(report.getComparison() != null ? report.getComparison().getId() : null) //Currently like this for potential that in the future comparison might be null?
-                .build());
+            .id(report.getId())
+            .title(report.getTitle())
+            .fileName(report.getFileName())
+            .creationDate(report.getCreationDate())
+            .comparisonId(report.getComparison() != null ? report.getComparison().getId() : null) //Currently like this for potential that in the future comparison might be null?
+            .build());
     }
 
 
@@ -126,9 +126,13 @@ public class ReportService implements IReportService {
         try {
             Document document = generateBaseLayout(uniqueName);
             for (ReportComponentDto component : components) {
-                IReportComponent componentInstance = reportComponentFactory.getReportComponent(component.getType());
+                IReportComponent componentInstance = reportComponentFactory.getReportComponent(String.valueOf(component.getType()));
+                if (componentInstance == null) {
+                    log.warn("Called Report generation with report type that does not exist: {}", component.getType());
+                    continue;
+                }
                 if (component.getFileName() != null && !component.getFileName().isBlank()
-                        && !fileToComponent.isEmpty() && fileToComponent.containsKey(component.getFileName())) {
+                    && !fileToComponent.isEmpty() && fileToComponent.containsKey(component.getFileName())) {
                     document = componentInstance.render(document, fileToComponent.get(component.getFileName()));
                 } else {
                     document = componentInstance.render(document);
