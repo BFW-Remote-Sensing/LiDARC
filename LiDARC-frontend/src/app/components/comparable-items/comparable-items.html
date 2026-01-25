@@ -25,10 +25,6 @@
         }
       </div>
     </div>
-    <button mat-raised-button color="warn" (click)="deleteSelectedFiles()"
-      [disabled]="selectedItemService.items.size === 0">
-      Delete
-    </button>
   </div>
   @if (loading()) {
   <div class="flex-center">

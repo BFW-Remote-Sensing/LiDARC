@@ -5,15 +5,22 @@ import com.example.lidarcbackend.api.metadata.dtos.ComparableItemDTO;
 import com.example.lidarcbackend.api.metadata.dtos.ComparableProjection;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import com.example.lidarcbackend.api.metadata.dtos.FolderFilesDTO;
+import com.example.lidarcbackend.configuration.MinioProperties;
+import com.example.lidarcbackend.exception.BadRequestException;
+import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.model.entity.Comparison;
 import com.example.lidarcbackend.model.entity.CoordinateSystem;
 import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.model.entity.Folder;
+import com.example.lidarcbackend.repository.ComparisonFileRepository;
 import com.example.lidarcbackend.repository.CoordinateSystemRepository;
 import com.example.lidarcbackend.repository.FileRepository;
 import com.example.lidarcbackend.repository.FolderRepository;
 import com.example.lidarcbackend.service.IJobTrackingService;
 import com.example.lidarcbackend.service.folders.IFolderService;
+import io.minio.MinioClient;
+import io.minio.RemoveObjectArgs;
+import io.minio.errors.*;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolation;
@@ -24,6 +31,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -40,6 +50,9 @@ public class MetadataService implements IMetadataService {
     private final FileRepository fileRepository;
     private final CoordinateSystemRepository coordinateSystemRepository;
     private final FolderRepository folderRepository;
+    private final ComparisonFileRepository comparisonFileRepository;
+    private final MinioClient minioClient;
+    protected final MinioProperties minioProperties;
     private final Validator validator;
     private final MetadataMapper mapper;
     private final IFolderService folderService;
@@ -50,6 +63,9 @@ public class MetadataService implements IMetadataService {
             CoordinateSystemRepository coordinateSystemRepository,
             FolderRepository folderRepository,
             IFolderService folderService,
+            ComparisonFileRepository comparisonFileRepository,
+            MinioClient minioClient,
+            MinioProperties minioProperties,
             Validator validator,
             MetadataMapper mapper,
             IJobTrackingService jobTrackingService) {
@@ -57,6 +73,9 @@ public class MetadataService implements IMetadataService {
         this.coordinateSystemRepository = coordinateSystemRepository;
         this.folderRepository = folderRepository;
         this.folderService = folderService;
+        this.comparisonFileRepository = comparisonFileRepository;
+        this.minioClient = minioClient;
+        this.minioProperties = minioProperties;
         this.validator = validator;
         this.mapper = mapper;
         this.jobTrackingService = jobTrackingService;
@@ -85,9 +104,9 @@ public class MetadataService implements IMetadataService {
         Page<File> page;
 
         if (search == null || search.isBlank()) {
-            page = fileRepository.findPagedByFolderIsNull(pageable);
+            page = fileRepository.findPagedByFolderIsNullAndActiveTrue(pageable);
         } else {
-            page = fileRepository.findPagedByFolderIsNullAndOriginalFilenameContainingIgnoreCase(
+            page = fileRepository.findPagedByFolderIsNullAndActiveTrueAndOriginalFilenameContainingIgnoreCase(
                     search,
                     pageable
             );
@@ -122,6 +141,7 @@ public class MetadataService implements IMetadataService {
                         entry.getKey().getName(),
                         entry.getKey().getCreatedAt(),
                         entry.getKey().getStatus(),
+                        entry.getKey().getActive(),
                         entry.getValue().stream()
                                 .map(mapper::toDto)
                                 .toList()
@@ -160,11 +180,43 @@ public class MetadataService implements IMetadataService {
 
     @Transactional
     @Override
-    public void deleteMetadataById(Long id) {
-        if (!fileRepository.existsById(id)) {
-            throw new RuntimeException("Metadata with id " + id + " not found");
+    public void deleteMetadataById(Long id) throws NotFoundException {
+        File file = fileRepository.findById(id).orElseThrow(() ->
+                new NotFoundException("File with id " + id + " not found")
+        );
+
+        // Case 2: Check if the file is in an ONGOING comparison or the file is neither processed nor failed
+        if (comparisonFileRepository.isFileInOngoingComparison(id) || !file.isFinalized()) {
+            throw new BadRequestException("Cannot delete file. It is currently being used in an ongoing comparison.");
         }
-        fileRepository.deleteById(id);
+
+        // Delete from Minio bucket in both Case 1 and Case 3
+
+        try {
+            minioClient.removeObject(
+                    RemoveObjectArgs.builder()
+                            .bucket(minioProperties.getBucket())
+                            .object(file.getFilename())
+                            .build()
+            );
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        // Check if used in COMPLETED/FAILED comparisons
+        boolean usedInHistory = comparisonFileRepository.existsByFileId(id);
+
+        if (usedInHistory) {
+            // Case 3: Soft delete (Mark as active column as false)
+            file.setActive(false);
+            file.setUploaded(false);
+            fileRepository.save(file);
+            log.info("File id {} marked as inactive and removed from Minio.", id);
+        } else {
+            // Case 1: Hard delete from DB
+            fileRepository.delete(file);
+            log.info("File id {} deleted completely from DB and Minio.", id);
+        }
     }
 
     public Map<Long, FileMetadataDTO> loadFiles(List<Long> fileIds) {
@@ -263,9 +315,7 @@ public class MetadataService implements IMetadataService {
 
     @Transactional
     public void assignFolder(List<Long> metadataIds, Long folderId) {
-        if (metadataIds == null || metadataIds.isEmpty()) {
-            throw new IllegalArgumentException("Metadata ID list cannot be empty");
-        }
+        checkFileAssignability(metadataIds);
 
         Folder folder = folderRepository.findById(folderId)
                 .orElseThrow(() -> new EntityNotFoundException(
@@ -273,6 +323,25 @@ public class MetadataService implements IMetadataService {
                 ));
 
         fileRepository.updateFolderForMetadata(metadataIds, folder);
+    }
+
+    public void checkFileAssignability(List<Long> metadataIds) {
+        List<File> files = fileRepository.findAllById(metadataIds);
+
+        if (files.size() != metadataIds.size()) {
+            throw new BadRequestException("One or more file IDs do not exist");
+        }
+
+        boolean anyAssigned = files.stream().anyMatch(f -> f.getFolder() != null);
+        boolean anyOngoingComparisonOnFiles = comparisonFileRepository.areFilesInOngoingComparison(metadataIds);
+
+        if (anyAssigned) {
+            throw new BadRequestException("One or more files are already assigned to a folder");
+        }
+
+        if (anyOngoingComparisonOnFiles) {
+            throw new BadRequestException("One or more files are currently being used in an ongoing comparison.");
+        }
     }
 
     private File parseMetadata(Map<String, Object> metadata, File file) {

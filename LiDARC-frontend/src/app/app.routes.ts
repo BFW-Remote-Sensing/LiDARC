@@ -8,7 +8,7 @@ import { ComparisonDetails } from './components/comparison-details/comparison-de
 import { ComparisonSetup } from './components/comparison-setup/comparison-setup';
 import { ComparableItems } from './components/comparable-items/comparable-items';
 import { FolderDetails } from './components/folder-details/folder-details';
-import {Reports} from './components/reports/reports';
+import { Reports } from './components/reports/reports';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'upload', pathMatch: 'full' },
@@ -20,6 +20,5 @@ export const routes: Routes = [
   { path: 'comparisons', component: Comparisons },
   { path: 'comparisons/:id', component: ComparisonDetails },
   { path: 'comparison-setup', component: ComparisonSetup },
-  { path: 'heatmap', component: Heatmap },
-  {path: 'reports', component: Reports},
+  { path: 'reports', component: Reports },
 ];

@@ -1,6 +1,6 @@
 import { Component, inject, Input, OnInit, signal, WritableSignal, ViewChild } from '@angular/core';
 import { ComparisonService } from '../../service/comparison.service';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormatService } from '../../service/format.service';
 import { MetadataService } from '../../service/metadata.service';
 import { debounceTime, finalize, forkJoin, interval, map, Subject, Subscription, switchMap, timer } from 'rxjs';
@@ -55,6 +55,8 @@ import { FormsModule } from '@angular/forms';
 import { FolderDTO } from '../../dto/folder';
 import { StatusService } from '../../service/status.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
+import { ReportSerivce } from '../../service/report.serivce';
 
 //====HARDCODED VIS===//
 echarts.use([
@@ -119,11 +121,13 @@ export class ComparisonDetails implements OnInit {
 
   constructor(
     private comparisonService: ComparisonService,
+    private reportService: ReportSerivce,
     private route: ActivatedRoute,
     private dialog: MatDialog,
     public globals: Globals,
     private statusService: StatusService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private router: Router
   ) {
     this.comparisonId = Number(this.route.snapshot.paramMap.get('id'));
   }
@@ -284,6 +288,59 @@ export class ComparisonDetails implements OnInit {
     this.isPolling = false;
   }
 
+  onDeleteComparison(): void {
+    const data: ConfirmationDialogData = {
+      title: 'Confirmation',
+      subtitle: 'Are you sure you want to delete this comparison?',
+      objectName: this.comparison() ? this.comparison()!.name : '',
+      extensionMessage: this.reports().length > 0 ? `This comparison has ${this.reports().length} associated report(s) that will also be deleted.` : undefined,
+      primaryButtonText: 'Delete',
+      primaryButtonColor: 'warn',
+      secondaryButtonText: 'Cancel',
+      onConfirm: () => this.comparisonService.deleteComparisonById(this.comparisonId!),
+      successActionText: 'Comparison deletion'
+    };
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '400px',
+      data,
+      disableClose: true,
+      autoFocus: false
+    });
+
+    dialogRef.afterClosed().subscribe(success => {
+      if (success) {
+        this.router.navigate(['/comparisons']);
+      }
+    });
+  }
+
+  deleteReport(id: number, name: string): void {
+    const data: ConfirmationDialogData = {
+      title: 'Confirmation',
+      subtitle: 'Are you sure you want to delete this report?',
+      objectName: name,
+      primaryButtonText: 'Delete',
+      primaryButtonColor: 'warn',
+      secondaryButtonText: 'Cancel',
+      onConfirm: () => this.reportService.deleteReport(id),
+      successActionText: 'Report deletion'
+    };
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '400px',
+      data,
+      disableClose: true,
+      autoFocus: false
+    });
+
+    dialogRef.afterClosed().subscribe(success => {
+      if (success) {
+        this.reports.set(this.reports().filter(report => report.id !== id));
+      }
+    });
+  }
+
   ngOnDestroy(): void {
     this.stopPolling();
     this.stopPolling$.complete();
@@ -393,7 +450,7 @@ export class ComparisonDetails implements OnInit {
       width: '600px',
       height: 'auto',
       data: {
-        comparison: this.comparison,
+        comparison: this.comparison(),
         availableCharts: chartImages
       }
     });

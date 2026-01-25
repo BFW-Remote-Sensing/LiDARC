@@ -21,4 +21,5 @@ export interface FileMetadataDTO {
     type?: string;
     folderId?: number;
     errorMessage?: string;
+    active?: boolean;
 }

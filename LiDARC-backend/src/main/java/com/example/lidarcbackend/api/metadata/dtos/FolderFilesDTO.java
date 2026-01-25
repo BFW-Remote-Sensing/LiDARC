@@ -18,6 +18,7 @@ public final class FolderFilesDTO implements ComparableItemDTO {
     private String folderName;
     private Instant createdDate;
     private String status;
+    private Boolean active;
     private List<FileMetadataDTO> files;
 
     public FolderFilesDTO() {

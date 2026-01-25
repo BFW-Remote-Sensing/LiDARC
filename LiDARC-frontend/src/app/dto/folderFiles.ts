@@ -5,5 +5,6 @@ export interface FolderFilesDTO {
     folderName: string;
     createdDate: Date;
     status: string;
+    active: boolean;
     files: FileMetadataDTO[];
 }

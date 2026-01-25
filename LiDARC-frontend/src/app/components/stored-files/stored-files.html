@@ -14,9 +14,6 @@
                 Assign a Folder
             </button>
         </div>
-        <button mat-raised-button color="warn" (click)="deleteSelectedFiles()" [disabled]="selectedFileIds.size === 0">
-            Delete
-        </button>
     </div>
     @if (loading()) {
     <div class="flex-center">

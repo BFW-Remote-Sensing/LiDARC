@@ -14,7 +14,7 @@
 
     <header class="metadata-header mat-elevation-z2">
         <mat-icon class="header-icon">description</mat-icon>
-        <h1>Folder Details: {{ folder()!.folderName }}</h1>
+        <h1>Folder Details: {{ folder()!.folderName }} {{folder()!.active ? '' : '(Archived)'}}</h1>
     </header>
 
     <div class="content-wrapper">
@@ -229,6 +229,15 @@
             <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
         </table>
     </section>
+    }
+    @if ((folder()!.status === 'PROCESSED' || folder()!.status === 'FAILED') && folder()!.active)
+    {
+    <div class="delete-button-container" style="margin-top: 20px">
+        <button matButton="filled" color="warn" (click)="onDeleteFolder()">
+            <mat-icon>delete</mat-icon>
+            Delete Folder
+        </button>
+    </div>
     }
 </div>
 }

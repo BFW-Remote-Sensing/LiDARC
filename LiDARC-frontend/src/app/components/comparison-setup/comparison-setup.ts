@@ -27,7 +27,7 @@ import { FileMetadataDTO } from '../../dto/fileMetadata';
 import { FolderFilesDTO } from '../../dto/folderFiles';
 import { getExtremeValue } from '../../helpers/extremeValue';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { finalize } from 'rxjs';
+import { finalize, Observable } from 'rxjs';
 
 @Component({
   selector: 'app-comparison-setup',
@@ -208,7 +208,7 @@ export class ComparisonSetup {
     folder.files = [...folder.files];
   }
 
-  startComparison(): void {
+  startComparison(): Observable<any> {
     this.loadingStart.set(true);
     const firstItem = Array.from(this.selectedItemService.items)[0];
     const secondItem = Array.from(this.selectedItemService.items)[1];
@@ -228,22 +228,7 @@ export class ComparisonSetup {
       secondItem.type === "Folder" ?
         (secondItem as FolderFilesDTO).id :
         undefined;
-    this.comparisonService.postComparison(this.comparison)
-      .pipe(
-        finalize(() => this.loadingStart.set(false))
-      )
-      .subscribe({
-        next: () => {
-          this.selectedItemService.items.clear();
-          this.router.navigate(['/comparisons']);
-        },
-        error: (error) => {
-          console.error('Error starting comparison:', error);
-          this.errorMessage.set('Failed to fetch metadata. Please try again later.');
-          alert('Error starting comparison: ' + error.message);
-          this.loadingStart.set(false);
-        }
-      });
+    return this.comparisonService.postComparison(this.comparison);
   }
 
   openConfirmationDialog(): void {
@@ -251,17 +236,22 @@ export class ComparisonSetup {
       title: 'Confirmation',
       subtitle: 'Are you sure you want to start this comparison?',
       primaryButtonText: 'Start',
-      secondaryButtonText: 'Cancel'
+      secondaryButtonText: 'Cancel',
+      onConfirm: () => this.startComparison(),
+      successActionText: 'Comparison creation'
     };
 
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
       width: '400px',
-      data
+      data,
+      disableClose: true,
+      autoFocus: false
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.startComparison();
+        this.selectedItemService.items.clear();
+        this.router.navigate(['/comparisons']);
       }
     });
   }

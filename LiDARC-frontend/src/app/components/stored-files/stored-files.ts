@@ -11,7 +11,6 @@ import { FormatService } from '../../service/format.service';
 import { pollingIntervalMs, snackBarDurationMs } from '../../globals/globals';
 import { TextCard } from '../text-card/text-card';
 import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
-import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
 import { MatDialog } from '@angular/material/dialog';
 import { MetadataResponse } from '../../dto/metadataResponse';
 import { CreateFolderDialog } from '../create-folder-dialog/create-folder-dialog';
@@ -69,7 +68,6 @@ export class StoredFiles {
     private formatService: FormatService,
     private statusService: StatusService,
     private dialog: MatDialog,
-    private cdr: ChangeDetectorRef
   ) { }
 
   totalItems = 0;
@@ -272,28 +270,6 @@ export class StoredFiles {
       if (result) {
         this.selectedFileIds.clear();
         this.router.navigate([`/folders/${result.id}`]);
-      }
-    });
-  }
-
-  deleteSelectedFiles(): void {
-    const data: ConfirmationDialogData = {
-      title: 'Confirmation',
-      subtitle: 'Are you sure you want to delete the selected files?',
-      primaryButtonText: 'Delete',
-      secondaryButtonText: 'Cancel'
-    };
-
-    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
-      width: '400px',
-      data
-    });
-
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        alert('Delete functionality not yet implemented.');
-        this.selectedFileIds.clear();
-        this.cdr.detectChanges(); // force Angular to update the view
       }
     });
   }

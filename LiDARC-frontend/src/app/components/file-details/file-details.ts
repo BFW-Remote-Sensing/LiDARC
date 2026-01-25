@@ -1,6 +1,6 @@
 import { Component, inject, Input, signal, WritableSignal, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { finalize, interval, Subject, switchMap, takeUntil } from 'rxjs';
+import { finalize, interval, Observable, Subject, switchMap, takeUntil } from 'rxjs';
 import { FormatService } from '../../service/format.service';
 import { MetadataService } from '../../service/metadata.service';
 import { FileMetadataDTO } from '../../dto/fileMetadata';
@@ -8,13 +8,16 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { TextCard } from '../text-card/text-card';
 import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
 import { pollingIntervalMs, snackBarDurationMs } from '../../globals/globals'; // Import the global interval
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { StatusService } from '../../service/status.service';
+import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
+import { MatDialog } from '@angular/material/dialog';
+import { MatButtonModule } from '@angular/material/button';
 
 @Component({
   selector: 'app-file-details',
@@ -27,6 +30,7 @@ import { StatusService } from '../../service/status.service';
     TextCard,
     MatProgressSpinner,
     FormatBytesPipe,
+    MatButtonModule,
     MatTooltipModule,
   ],
   templateUrl: './file-details.html',
@@ -43,7 +47,8 @@ export class FileDetails implements OnInit, OnDestroy {
   private isPolling = false;
   private previousFileStatus: string | null = null;
 
-  constructor(private route: ActivatedRoute, private formatService: FormatService, private statusService: StatusService, private snackBar: MatSnackBar) {
+  constructor(private route: ActivatedRoute, private formatService: FormatService, private statusService: StatusService, private snackBar: MatSnackBar,
+    private dialog: MatDialog, private router: Router) {
     const idParam = this.route.snapshot.paramMap.get('id');
     this.metadataId = idParam ? Number(idParam) : null;
   }
@@ -128,5 +133,31 @@ export class FileDetails implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.stopPolling$.next();
     this.stopPolling$.complete();
+  }
+
+  onDeleteFile(): void {
+    const data: ConfirmationDialogData = {
+      title: 'Confirmation',
+      subtitle: 'Are you sure you want to delete this file?',
+      objectName: this.metadata() ? this.metadata()!.originalFilename : '',
+      primaryButtonText: 'Delete',
+      primaryButtonColor: 'warn',
+      secondaryButtonText: 'Cancel',
+      onConfirm: () => this.metadataService.deleteMetadataById(this.metadataId!),
+      successActionText: 'File deletion'
+    };
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '400px',
+      data,
+      disableClose: true,
+      autoFocus: false
+    });
+
+    dialogRef.afterClosed().subscribe(success => {
+      if (success) {
+        this.router.navigate(['/unassigned-files']);
+      }
+    });
   }
 }

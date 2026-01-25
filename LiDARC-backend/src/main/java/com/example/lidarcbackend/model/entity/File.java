@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -97,6 +98,14 @@ public class File {
         PROCESSING,
         PROCESSED,
         FAILED
+    }
+
+    @ColumnDefault("true")
+    @Column(name = "active")
+    private Boolean active;
+
+    public boolean isFinalized() {
+        return this.status == FileStatus.FAILED || this.status == FileStatus.PROCESSED;
     }
 
     public File() {

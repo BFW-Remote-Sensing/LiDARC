@@ -38,6 +38,7 @@ public class MetadataMapper {
         dto.setStatus(entity.getStatus().toString());
         dto.setFolderId(entity.getFolder() != null ? entity.getFolder().getId() : null);
         dto.setErrorMessage(entity.getErrorMsg());
+        dto.setActive(entity.getActive());
 
         return dto;
     }

@@ -123,4 +123,46 @@ mat-card-actions {
   margin-top: auto;
   padding: 8px 16px 16px;
   border-top: 1px solid transparent;
+  width: 100%;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+
+  .delete-button {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important; // Override Material's default min-width
+    padding: 0 !important; // Remove default padding
+    line-height: 30px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    mat-icon {
+      font-size: 20px; // Slightly smaller than the button
+      width: 20px;
+      height: 20px;
+      margin: 0;
+    }
+  }
+
+  .right-buttons {
+    margin-left: auto;
+    display: flex;
+  }
+}
+
+.hide-paginator {
+  display: none !important;
+}
+
+.flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
 }
