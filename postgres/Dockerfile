@@ -8,7 +8,7 @@ RUN if [ -n "$CI_BUILD" ]; then \
     chown -R postgres:postgres /var/lib/postgresql /var/run/postgresql; \
     fi
 
-USER postgres
+#USER postgres
 # Copy init scripts into the container (00-drop.sql runs first due to naming)
 COPY config/00-drop.sql /docker-entrypoint-initdb.d/00-drop.sql
 COPY config/init.sql /docker-entrypoint-initdb.d/init.sql
