@@ -1,18 +1,13 @@
 package com.example.lidarcbackend.api.folder;
 
+import com.example.lidarcbackend.exception.NotFoundException;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import com.example.lidarcbackend.api.folder.dtos.CreateFolderDTO;
 import com.example.lidarcbackend.api.folder.dtos.FolderDTO;
 import com.example.lidarcbackend.api.metadata.dtos.FolderFilesDTO;
@@ -35,7 +30,7 @@ public class FolderController {
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<FolderFilesDTO> getComparison(@PathVariable Long id) {
+  public ResponseEntity<FolderFilesDTO> getFolder(@PathVariable Long id) {
     FolderFilesDTO dto = folderService.loadFolderWithFiles(id);
     if (dto == null) {
       return ResponseEntity.notFound().build();
@@ -43,9 +38,10 @@ public class FolderController {
     return ResponseEntity.ok(dto);
   }
 
-  @GetMapping("/all")
-  public ResponseEntity<List<FolderDTO>> getComparison() {
+  @GetMapping("/actives-without-comparison")
+  public ResponseEntity<List<FolderDTO>> getFolders() {
     List<FolderDTO> dto = folderService.getFolders();
+
     if (dto == null) {
       return ResponseEntity.notFound().build();
     }
@@ -68,5 +64,15 @@ public class FolderController {
   public ResponseEntity<UploadedFolderDto> folderUploaded(@Valid @RequestBody StatusOfUploadedFolderDto dto) {
     UploadedFolderDto folder = folderService.folderUploaded(dto);
     return new ResponseEntity<>(folder, HttpStatus.CREATED);
+  }
+
+  @DeleteMapping("/{id}")
+  public ResponseEntity<Void> deleteFolder(@PathVariable Long id) {
+    try {
+      folderService.deleteFolder(id);
+      return ResponseEntity.noContent().build();
+    } catch (NotFoundException e) {
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
   }
 }

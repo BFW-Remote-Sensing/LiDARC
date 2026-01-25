@@ -1,6 +1,6 @@
 import { Component, inject, Input, signal, WritableSignal } from '@angular/core';
 import { FolderFilesDTO } from '../../dto/folderFiles';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormatService } from '../../service/format.service';
 import { finalize, interval, Subject, switchMap, takeUntil } from 'rxjs';
 import { FolderService } from '../../service/folderService.service';
@@ -19,6 +19,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { pollingIntervalMs, snackBarDurationMs } from '../../globals/globals';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { StatusService } from '../../service/status.service';
+import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
+import { MatDialog } from '@angular/material/dialog';
 
 @Component({
   selector: 'app-folder-details',
@@ -54,7 +56,9 @@ export class FolderDetails {
   displayedColumns: string[] = ['filename', 'status', 'captureYear', 'sizeBytes', 'uploadedAt', 'actions'];
   dataSource = new MatTableDataSource<FileMetadataDTO>([]);
 
-  constructor(private route: ActivatedRoute, private formatService: FormatService, private snackBar: MatSnackBar, private statusService: StatusService) {
+  constructor(private route: ActivatedRoute, private formatService: FormatService, private snackBar: MatSnackBar, private statusService: StatusService,
+    private dialog: MatDialog, private router: Router
+  ) {
     this.folderId = Number(this.route.snapshot.paramMap.get('id'));
   }
 
@@ -180,5 +184,31 @@ export class FolderDetails {
 
   getMaxMaxZ(): number | null {
     return getExtremeValue(this.folder()?.files, f => f.maxZ, 'max');
+  }
+
+  onDeleteFolder(): void {
+    const data: ConfirmationDialogData = {
+      title: 'Confirmation',
+      subtitle: 'Are you sure you want to delete this folder?',
+      objectName: this.folder() ? this.folder()!.folderName : '',
+      primaryButtonText: 'Delete',
+      primaryButtonColor: 'warn',
+      secondaryButtonText: 'Cancel',
+      onConfirm: () => this.folderService.deleteFolderById(this.folderId!),
+      successActionText: 'Folder deletion'
+    };
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '400px',
+      data,
+      disableClose: true,
+      autoFocus: false
+    });
+
+    dialogRef.afterClosed().subscribe(success => {
+      if (success) {
+        this.router.navigate(['/comparable-items']);
+      }
+    });
   }
 }

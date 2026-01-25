@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS folders (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name TEXT NOT NULL,
     status VARCHAR(32) NOT NULL DEFAULT 'UPLOADED' CHECK (status in ('UPLOADING', 'UPLOADED', 'PROCESSING', 'PROCESSED', 'FAILED')),
-    created_at TIMESTAMP
+    created_at TIMESTAMP,
+    active BOOLEAN DEFAULT TRUE
 );
 
 CREATE TABLE IF NOT EXISTS files (
@@ -34,6 +35,7 @@ CREATE TABLE IF NOT EXISTS files (
     uploaded BOOLEAN DEFAULT FALSE,
     uploaded_at TIMESTAMP,
     folder_id INTEGER,
+    active BOOLEAN DEFAULT TRUE,
     CONSTRAINT fk_folder_id FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL
 );
 
@@ -102,7 +104,7 @@ CREATE TABLE IF NOT EXISTS reports (
    title TEXT,
    creation_date TIMESTAMP,
    comparison_id INTEGER NOT NULL,
-   CONSTRAINT fk_comparison_id FOREIGN KEY(comparison_id) REFERENCES comparisons(id)
+   CONSTRAINT fk_comparison_id FOREIGN KEY(comparison_id) REFERENCES comparisons(id) ON DELETE CASCADE
 );
 
 ALTER TABLE files 

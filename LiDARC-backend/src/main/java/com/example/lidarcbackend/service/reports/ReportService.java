@@ -106,6 +106,14 @@ public class ReportService implements IReportService {
     }
 
 
+    @Transactional
+    public void deleteReport(Long reportId) throws NotFoundException {
+        if (!reportRepository.existsById(reportId)) {
+            throw new NotFoundException("Report with id " + reportId + " not found");
+        }
+        reportRepository.deleteById(reportId);
+    }
+
     private Document assembleReport(CreateReportDto reportDto, String uniqueName, MultipartFile[] files) throws IOException {
         List<ReportComponentDto> components = reportDto.getComponents();
         Map<String, byte[]> fileToComponent = new HashMap<>();

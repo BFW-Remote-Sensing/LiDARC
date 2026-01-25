@@ -46,7 +46,7 @@ export class AssignFolderDialog {
   selectedFolderId: WritableSignal<number | null> = signal(null);
 
   ngOnInit() {
-    this.folderService.getFolders().subscribe({
+    this.folderService.getFoldersWithoutComparison().subscribe({
       next: (folders) => {
         this.folders.set(folders);
         this.filteredFolders.set(folders);

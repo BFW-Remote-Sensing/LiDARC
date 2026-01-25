@@ -5,6 +5,7 @@ import com.example.lidarcbackend.api.comparison.dtos.*;
 import com.example.lidarcbackend.api.folder.dtos.FolderDTO;
 import com.example.lidarcbackend.api.metadata.MetadataMapper;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
+import com.example.lidarcbackend.configuration.MinioProperties;
 import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.exception.ValidationException;
 import com.example.lidarcbackend.model.DTO.*;
@@ -12,11 +13,15 @@ import com.example.lidarcbackend.model.JobType;
 import com.example.lidarcbackend.model.TrackedJob;
 import com.example.lidarcbackend.model.entity.*;
 import com.example.lidarcbackend.repository.*;
+import com.example.lidarcbackend.repository.projection.FileUsageCount;
+import com.example.lidarcbackend.repository.projection.FolderUsageCount;
 import com.example.lidarcbackend.service.IJobTrackingService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.example.lidarcbackend.service.files.IMetadataService;
 import com.example.lidarcbackend.service.files.WorkerStartService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.minio.MinioClient;
+import io.minio.RemoveObjectArgs;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +51,7 @@ public class ComparisonService implements IComparisonService {
     private final FileRepository fileRepository;
     private final FolderRepository folderRepository;
     private final IMetadataService metadataService;
-    private final IJobTrackingService  jobTrackingService;
+    private final IJobTrackingService jobTrackingService;
     private final Validator validator;
     private final RabbitTemplate rabbitTemplate;
     private final ComparisonMapper mapper;
@@ -54,6 +59,8 @@ public class ComparisonService implements IComparisonService {
     private final MetadataMapper metadataMapper;
     private final WorkerStartService workerStartService;
     private final ApplicationEventPublisher eventPublisher;
+    private final MinioClient minioClient;
+    protected final MinioProperties minioProperties;
 
     public ComparisonService(
             ComparisonRepository comparisonRepository,
@@ -70,7 +77,10 @@ public class ComparisonService implements IComparisonService {
             MetadataMapper metadataMapper,
             ReportRepository reportRepository,
             WorkerStartService workerStartService,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            MinioClient minioClient,
+            MinioProperties minioProperties
+    ) {
         this.comparisonRepository = comparisonRepository;
         this.comparisonFileRepository = comparisonFileRepository;
         this.comparisonFolderRepository = comparisonFolderRepository;
@@ -86,6 +96,8 @@ public class ComparisonService implements IComparisonService {
         this.reportRepository = reportRepository;
         this.workerStartService = workerStartService;
         this.eventPublisher = eventPublisher;
+        this.minioClient = minioClient;
+        this.minioProperties = minioProperties;
     }
 
     private final Map<Long, Object> chunkedComparisonsStorage = new ConcurrentHashMap<>();
@@ -448,7 +460,7 @@ public class ComparisonService implements IComparisonService {
         if (payload.containsKey("statistics")) {
             visualizationResult.put("statistics", payload.get("statistics"));
         }
-        if(payload.containsKey("group_mapping")) {
+        if (payload.containsKey("group_mapping")) {
             visualizationResult.put("group_mapping", payload.get("group_mapping"));
         }
         chunkedComparisonsStorage.put(comparisonId, visualizationResult);
@@ -465,8 +477,56 @@ public class ComparisonService implements IComparisonService {
 
     @Override
     @Transactional
-    public void deleteComparisonById(Long id) {
+    public void deleteComparisonById(Long id) throws NotFoundException {
+        Comparison cp = comparisonRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Comparison with ID " + id + " not found"));
+
+        List<ComparisonFile> cfs = comparisonFileRepository.findAllByComparisonIdAndIncludedTrue(id);
+
+        // 1. Find all files and folders in this comparison and their global usage counts
+        List<FileUsageCount> fileUsageCounts = comparisonFileRepository.findFileUsageByComparisonId(id);
+        List<FolderUsageCount> folderUsageCounts = comparisonFolderRepository.findFolderUsageByComparisonId(id);
+
+        // 2. Identify files and folders that are ONLY in this comparison (count < 2)
+        List<Long> filesToRemove = fileUsageCounts.stream()
+                .filter(usage -> usage.getTotalCount() < 2)
+                .map(FileUsageCount::getFileId)
+                .toList();
+
+        List<Long> foldersToRemove = folderUsageCounts.stream()
+                .filter(usage -> usage.getTotalCount() < 2)
+                .map(FolderUsageCount::getFolderId)
+                .toList();
+
+
+        // 3. Delete pre-processing results from minio
+        for (ComparisonFile cf : cfs) {
+            deleteObjectFromMinio(cf.getBucket(), cf.getObjectKey());
+        }
+
+        // 4. Delete comparison result
+        deleteObjectFromMinio(cp.getResultBucket(), cp.getResultObjectKey());
+
+        // 5. Delete the comparison
         comparisonRepository.deleteById(id);
+        log.info("Successfully deleted comparison and related reports for id: {}", id);
+
+        // 6. Clean up the files and folders
+        fileRepository.deleteAllById(filesToRemove);
+        folderRepository.deleteAllById(foldersToRemove);
+    }
+
+    private void deleteObjectFromMinio(String bucket, String objectKey) {
+        try {
+            minioClient.removeObject(
+                    RemoveObjectArgs.builder()
+                            .bucket(bucket)
+                            .object(objectKey)
+                            .build()
+            );
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -524,7 +584,7 @@ public class ComparisonService implements IComparisonService {
         }
         ComparisonFile cf = cfOpt.get();
 
-        if(cf.getStatus().equals(ComparisonFile.Status.FAILED)) {
+        if (cf.getStatus().equals(ComparisonFile.Status.FAILED)) {
             return;
         }
 
@@ -597,7 +657,7 @@ public class ComparisonService implements IComparisonService {
             return;
         }
         Comparison comparison = comparisonOpt.get();
-        if(comparison.getStatus().equals(Comparison.Status.FAILED)) {
+        if (comparison.getStatus().equals(Comparison.Status.FAILED)) {
             return;
         }
 
@@ -628,7 +688,7 @@ public class ComparisonService implements IComparisonService {
     }
 
     private void checkIfPreprocessingDoneAndStartComparison(Comparison comparison, Long comparisonId, String jobId) {
-        if(comparison.getStatus() == Comparison.Status.FAILED) {
+        if (comparison.getStatus() == Comparison.Status.FAILED) {
             log.info("Preprocessing of comparison with id {} failed. Comparison worker will not be started.", comparisonId);
             return;
         }
@@ -653,11 +713,11 @@ public class ComparisonService implements IComparisonService {
 
 
             TrackedJob trackedJob = new TrackedJob(
-              comparisonJobId,
-              JobType.COMPARISON,
-              Map.of("comparisonId", comparisonId),
-              Instant.now(),
-              Duration.ofMinutes(15)
+                    comparisonJobId,
+                    JobType.COMPARISON,
+                    Map.of("comparisonId", comparisonId),
+                    Instant.now(),
+                    Duration.ofMinutes(15)
             );
             jobTrackingService.registerJob(trackedJob);
             workerStartService.startComparisonJob(dto);
@@ -673,7 +733,7 @@ public class ComparisonService implements IComparisonService {
     }
 
     private void persistComparisonErrorPreprocessing(Comparison comparison, String errorMsg) {
-        if(comparison.getStatus() == Comparison.Status.FAILED) {
+        if (comparison.getStatus() == Comparison.Status.FAILED) {
             comparison.setErrorMessage("Preprocessing of multiple files failed");
         }
         comparison.setStatus(Comparison.Status.FAILED);

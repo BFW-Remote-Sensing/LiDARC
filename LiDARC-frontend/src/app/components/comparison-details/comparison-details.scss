@@ -1,6 +1,7 @@
 .file-name {
   display: flex;
-  align-items: center; /* vertical center */
+  align-items: center;
+  /* vertical center */
 }
 
 .align-center {
@@ -18,7 +19,32 @@
 .report-row {
   position: relative;
   cursor: pointer;
-  padding: 0 16px;
+  padding: 5px 16px;
+
+  .action-buttons {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    width: 100%;
+
+    .delete-button {
+      width: 30px !important;
+      height: 30px !important;
+      min-width: 30px !important; // Override Material's default min-width
+      padding: 0 !important; // Remove default padding
+      line-height: 30px !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      mat-icon {
+        font-size: 20px; // Slightly smaller than the button
+        width: 20px;
+        height: 20px;
+        margin: 0;
+      }
+    }
+  }
 }
 
 .report-row:hover {
@@ -33,9 +59,12 @@
   bottom: 0;
   z-index: 1;
 }
-.download-btn {
+
+.action-button {
+  padding-top: 10px;
   position: relative;
-  z-index: 2; /* Layer 2: Topmost */
+  z-index: 2;
+  /* Layer 2: Topmost */
 }
 
 .section-card {
@@ -75,4 +104,9 @@
 .date-line {
   color: #777;
   font-size: 12px;
+}
+
+.comparison-delete-button {
+  margin-right: 70px;
+  height: 60px;
 }

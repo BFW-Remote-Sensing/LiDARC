@@ -236,9 +236,13 @@
             </a>
             <span matListItemMeta>
               <a mat-icon-button [href]="this.globals.backendUri + '/reports/' + report.id + '/download'"
-                target="_blank" download class="download-btn" matTooltip="Download Report">
+                target="_blank" download class="action-button" matTooltip="Download Report">
                 <mat-icon>download</mat-icon>
               </a>
+              <button mat-icon-button color="warn" (click)="deleteReport(report.id, report.title)"
+                matTooltip="Delete Report" class="action-button">
+                <mat-icon>delete</mat-icon>
+              </button>
             </span>
           </mat-list-item>
           @if (!last) {
@@ -370,6 +374,14 @@
     <mat-spinner></mat-spinner>
   </div>
   }
+</div>
+}
+@if (comparison()!.status === 'FAILED' || comparison()!.status === 'COMPLETED') {
+<div class="delete-button-container comparison-delete-button">
+  <button matButton="filled" color="warn" (click)="onDeleteComparison()">
+    <mat-icon>delete</mat-icon>
+    Delete Comparison
+  </button>
 </div>
 }
 }

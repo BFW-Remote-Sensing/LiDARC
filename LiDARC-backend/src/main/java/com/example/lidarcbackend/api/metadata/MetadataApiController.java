@@ -2,6 +2,8 @@ package com.example.lidarcbackend.api.metadata;
 
 import com.example.lidarcbackend.api.metadata.dtos.FolderFilesDTO;
 import com.example.lidarcbackend.api.metadata.dtos.*;
+import com.example.lidarcbackend.exception.BadRequestException;
+import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.service.files.CoordinateSystemService;
 import com.example.lidarcbackend.service.files.MetadataService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Parameter;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -75,6 +78,7 @@ class MetadataApiController {
      * @param request MetadataRequest(page, size, sortBy, ascending)
      * @return list of metadata
      */
+    //TODO Filter items for only active files
     @GetMapping("/unassigned/paged")
     public ResponseEntity<MetadataResponse> getPagedMetadataWithoutFolder(
             @RequestParam(required = false) String search,
@@ -112,6 +116,7 @@ class MetadataApiController {
         }
     }
 
+    //TODO Filter items for only active items
     @GetMapping("/all/grouped-by-folder/paged")
     public ResponseEntity<ComparableResponse> getAllMetadataGroupedByFolderPaged(
             @RequestParam(required = false) String search,
@@ -138,7 +143,7 @@ class MetadataApiController {
      * @param id metadata ID to delete
      * @return empty response with appropriate status
      */
-    @DeleteMapping("/metadata/{id}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteMetadata(
             @Parameter(
                     description = "Metadata ID to delete",
@@ -148,8 +153,16 @@ class MetadataApiController {
             )
             @PathVariable Long id
     ) {
-        metadataService.deleteMetadataById(id);
-        return ResponseEntity.noContent().build();
+        try {
+            metadataService.deleteMetadataById(id);
+            return ResponseEntity.noContent().build();
+        } catch (NotFoundException e) {
+            //throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (BadRequestException e) {
+            //throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
     }
 
     @PutMapping("/assign-folder")

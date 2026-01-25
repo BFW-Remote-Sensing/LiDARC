@@ -19,7 +19,6 @@ import { FormatService } from '../../service/format.service';
 import { MetadataService } from '../../service/metadata.service';
 import { SelectedItemService } from '../../service/selectedItem.service';
 import { pollingIntervalMs, snackBarDurationMs } from '../../globals/globals';
-import { ConfirmationDialogData, ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog';
 import { ComparableItemDTO, ComparableListItem } from '../../dto/comparableItem';
 import { ComparableResponse } from '../../dto/comparableResponse';
 import { MatInputModule } from '@angular/material/input';
@@ -70,8 +69,6 @@ export class ComparableItems {
     private snackBar: MatSnackBar,
     private formatService: FormatService,
     private statusService: StatusService,
-    private dialog: MatDialog,
-    private cdr: ChangeDetectorRef
   ) { }
 
   totalItems = 0;
@@ -204,28 +201,6 @@ export class ComparableItems {
   goToComparison() {
     console.log('Selected Comparable Items:', this.selectedItemService.items);
     this.router.navigate(['/comparison-setup']);
-  }
-
-  deleteSelectedFiles(): void {
-    const data: ConfirmationDialogData = {
-      title: 'Confirmation',
-      subtitle: 'Are you sure you want to delete the selected files?',
-      primaryButtonText: 'Delete',
-      secondaryButtonText: 'Cancel'
-    };
-
-    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
-      width: '400px',
-      data
-    });
-
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        alert('Delete functionality not yet implemented.');
-        this.selectedItemService.items.clear();
-        this.cdr.detectChanges(); // force Angular to update the view
-      }
-    });
   }
 
   applyFilter(event: Event) {
