@@ -206,9 +206,13 @@ def chunk_cells_average_veg_height(
             if bc + chunk_size > band_min_cols:
                 break  # discard incomplete right-edge blocks
 
-            sum_a = 0.0
-            sum_b = 0.0
+            sum_max_a = 0.0
+            sum_max_b = 0.0
+            sum_p_a = 0.0
+            sum_p_b = 0.0
             count = 0
+            has_percentile = False
+            p_key=None
 
             min_x0: Optional[float] = None
             min_y0: Optional[float] = None
@@ -228,10 +232,19 @@ def chunk_cells_average_veg_height(
                         continue
 
                     # veg_height is always filled per you
-                    h_a = float(cell["veg_height_max_a"])
-                    h_b = float(cell["veg_height_max_b"])
-                    sum_a += h_a
-                    sum_b += h_b
+                    sum_max_a += float(cell["veg_height_max_a"])
+                    sum_max_b += float(cell["veg_height_max_b"])
+
+                    if not has_percentile:
+                        for k in cell.keys():
+                            if k.startswith("veg_height_p") and k.endswith("_a"):
+                                p_key = k[:-2]
+                                has_percentile = True
+                                break
+                    if has_percentile:
+                        sum_p_a += float(cell[f"{p_key}_a"])
+                        sum_p_b += float(cell[f"{p_key}_b"])
+
                     count += 1
 
                     x0 = float(cell["x0"])
@@ -253,10 +266,16 @@ def chunk_cells_average_veg_height(
                 "y0": min_y0,
                 "x1": max_x1,
                 "y1": max_y1,
-                "veg_height_max_a": sum_a / count,
-                "veg_height_max_b": sum_b / count,
-                "delta_z": sum_b - sum_a
+                "veg_height_max_a": sum_max_a / count,
+                "veg_height_max_b": sum_max_b / count,
+                "delta_z": (sum_max_b - sum_max_a) / count,
             }
+
+            if has_percentile:
+                reduced_cell[f"{p_key}_a"] = sum_p_a / count
+                reduced_cell[f"{p_key}_b"] = sum_p_b / count
+                reduced_cell[f"{p_key}_diff"] = (sum_p_b - sum_p_a) / count
+
             reduced_row.append(reduced_cell)
 
         if reduced_row:

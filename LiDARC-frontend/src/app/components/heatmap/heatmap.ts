@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, Input, OnInit, SimpleChanges} from '@angular/core';
+import {AfterViewInit, Component, Input, OnChanges, OnInit, SimpleChanges} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {provideEchartsCore} from 'ngx-echarts';
 import {EChartsCoreOption} from 'echarts/core';
@@ -47,10 +47,21 @@ export class Heatmap implements AfterViewInit {
   cols: number = 100;
   groupSize: number = 1;
   @Input() comparisonId: number | null = null;
-
   cellsMatrix: string[][] = [];
   chunkedMatrix: string[][] = [];
   private groupSizeChange$ = new Subject<number>();
+  private _showPercentiles = false;
+  @Input()
+  set showPercentiles(val:boolean) {
+    this._showPercentiles = val;
+    if (this.data?.chunked_cells) {
+      this.updateHeatmaps(this.data.chunked_cells);
+    }
+  }
+  get showPercentiles() {
+    return this._showPercentiles;
+  }
+
 
   @Input() data?: ChunkingResult; //fetch result from parent component
 
@@ -113,8 +124,18 @@ export class Heatmap implements AfterViewInit {
         const x1 = Number(cell.x1);
         const y0 = Number(cell.y0);
         const y1 = Number(cell.y1);
-        const valA = cell.veg_height_max_a ?? 0;
-        const valB = cell.veg_height_max_b ?? 0;
+        let valA = cell.veg_height_max_a ?? 0;
+        let valB = cell.veg_height_max_b ?? 0;
+
+        if (this.showPercentiles) {
+          const pKey = Object.keys(cell).find(
+            k => k.startsWith('veg_height_p') && k.endsWith('_a')
+          )?.replace('_a', '');
+          if (pKey) {
+            valA = cell[`${pKey}_a`] ?? valA;
+            valB = cell[`${pKey}_b`] ?? valB;
+          }
+        }
         seriesDataA.push([x0, y0, x1, y1, valA]);
         seriesDataB.push([x0, y0, x1, y1, valB]);
 

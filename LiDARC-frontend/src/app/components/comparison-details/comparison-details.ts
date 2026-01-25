@@ -279,20 +279,35 @@ export class ComparisonDetails implements OnInit {
     this.handleChunkingResult(this.sharedChunkingResult!);
   }
 
-  private flattenCells(matrix: any[][]): CellEntry[] {
+  private flattenCells(matrix: ChunkedCell[][]): CellEntry[] {
     if (!Array.isArray(matrix)) return [];
 
     const cells: CellEntry[] = [];
+    const usePercentiles = this.showPercentiles();
 
     for (const row of matrix) {
       if (!Array.isArray(row)) continue;
+
       for (const cell of row) {
         if (!cell) continue;
-        cells.push({
-          A: cell.veg_height_max_a ?? 0,
-          B: cell.veg_height_max_b ?? 0,
-          delta_z: cell.delta_z ?? 0
-        });
+
+        let A = cell.veg_height_max_a;
+        let B = cell.veg_height_max_b;
+        let delta = cell.delta_z;
+
+        if (usePercentiles) {
+          const pKey = Object.keys(cell).find(
+            k => k.startsWith('veg_height_p') && k.endsWith('_a')
+          )?.replace('_a', '');
+
+          if (pKey) {
+            A = cell[`${pKey}_a`];
+            B = cell[`${pKey}_b`];
+            delta = cell[`${pKey}_diff`];
+          }
+        }
+
+        cells.push({ A, B, delta_z: delta });
       }
     }
 
