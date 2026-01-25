@@ -1,34 +1,39 @@
 import argparse
 import json
-import shutil
-import tempfile
 import logging
-import time
-import laspy
 import math
-import sys
+import shutil
 import signal
-import pandas as pd
+import sys
+import tempfile
+import time
+
+import laspy
 import numpy as np
-from messaging.rabbit_connect import create_rabbit_con_and_return_channel
-from messaging.rabbit_config import get_rabbitmq_config
-from messaging.result_publisher import ResultPublisher
-from messaging.message_model import BaseMessage
+import pandas as pd
+from fastdigest import TDigest
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 from pika.exceptions import ChannelWrongStateError, ReentrancyError, StreamLostError
-from schemas.precompute import schema as precompute_schema
-import util.file_handler as file_handler
 from requests import HTTPError
-from fastdigest import TDigest
+
+import util.file_handler as file_handler
+from messaging.message_model import BaseMessage
+from messaging.rabbit_config import get_rabbitmq_config
+from messaging.rabbit_connect import create_rabbit_con_and_return_channel
+from messaging.result_publisher import ResultPublisher
+from schemas.precompute import schema as precompute_schema
 
 rabbitConfig = get_rabbitmq_config()
+
 
 def handle_sigterm(signum, frame):
     logging.info("SIGTERM received")
     sys.exit(0)
 
+
 signal.signal(signal.SIGTERM, handle_sigterm)
+
 
 def connect_rabbitmq():
     while True:
@@ -54,7 +59,7 @@ def calculate_grid(grid: dict):
     grid_shape = (grid_cells_y, grid_cells_x)
 
     count = np.zeros(grid_shape, dtype=np.uint32)
-    z_min = np.full(grid_shape, np.inf,  dtype=np.float32)
+    z_min = np.full(grid_shape, np.inf, dtype=np.float32)
     z_max = np.full(grid_shape, -np.inf, dtype=np.float32)
     veg_height_min = np.full(grid_shape, np.inf, dtype=np.float32)
     veg_height_max = np.full(grid_shape, -np.inf, dtype=np.float32)
@@ -62,7 +67,7 @@ def calculate_grid(grid: dict):
 
     for r in range(grid_shape[0]):
         for c in range(grid_shape[1]):
-            veg_height_digest[r,c] = TDigest()
+            veg_height_digest[r, c] = TDigest()
     return {
         "grid_shape": grid_shape,
         "grid_width": grid_width,
@@ -77,13 +82,15 @@ def calculate_grid(grid: dict):
         "veg_height_digest": veg_height_digest
     }
 
+
 def validate_request(json_req):
     try:
         validate(instance=json_req, schema=precompute_schema)
     except ValidationError as e:
         logging.warning(f"The precompute job request is invalid, ValidationError error: {e}")
-        return False #TODO: Might be an exception here as well
+        return False  # TODO: Might be an exception here as well
     return True
+
 
 def process_points(points, precomp_grid, bboxes):
     logging.debug("Processing points: {}".format(points))
@@ -95,8 +102,8 @@ def process_points(points, precomp_grid, bboxes):
     bbox_mask = np.zeros(x.shape, dtype=bool)
     for bbox in bboxes:
         in_box = (
-            (x >= bbox["xMin"]) & (x < bbox["xMax"]) &
-            (y >= bbox["yMin"]) & (y < bbox["yMax"])
+                (x >= bbox["xMin"]) & (x < bbox["xMax"]) &
+                (y >= bbox["yMin"]) & (y < bbox["yMax"])
         )
         bbox_mask |= in_box
     if not np.any(bbox_mask):
@@ -138,10 +145,12 @@ def process_points(points, precomp_grid, bboxes):
         r = idx // grid_w
         c = idx % grid_w
         values = veg_sorted[start:end]
-        precomp_grid["veg_height_digest"][r,c].batch_update(values)
+        precomp_grid["veg_height_digest"][r, c].batch_update(values)
+
 
 def mk_error_msg(error_msg: str):
     return {"msg": error_msg}
+
 
 def mk_summary(grid_shape, df: pd.DataFrame):
     return {
@@ -152,11 +161,13 @@ def mk_summary(grid_shape, df: pd.DataFrame):
         "minVegHeight": clean_val(df["veg_height_min"].min())
     }
 
+
 def clean_val(val, error_val=-1):
     f_val = float(val)
     if math.isinf(f_val):
         return error_val
     return f_val
+
 
 def create_result_df(precomp_grid):
     rows_indices, cols_indices = np.indices(precomp_grid["count"].shape)
@@ -173,7 +184,7 @@ def create_result_df(precomp_grid):
     p95 = []
     for r, c in zip(rows, cols):
         d = digests[r, c]
-        if precomp_grid["count"][r,c] > 0:
+        if precomp_grid["count"][r, c] > 0:
             p90.append(d.percentile(90))
             p95.append(d.percentile(95))
         else:
@@ -195,7 +206,7 @@ def create_result_df(precomp_grid):
     })
 
 
-#TODO: LOOK at how to maybe process points better or use less resources? Any suggestions are warmly welcome
+# TODO: LOOK at how to maybe process points better or use less resources? Any suggestions are warmly welcome
 def process_req(ch, method, properties, body):
     publisher = ResultPublisher(ch)
     start_time = time.time()
@@ -205,35 +216,37 @@ def process_req(ch, method, properties, body):
         publisher.publish_preprocessing_result(BaseMessage(type="preprocessing",
                                                            status="error",
                                                            job_id="",
-                                                           payload=mk_error_msg(error_msg="Precompute job is cancelled because job has no job id")))
+                                                           payload=mk_error_msg(
+                                                               error_msg="Precompute job is cancelled because job has no job id")))
     job_id = request["jobId"]
 
-    #TODO: create validation correctly
+    # TODO: create validation correctly
     valid = True
     if ("payload" in request and not validate_request(request["payload"])) or not validate_request(request):
-       valid = False
+        valid = False
     if not valid:
         logging.warning("The precompute job is cancelled because of an Validation Error ")
         publisher.publish_preprocessing_result(BaseMessage(type="preprocessing",
                                                            status="error",
                                                            job_id=job_id,
-                                                           payload=mk_error_msg(error_msg="Precompute job is cancelled because job request is invalid")))
+                                                           payload=mk_error_msg(
+                                                               error_msg="Precompute job is cancelled because job request is invalid")))
         return
 
-    #Process request
+    # Process request
     las_file = request["file"]
     grid = request["grid"]
     bboxes = request["bboxes"]
 
     temp_dir = tempfile.mkdtemp()
     try:
-        #downloaded_file_fn = file_handler.download_file(las_file_url, dest_dir=temp_dir)
+        # downloaded_file_fn = file_handler.download_file(las_file_url, dest_dir=temp_dir)
         downloaded_file_fn = file_handler.fetch_file(las_file, dest_dir=temp_dir)
         precomp_grid = calculate_grid(grid)
         precomp_grid["veg_height_key"] = "gps_time"
 
         with laspy.open(downloaded_file_fn) as f:
-            if "ndsm" in  f.header.point_format.extra_dimension_names:
+            if "ndsm" in f.header.point_format.extra_dimension_names:
                 logging.info("Using 'ndsm' dimension for vegetation height")
                 precomp_grid["veg_height_key"] = "ndsm"
 
@@ -249,35 +262,41 @@ def process_req(ch, method, properties, body):
         processing_time = int((time.time() - start_time) * 1000)
         logging.info(f"Job {job_id} finished in {processing_time} ms")
         response = BaseMessage(type="preprocessing",
-                                   job_id=job_id,
-                                   status="success",
-                                   payload={
-                                       "result":upload_result,
-                                       "summary": mk_summary(precomp_grid["grid_shape"], df),
-                                       "comparisonId": request["comparisonId"],
-                                       "fileId": request["fileId"]
-                                   })
+                               job_id=job_id,
+                               status="success",
+                               payload={
+                                   "result": upload_result,
+                                   "summary": mk_summary(precomp_grid["grid_shape"], df),
+                                   "comparisonId": request["comparisonId"],
+                                   "fileId": request["fileId"]
+                               })
         publisher.publish_preprocessing_result(response)
-    #TODO: Add exceptions correctly!
+    # TODO: Add exceptions correctly!
     except HTTPError as e:
         logging.warning("Couldn't download file from: {}, error: {}".format(las_file, e))
         publisher.publish_preprocessing_result(BaseMessage(type="preprocessing",
                                                            status="error",
                                                            job_id=job_id,
-                                                           payload=mk_error_msg(error_msg="Couldn't download file from: {}, precompute job cancelled".format(las_file))))
+                                                           payload=mk_error_msg(
+                                                               error_msg="Couldn't download file from: {}, precompute job cancelled".format(
+                                                                   las_file))))
         return
     except Exception as e:
         logging.exception(f"Error processing job {job_id}")
-        publisher.publish_preprocessing_result(BaseMessage(type="preprocessing", status="error", job_id=job_id, payload=mk_error_msg(str(e))))
+        publisher.publish_preprocessing_result(
+            BaseMessage(type="preprocessing", status="error", job_id=job_id, payload=mk_error_msg(str(e))))
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
+
 def main():
     channel = connect_rabbitmq()
+
     def callback(ch, method, properties, body):
         process_req(ch, method, properties, body)
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
-    channel.basic_consume(queue=rabbitConfig.queue_preprocessing_job, on_message_callback=callback, auto_ack=True)
+    channel.basic_consume(queue=rabbitConfig.queue_preprocessing_job, on_message_callback=callback, auto_ack=False)
 
     logging.info("Waiting for messages")
     try:
@@ -290,6 +309,7 @@ def main():
         logging.error("Channel error: {}".format(e))
     except StreamLostError as e:
         logging.error("Stream lost error: {}".format(e))
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

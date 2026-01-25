@@ -12,7 +12,7 @@ public class MinioConfig {
   @Bean
   public MinioClient minioClient(MinioProperties props) {
     return MinioClient.builder()
-        .endpoint(props.getEndpoint(), props.getPort(), false)
+        .endpoint(props.getEndpoint(), props.getPort(), props.isSecure())
         .credentials(props.getUsername(), props.getPassword())
         //.region("us-east-1")
         .build();
@@ -21,7 +21,7 @@ public class MinioConfig {
   @Bean
   public MinioAsyncClient minioAsyncClient(MinioProperties props) {
     return MinioAsyncClient.builder()
-        .endpoint(props.getEndpoint(), props.getPort(), false)
+        .endpoint(props.getEndpoint(), props.getPort(), props.isSecure())
         .credentials(props.getUsername(), props.getPassword())
         .build();
   }

@@ -4,20 +4,22 @@ stages:
 
 deploy_prod:
   stage: deploy
-  image: docker:dind
+  image: gcr.io/k8s-skaffold/skaffold:v2.17.1
   tags:
     - customrunner
   variables:
     LIDAR_DATA_ROOT: "/eodc/private/bfw/lidarc_ws25/dind_data"
+    SKAFFOLD_DEFAULT_REPO: registry.reset.inso-w.at/$CI_PROJECT_PATH
+    KUBECONFIG: /tmp/kubeconfig
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login registry.reset.inso-w.at -u $CI_REGISTRY_USER --password-stdin
+    - cp /etc/gitlab-runner/kubeconfig /tmp/kubeconfig
+    - chmod 600 /tmp/kubeconfig
+    - sed -i 's/127.0.0.1/10.10.30.103/g' /tmp/kubeconfig
   script:
-    - export CI=true
-    - docker-compose --version
-    - docker-compose -f docker-compose.yml down --volumes
-    - docker system prune --volumes
-    - docker-compose -f docker-compose.yml up -d --build --force-recreate
-
+    - skaffold run -p prod --tag=$CI_PIPELINE_ID --cleanup=false
 backend_unit_test:
   stage: test
   image: docker:27
@@ -37,7 +39,7 @@ preprocess_worker_test:
   services:
     - name: registry.reset.inso-w.at/pub/docker/chainguard/minio:latest
       alias: minio
-      command: ["server", "--console-address", ":9001", "/data/minio/"]
+      command: [ "server", "--console-address", ":9001", "/data/minio/" ]
     - name: rabbitmq:3.12-management
       alias: rabbitmq
       variables:

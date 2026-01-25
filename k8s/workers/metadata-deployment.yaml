@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metadata-worker
+  labels:
+    app: metadata-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metadata-worker
+  template:
+    metadata:
+      name: metadata-worker
+      labels:
+        app: metadata-worker
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      enableServiceLinks: false
+      containers:
+        - name: worker
+          image: metadata:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: RABBITMQ_HOST
+              value: "rabbitmq"
+            - name: RABBITMQ_DEFAULT_USER
+              value: "admin"
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets
+                  key: rabbitmq-default-pass
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets
+                  key: minio-access-key
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets
+                  key: minio-secret-key
+            - name: MINIO_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-config
+                  key: minio-endpoint
+            - name: MINIO_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-config
+                  key: minio-port
+            - name: MINIO_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-config
+                  key: minio-bucket
+            - name: MINIO_SECURE
+              value: "true"
+            - name: MINIO_DEFAULT_EXPIRY
+              value: "10000"
+            - name: MINIO_DEFAULT_REFRESH
+              value: "5000"
+            - name: POSTGRES_HOST
+              value: "postgres"
+      restartPolicy: Always
+      

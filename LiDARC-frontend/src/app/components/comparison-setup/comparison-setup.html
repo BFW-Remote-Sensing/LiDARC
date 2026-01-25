@@ -56,10 +56,7 @@
         <ng-container matColumnDef="sizeBytes">
           <th mat-header-cell *matHeaderCellDef>Size</th>
           <td mat-cell *matCellDef="let element">{{
-              element.sizeBytes != null ? (element.sizeBytes |
-                  formatBytes)
-                :
-                '-'
+              element.sizeBytes != null ? (element.sizeBytes | formatBytes) : '-'
             }}
           </td>
         </ng-container>
@@ -192,6 +189,12 @@
             [hidden]="!isExpanded(row)"></tr>
       </table>
     </div>
+    @if (gridDefined) {
+      <div class="map-preview">
+        <h4>Selected Grid Area</h4>
+        <div id="result-map" class="read-only--map"></div>
+      </div>
+    }
   </div>
   <mat-divider role="separator" [vertical]="true"></mat-divider>
   <div style="width: 25%;">
