@@ -108,6 +108,7 @@ export class ComparisonDetails implements OnInit {
   private chartInstances: { [key: string]: ECharts} = {};
   private scatterInstance!: ECharts;
   reportsLimit: number = 3;
+  chunkingSize: number = 5;
   reportsLoading = signal<boolean>(false);
   hasMoreReports = signal<boolean>(true);
 
@@ -171,7 +172,6 @@ export class ComparisonDetails implements OnInit {
   });
   private pollingSubscription?: Subscription;
   private chunkSize$ = new Subject<number>();
-  chunkSize = 16;
 
 
   scatterOption!: EChartsCoreOption;
@@ -211,6 +211,7 @@ export class ComparisonDetails implements OnInit {
         .subscribe({
           next: ({ comparison, reports }) => {
             this.comparison = comparison;
+            this.chunkingSize = this.computeInitialChunkingSize();
             this.reports.set(reports);
             this.checkIfMoreReportsExist(reports.length);
           },
@@ -220,6 +221,30 @@ export class ComparisonDetails implements OnInit {
           }
         });
     }
+  }
+
+  computeInitialChunkingSize(): number {
+    if (!this.comparison) return 16;
+
+    const cellWidth = this.comparison.grid?.cellWidth ?? 10;
+    const cellHeight = this.comparison.grid?.cellHeight ?? 10;
+    const xRange = (this.comparison.grid?.xMax ?? 1000) - (this.comparison.grid?.xMin ?? 0);
+    const yRange = (this.comparison.grid?.yMax ?? 1000) - (this.comparison.grid?.yMin ?? 0);
+
+    console.log(this.comparison.grid?.xMax);
+    console.log(this.comparison.grid?.xMin);
+    console.log("xRange: " + xRange + ", yRange: " + yRange);
+    const cellsX = Math.ceil(xRange / cellWidth);
+    const cellsY = Math.ceil(yRange / cellHeight);
+    const totalCells = cellsX * cellsY;
+
+    console.log("initial chunking size calculation:" + totalCells);
+    console.log("comparison size calculation:" + cellsX + "x" + cellsY + " cells");
+
+    if (totalCells <= 256) return 2;
+    if (totalCells <= 1024) return 5;
+    if (totalCells <= 4096) return 10;
+    return 15;
   }
 
   private handleChunkingResult(result: ChunkingResult): void {

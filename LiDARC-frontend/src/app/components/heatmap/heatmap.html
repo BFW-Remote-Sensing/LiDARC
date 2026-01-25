@@ -76,6 +76,11 @@
   </button>
 </mat-menu>
 
+<button class="toggle-button" mat-stroked-button (click)="resizeHeatmaps()">
+  <mat-icon>resize</mat-icon>
+  Resize heatmaps
+</button>
+
 <div class="grid" [ngClass]="displayedHeatmap">
   <div class="heatmap a" [class.hidden]="!showAB">
     <div class="title">Heatmap A</div>

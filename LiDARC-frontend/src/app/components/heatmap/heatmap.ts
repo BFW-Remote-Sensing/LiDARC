@@ -22,6 +22,7 @@ import {MatDivider} from '@angular/material/divider';
 import {MatIcon} from '@angular/material/icon';
 import {MatButton} from '@angular/material/button';
 import {MatButtonToggle, MatButtonToggleGroup} from '@angular/material/button-toggle';
+import {ComparisonDTO} from '../../dto/comparison';
 
 
 echarts.use([TitleComponent, DataZoomComponent, LegacyGridContainLabel, TooltipComponent, VisualMapComponent, BarChart, GridComponent, CanvasRenderer, HeatmapChart, CustomChart]);
@@ -78,6 +79,8 @@ export class Heatmap implements AfterViewInit {
   private readonly GROUP_AB = 'group-ab';
   private readonly GROUP_ABD = 'group-abd';
 
+  //private resizeObserver?: ResizeObserver;
+
   showVisualMap = true;
   showZoom = true;
   selectedColorScheme: SchemeKey = "greens"; //default color scheme
@@ -98,7 +101,7 @@ export class Heatmap implements AfterViewInit {
 
   rows: number = 100;
   cols: number = 100;
-  groupSize: number = 1;
+  groupSize: number = 5;
   @Input() comparisonId: number | null = null;
 
   cellsMatrix: string[][] = [];
@@ -111,11 +114,16 @@ export class Heatmap implements AfterViewInit {
   }
 
 
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes["data"]?.currentValue) {
       console.log("Heatmap received new data:", changes['data'].currentValue['chunked_cells']);
       this.updateHeatmaps(changes['data'].currentValue['chunked_cells']);
     }
+  }
+
+  ngOnDestroy(): void {
+    //this.resizeObserver?.disconnect();
   }
 
 
@@ -139,10 +147,32 @@ export class Heatmap implements AfterViewInit {
     this.chartInstance2.setOption(this.optionsRight);
     this.differenceInstance.setOption(this.differenceOptions);
 
+
+    // this.resizeObserver = new ResizeObserver(() => {
+    //   if (this.showAB) { this.chartInstance1.resize(); this.chartInstance2.resize(); }
+    //   if (this.showD) { this.differenceInstance.resize(); }
+    // });
+    // this.resizeObserver.observe(this.chart1!.nativeElement);
+    // this.resizeObserver.observe(this.chart2!.nativeElement);
+    // this.resizeObserver.observe(this.diffElement!.nativeElement);
+
     this.setupHoverInteractions();
 
     // connect initial mode
     //this.applyConnections();
+
+  }
+
+  resizeHeatmaps(): void{
+    requestAnimationFrame(() => {
+      if (this.showAB) {
+        this.chartInstance1.resize();
+        this.chartInstance2.resize();
+      }
+      if (this.showD) {
+        this.differenceInstance.resize();
+      }
+    });
 
   }
 
@@ -579,8 +609,8 @@ export class Heatmap implements AfterViewInit {
       ...axisUpdate,
       tooltip: {
         trigger: "item",
-        formatter: tooltipFormatter
-      },
+        formatter: tooltipFormatter,
+          },
       series: [{
         ...seriesTemplate,
         data: seriesDataA
@@ -592,8 +622,8 @@ export class Heatmap implements AfterViewInit {
       ...axisUpdate,
       tooltip: {
         trigger: "item",
-        formatter: tooltipFormatter
-      },
+        formatter: tooltipFormatter,
+           },
       series: [{
         ...seriesTemplate,
         data: seriesDataB
@@ -604,8 +634,8 @@ export class Heatmap implements AfterViewInit {
       ...axisUpdate,
       tooltip: {
         trigger: "item",
-        formatter: tooltipFormatter
-      },
+        formatter: tooltipFormatter,
+     },
       series: [{
         ...seriesTemplate,
         data: differenceData
@@ -655,19 +685,19 @@ export class Heatmap implements AfterViewInit {
 
     const bind = (source: echarts.ECharts, targets: echarts.ECharts[]) => {
       // Smooth hover sync (tooltip + highlight)
-      source.on('mousemove', (p: any) => {
+      source.on('mouseover', (p: any) => {
         if (!isSeriesItem(p)) return;
 
         for (const t of targets) {
           t.dispatchAction({
             type: 'showTip',
-            seriesIndex: p.seriesIndex ?? 0,
+            seriesIndex: 0,
             dataIndex: p.dataIndex
           });
 
           t.dispatchAction({
             type: 'highlight',
-            seriesIndex: p.seriesIndex ?? 0,
+            seriesIndex:  0,
             dataIndex: p.dataIndex
           });
         }
@@ -681,7 +711,7 @@ export class Heatmap implements AfterViewInit {
           t.dispatchAction({ type: 'hideTip' });
           t.dispatchAction({
             type: 'downplay',
-            seriesIndex: p.seriesIndex ?? 0,
+            seriesIndex: 0,
             dataIndex: p.dataIndex
           });
         }

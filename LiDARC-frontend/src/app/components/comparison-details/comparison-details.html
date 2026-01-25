@@ -306,7 +306,7 @@
     <mat-icon>analytics</mat-icon>
     Comparison Results
   </h2>
-  <app-chunking-settings (visualizationData)="onChunkingSliderChange($event)"
+  <app-chunking-settings [groupSizeInput]="chunkingSize" (visualizationData)="onChunkingSliderChange($event)"
     [comparisonId]="comparisonId"></app-chunking-settings>
   <div class="comparison-container">
 
@@ -383,7 +383,7 @@
       <mat-card-title>Heatmaps of Vegetational Heights</mat-card-title>
       <mat-divider></mat-divider>
       <mat-card-content>
-        <app-heatmap [data]="sharedChunkingResult">
+        <app-heatmap  [data]="sharedChunkingResult">
         </app-heatmap>
       </mat-card-content>
     </mat-card>
