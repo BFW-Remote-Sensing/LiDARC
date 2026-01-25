@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: backend-secrets
+stringData:
+  # Defines the passwords. Keys must match what deployment.yaml expects.
+  minio-access-key: "admin"
+  minio-secret-key: "aseWS25LiDARC"
+  postgres-password: "admin"
+  rabbitmq-password: "admin"
+  rabbitmq-default-pass: "admin"
+  rabbitmq-default-user: "admin"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: frontend
+          env:
+            - name: MINIO_HOST
+              value: "minio:9000"

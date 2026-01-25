@@ -38,6 +38,14 @@ public class MetadataMapper {
         dto.setStatus(entity.getStatus());
         dto.setFolderId(entity.getFolder() != null ? entity.getFolder().getId() : null);
 
+        if (entity.getCoordinateSystem() != null) {
+            String authority = entity.getCoordinateSystem().getAuthority();
+            String code = entity.getCoordinateSystem().getCode();
+            if (authority != null && code != null) {
+                dto.setCoordinateSystem(authority + ":" + code);
+            }
+        }
+
         return dto;
     }
 }

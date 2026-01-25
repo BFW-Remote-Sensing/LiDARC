@@ -56,10 +56,7 @@
         <ng-container matColumnDef="sizeBytes">
           <th mat-header-cell *matHeaderCellDef>Size</th>
           <td mat-cell *matCellDef="let element">{{
-              element.sizeBytes != null ? (element.sizeBytes |
-                  formatBytes)
-                :
-                '-'
+              element.sizeBytes != null ? (element.sizeBytes | formatBytes) : '-'
             }}
           </td>
         </ng-container>
@@ -192,6 +189,12 @@
             [hidden]="!isExpanded(row)"></tr>
       </table>
     </div>
+    @if (gridDefined) {
+      <div class="map-preview">
+        <h4>Selected Grid Area</h4>
+        <div id="result-map" class="read-only--map"></div>
+      </div>
+    }
   </div>
   <mat-divider role="separator" [vertical]="true"></mat-divider>
   <div style="width: 25%;">
@@ -208,11 +211,44 @@
         </mat-checkbox>
       </div>
 
-      <div>
+      <div class="outlier-detection-container">
         <mat-checkbox [checked]="comparison.needOutlierDetection" [disabled]="loadingStart()"
                       (change)="comparison.needOutlierDetection = $event.checked">
           Outlier Detection
         </mat-checkbox>
+
+        @if (comparison.needOutlierDetection) {
+          <div class="sigma-settings-card">
+            <div class="card-header">
+              <mat-icon>query_stats</mat-icon>
+              <span class="header-title">Outlier Sensitivity</span>
+            </div>
+
+            <div class="card-content">
+              <p class="description-text">
+                Adjust the standard deviation threshold to filter statistical outliers.
+              </p>
+
+              <mat-form-field appearance="outline" class="sigma-factor-field">
+                <mat-label>Sigma Factor</mat-label>
+
+                <mat-icon matPrefix class="input-icon">functions</mat-icon>
+
+                <input matInput
+                       type="number"
+                       step="0.5"
+                       min="0.1"
+                       [(ngModel)]="comparison.outlierDeviationFactor"
+                       [disabled]="loadingStart()"
+                       class="sigma-input">
+                <mat-hint>
+                  <mat-icon class="hint-icon">info</mat-icon>
+                  Points {{comparison.outlierDeviationFactor}}σ away from mean are considered outliers
+                </mat-hint>
+              </mat-form-field>
+            </div>
+          </div>
+        }
       </div>
       <div>
         <mat-checkbox [checked]="comparison.needStatisticsOverScenery" [disabled]="loadingStart()"
@@ -226,6 +262,55 @@
           Most Differences
         </mat-checkbox>
       </div>
+
+      <div>
+        <mat-checkbox [checked]="comparison.needPointFilter" [disabled]="loadingStart()"
+          (change)="comparison.needPointFilter = $event.checked">
+          Point Filtering
+        </mat-checkbox>
+      </div>
+
+      <mat-card class="point-filter-card" *ngIf="comparison.needPointFilter">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>filter_alt</mat-icon>
+            Point Filter
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          @if (comparison.pointFilterLowerBound !== null && comparison.pointFilterUpperBound !== null) {
+          <div class="point-filter-info">
+            <div class="filter-bound-item">
+              <mat-icon class="bound-icon">vertical_align_bottom</mat-icon>
+              <span class="bound-label">Lower Bound:</span>
+              <span class="bound-value">{{ comparison.pointFilterLowerBound }}%</span>
+            </div>
+            <mat-divider></mat-divider>
+            <div class="filter-bound-item">
+              <mat-icon class="bound-icon">vertical_align_top</mat-icon>
+              <span class="bound-label">Upper Bound:</span>
+              <span class="bound-value">{{ comparison.pointFilterUpperBound }}%</span>
+            </div>
+          </div>
+          } @else {
+          <div class="empty-state">
+            <mat-icon class="empty-state-icon">info_outline</mat-icon>
+            <p class="empty-state-text">
+              No point filter defined.<br />
+              Click "Configure Filter" to set bounds.
+            </p>
+          </div>
+          }
+        </mat-card-content>
+        <mat-card-actions>
+          <button mat-raised-button color="accent" (click)="openPointFilterDialog()"
+                  [disabled]="loadingStart()">
+            <mat-icon>tune</mat-icon>
+            Configure Filter
+          </button>
+        </mat-card-actions>
+      </mat-card>
+
       <div class="grid-definition-card">
         <h4 class="grid-title">Grid Definition</h4>
 

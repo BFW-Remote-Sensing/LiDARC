@@ -4,3 +4,5 @@ data/
 *.cmd
 *.sh
 .gitlab-ci-local
+
+.env

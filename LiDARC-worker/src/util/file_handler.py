@@ -1,14 +1,14 @@
 import json
-import os
 import logging
+import os
 from io import BytesIO
+from urllib.parse import urlparse
 from typing import Optional
 
 import redis
 import requests
 from minio import Minio
 from minio.error import S3Error
-from urllib.parse import urlparse
 from requests.adapters import HTTPAdapter, Retry
 
 BUCKET_NAME = os.environ.get("BUCKET_NAME", "basebucket")
@@ -143,11 +143,19 @@ def get_file_cache() -> FileRedisCache:
     return _file_cache_instance
 
 
+
+
 def minio_client():
     endpoint_url = os.environ.get("MINIO_ENDPOINT", "minio:9000")
     access_key = os.environ.get("MINIO_ACCESS_KEY", "admin")
     secret_key = os.environ.get("MINIO_SECRET_KEY", "aseWS25LiDARC")
-    secure = os.environ.get("MINIO_SECURE", False)
+    secure_str = os.environ.get("MINIO_SECURE", "False").lower()
+    secure = secure_str == "true"
+    port = os.environ.get("MINIO_PORT", "9000")
+
+    # Add port to endpoint if not already present
+    if ":" not in endpoint_url:
+        endpoint_url = f"{endpoint_url}:{port}"
 
     return Minio(
         endpoint=endpoint_url,
@@ -155,6 +163,7 @@ def minio_client():
         secret_key=secret_key,
         secure=secure,
     )
+
 
 def upload_file(source_file):
     client = minio_client()
@@ -178,6 +187,7 @@ def upload_file(source_file):
     except Exception as cache_err:
         logging.warning(f"Failed to cache file after upload: {cache_err}")
 
+
 def upload_file_by_type(destination_file, data):
     ext = os.path.splitext(destination_file)[1].lower()
 
@@ -195,6 +205,7 @@ def upload_file_by_type(destination_file, data):
 
     return handlers[ext]()
 
+
 def upload_csv(destination_file, data_buf, length):
     client = minio_client()
     client.put_object(BUCKET_NAME,
@@ -202,7 +213,7 @@ def upload_csv(destination_file, data_buf, length):
                       data_buf,
                       length=length,
                       content_type="application/csv")
-    
+
     # Cache the file after upload
     try:
         data_buf.seek(0)
@@ -211,16 +222,17 @@ def upload_csv(destination_file, data_buf, length):
         data_buf.seek(0) # Reset buffer for any subsequent use
     except Exception as cache_err:
         logging.warning(f"Failed to cache csv after upload: {cache_err}")
-
     return {
         "bucket": BUCKET_NAME,
         "objectKey": destination_file,
     }
 
+
 def upload_df_as_csv(destination_file, df):
     csv_bytes = df.to_csv().encode('utf-8')
     csv_buffer = BytesIO(csv_bytes)
     return upload_csv(destination_file, csv_buffer, len(csv_bytes))
+
 
 def upload_json(destination_file, json_obj):
     client = minio_client()
@@ -249,6 +261,7 @@ def upload_json(destination_file, json_obj):
         "objectKey": destination_file
     }
 
+
 def upload_df_as_json(destination_file, df):
     client = minio_client()
     json_bytes = df.to_json(orient="records").encode('utf-8')
@@ -270,7 +283,8 @@ def upload_df_as_json(destination_file, df):
 
     return BASE_URL + destination_file
 
-def download_file(url: str, dest_dir: str = ".", chunk_size: int = 10* 1024 ) -> str:
+
+def download_file(url: str, dest_dir: str = ".", chunk_size: int = 10 * 1024) -> str:
     os.makedirs(dest_dir, exist_ok=True)
     parsed = urlparse(url)
     local_filename = os.path.join(dest_dir, os.path.basename(parsed.path))
@@ -296,7 +310,8 @@ def download_file(url: str, dest_dir: str = ".", chunk_size: int = 10* 1024 ) ->
             os.remove(local_filename)
         raise RuntimeError(f"Download failed for {url}: {e}") from e
 
-def fetch_file(file, dest_dir: str=".") -> str:
+
+def fetch_file(file, dest_dir: str = ".") -> str:
     os.makedirs(dest_dir, exist_ok=True)
     bucket_name = file.get("bucket")
     object_key = file.get("objectKey")
@@ -335,6 +350,7 @@ def fetch_file(file, dest_dir: str=".") -> str:
         if os.path.exists(local_filename):
             os.remove(local_filename)
         raise RuntimeError(f"MinIO download failed for {bucket_name}/{object_key}: {e}") from e
+
 
 def main():
     test_file = os.path.join(os.getcwd(), "../Pre_Process_Job_0001_output.csv")

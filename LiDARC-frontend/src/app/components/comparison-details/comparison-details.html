@@ -241,6 +241,35 @@
           </span>
         </h4>
       </div>
+
+      <h2 style="margin-top: 20px;">
+        <mat-icon>filter_alt</mat-icon>
+        Point Filter Settings
+      </h2>
+      <div class="bounding-box-flex align-center">
+        <h4>
+          Lower Bound:
+          <span class="coordinate">
+            {{ comparison.pointFilterLowerBound != null ? comparison.pointFilterLowerBound : 0 }}%
+          </span>
+        </h4>
+        <mat-icon>east</mat-icon>
+        <h4>
+          Upper Bound:
+          <span class="coordinate">
+            {{ comparison.pointFilterUpperBound != null ? comparison.pointFilterUpperBound : 100 }}%
+          </span>
+        </h4>
+      </div>
+      @if (comparison.pointFilterLowerBound != null && comparison.pointFilterLowerBound !== 0 ||
+      comparison.pointFilterUpperBound != null && comparison.pointFilterUpperBound !== 100) {
+      <div style="padding: 8px 0; font-size: 0.9em; color: #666;">
+        <mat-icon style="font-size: 16px; vertical-align: middle; margin-right: 4px;">info</mat-icon>
+        Points filtered to {{ comparison.pointFilterLowerBound ?? 0 }}th-{{ comparison.pointFilterUpperBound ?? 100 }}th
+        percentile based on vegetation height
+      </div>
+      }
+
       <h2 style="margin-top: 10px;">
         <mat-icon>assignment</mat-icon>
         Reports
@@ -306,7 +335,7 @@
     <mat-icon>analytics</mat-icon>
     Comparison Results
   </h2>
-  <app-chunking-settings (visualizationData)="onChunkingSliderChange($event)"
+  <app-chunking-settings [groupSizeInput]="chunkingSize" (visualizationData)="onChunkingSliderChange($event)"
     [comparisonId]="comparisonId"></app-chunking-settings>
   <div class="comparison-container">
 
@@ -380,10 +409,31 @@
     </mat-card>
 
     <mat-card class="section-card">
-      <mat-card-title>Heatmaps of Vegetational Heights</mat-card-title>
+      <mat-card-title>
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <span>Heatmaps of Vegetational Heights</span>
+          @if (comparison.needOutlierDetection) {
+          <div style="display: flex; align-items: center; gap: 20px; font-size: 0.8em; font-weight: normal;">
+            <span>Std Dev Factor: <strong>{{ comparison.outlierDeviationFactor }}</strong></span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <mat-checkbox [checked]="showOutlierDots()" (change)="onOutlierToggle()" color="primary">
+                Show Outliers
+              </mat-checkbox>
+              <mat-icon
+                style="font-size: 18px; width: 18px; height: 18px; color: #666; cursor: help;"
+                matTooltip="Toggle visibility of red dots on the heatmaps. Red dots indicate grid cells containing outlier points that exceed the specified standard deviation threshold. This is a visual-only toggle and does not affect the statistical calculations."
+                matTooltipPosition="below"
+                matTooltipClass="outlier-info-tooltip">
+                info_outline
+              </mat-icon>
+            </div>
+          </div>
+          }
+        </div>
+      </mat-card-title>
       <mat-divider></mat-divider>
       <mat-card-content>
-        <app-heatmap [data]="sharedChunkingResult">
+        <app-heatmap  [data]="sharedChunkingResult" [showOutliers]="showOutlierDots()">
         </app-heatmap>
       </mat-card-content>
     </mat-card>

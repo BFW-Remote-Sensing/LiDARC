@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+data:
+  minio-endpoint: "minio"
+  minio-port: "9000"
+  minio-bucket: "basebucket"
