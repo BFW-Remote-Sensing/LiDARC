@@ -77,7 +77,7 @@ services:
       #maybe we need to change the volume every time we need a fresh db
       - ${LIDAR_DATA_ROOT:-./data}/postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U admin -d postgres" ]
       interval: 5s
       timeout: 10s
       retries: 10           # Increased retries to give it more rope
@@ -107,6 +107,7 @@ services:
     environment:
       - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio}
       - MINIO_PORT=${MINIO_PORT:-9000}
+      - MINIO_HOST=minio:9000
     networks:
       - ase-network
 
