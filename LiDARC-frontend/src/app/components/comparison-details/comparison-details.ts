@@ -279,7 +279,7 @@ export class ComparisonDetails implements OnInit {
     this.comparisonService.getComparisonReportsById(+this.comparisonId!, this.reportsLimit)
       .subscribe({
         next: (reports) => {
-          this.chunkingSize = this.computeInitialChunkingSize();this.reports.set(reports);
+          this.chunkingSize = this.computeInitialChunkingSize(); this.reports.set(reports);
           this.checkIfMoreReportsExist(reports.length);
         },
         error: (err) => console.error('Failed to fetch reports:', err)
@@ -352,13 +352,13 @@ export class ComparisonDetails implements OnInit {
   computeInitialChunkingSize(): number {
     if (!this.comparison) return 16;
 
-    const cellWidth = this.comparison.grid?.cellWidth ?? 10;
-    const cellHeight = this.comparison.grid?.cellHeight ?? 10;
-    const xRange = (this.comparison.grid?.xMax ?? 1000) - (this.comparison.grid?.xMin ?? 0);
-    const yRange = (this.comparison.grid?.yMax ?? 1000) - (this.comparison.grid?.yMin ?? 0);
+    const cellWidth = this.comparison()!.grid?.cellWidth ?? 10;
+    const cellHeight = this.comparison()!.grid?.cellHeight ?? 10;
+    const xRange = (this.comparison()!.grid?.xMax ?? 1000) - (this.comparison()!.grid?.xMin ?? 0);
+    const yRange = (this.comparison()!.grid?.yMax ?? 1000) - (this.comparison()!.grid?.yMin ?? 0);
 
-    console.log(this.comparison.grid?.xMax);
-    console.log(this.comparison.grid?.xMin);
+    console.log(this.comparison()!.grid?.xMax);
+    console.log(this.comparison()!.grid?.xMin);
     console.log("xRange: " + xRange + ", yRange: " + yRange);
     const cellsX = Math.ceil(xRange / cellWidth);
     const cellsY = Math.ceil(yRange / cellHeight);
