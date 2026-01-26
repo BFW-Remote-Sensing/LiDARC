@@ -179,31 +179,37 @@ public class FolderService implements IFolderService {
     }
 
     @Transactional
-    public void deleteFolder(Long id) throws NotFoundException {
+    public void deleteFolder(Long id) throws NotFoundException, BadRequestException {
+        // Case 1: Check if the folder exists
         Folder folder = folderRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Folder with ID " + id + " not found"));
 
-        // 1. Check if folder itself is in an ongoing comparison
+        // Case 2: Check if the folder is done with processing
+        if (!folder.isFinalized()) {
+            throw new BadRequestException("Cannot delete folder until it is done with processing.");
+        }
+
+        // Case 3: Check if the folder itself is in an ongoing comparison
         if (comparisonFolderRepository.isFolderInOngoingComparison(id)) {
             throw new BadRequestException("Cannot delete folder. It is currently being used in an ongoing comparison.");
         }
 
-        // 2. Delete the files inside the folder.
-        // Check if any child files are in an ongoing comparison independently
+        // 4. Delete the files inside the folder.
         List<File> files = fileRepository.findAllByFolderId(id, Sort.unsorted());
         for (File file : files) {
             metadataService.deleteMetadataById(file.getId());
         }
 
+        // 5. Check if used in COMPLETED/FAILED comparisons
         boolean usedInHistory = comparisonFolderRepository.existsByFolderId(id);
 
         if (usedInHistory) {
-            // Case 3: Soft delete (Mark as active column as false)
+            // 6.1: Soft delete (Mark as active column as false)
             folder.setActive(false);
             folderRepository.save(folder);
             log.info("Folder id {} marked as inactive", id);
         } else {
-            // Case 1: Hard delete from DB
+            // 6.2: Hard delete from DB
             folderRepository.delete(folder);
             log.info("Folder id {} deleted completely from DB", id);
         }

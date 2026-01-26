@@ -180,18 +180,23 @@ public class MetadataService implements IMetadataService {
 
     @Transactional
     @Override
-    public void deleteMetadataById(Long id) throws NotFoundException {
+    public void deleteMetadataById(Long id) throws NotFoundException, BadRequestException {
+        // Case 1: Check if the file exists
         File file = fileRepository.findById(id).orElseThrow(() ->
                 new NotFoundException("File with id " + id + " not found")
         );
 
-        // Case 2: Check if the file is in an ONGOING comparison or the file is neither processed nor failed
-        if (comparisonFileRepository.isFileInOngoingComparison(id) || !file.isFinalized()) {
+        // Case 2: Check if the file is done with processing
+        if (!file.isFinalized()) {
+            throw new BadRequestException("Cannot delete file until it is done with processing.");
+        }
+
+        // Case 3: Check if the file is in an ONGOING comparison
+        if(comparisonFileRepository.isFileInOngoingComparison(id)) {
             throw new BadRequestException("Cannot delete file. It is currently being used in an ongoing comparison.");
         }
 
-        // Delete from Minio bucket in both Case 1 and Case 3
-
+        // 4. Delete from Minio bucket
         try {
             minioClient.removeObject(
                     RemoveObjectArgs.builder()
@@ -200,20 +205,20 @@ public class MetadataService implements IMetadataService {
                             .build()
             );
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new BadRequestException("Files couldn't be deleted from the storage.");
         }
 
-        // Check if used in COMPLETED/FAILED comparisons
+        // 5. Check if used in COMPLETED/FAILED comparisons
         boolean usedInHistory = comparisonFileRepository.existsByFileId(id);
 
         if (usedInHistory) {
-            // Case 3: Soft delete (Mark as active column as false)
+            // 6.1: Soft delete (Mark as active column as false)
             file.setActive(false);
             file.setUploaded(false);
             fileRepository.save(file);
             log.info("File id {} marked as inactive and removed from Minio.", id);
         } else {
-            // Case 1: Hard delete from DB
+            // 6.2: Hard delete from DB
             fileRepository.delete(file);
             log.info("File id {} deleted completely from DB and Minio.", id);
         }
