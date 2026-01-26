@@ -20,6 +20,7 @@ export interface FileMetadataDTO {
     uploadedAt?: string;
     type?: string;
     folderId?: number;
+    coordinateSystem?: string;
     errorMessage?: string;
     active?: boolean;
 }

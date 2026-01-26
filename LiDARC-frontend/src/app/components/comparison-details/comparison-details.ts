@@ -15,6 +15,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { TextCard } from '../text-card/text-card';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatTooltip } from '@angular/material/tooltip';
+import { MatCheckbox } from '@angular/material/checkbox';
 
 
 import * as echarts from 'echarts/core';
@@ -95,7 +96,8 @@ echarts.use([
     Heatmap,
     MatButton,
     ChunkingSettings,
-    FormsModule
+    FormsModule,
+    MatCheckbox
   ],
   templateUrl: './comparison-details.html',
   styleUrls: ['./comparison-details.scss', '../file-details/file-details.scss', '../stored-files/stored-files.scss'],
@@ -112,8 +114,10 @@ export class ComparisonDetails implements OnInit {
   private chartInstances: { [key: string]: ECharts } = {};
   private scatterInstance!: ECharts;
   reportsLimit: number = 3;
+  chunkingSize: number = 5;
   reportsLoading = signal<boolean>(false);
   hasMoreReports = signal<boolean>(true);
+  showOutlierDots = signal<boolean>(true);
 
   private stopPolling$ = new Subject<void>();
   private isPolling = false;
@@ -183,7 +187,6 @@ export class ComparisonDetails implements OnInit {
   });
   private pollingSubscription?: Subscription;
   private chunkSize$ = new Subject<number>();
-  chunkSize = 16;
 
 
   scatterOption!: EChartsCoreOption;
@@ -276,7 +279,7 @@ export class ComparisonDetails implements OnInit {
     this.comparisonService.getComparisonReportsById(+this.comparisonId!, this.reportsLimit)
       .subscribe({
         next: (reports) => {
-          this.reports.set(reports);
+          this.chunkingSize = this.computeInitialChunkingSize();this.reports.set(reports);
           this.checkIfMoreReportsExist(reports.length);
         },
         error: (err) => console.error('Failed to fetch reports:', err)
@@ -346,6 +349,32 @@ export class ComparisonDetails implements OnInit {
     this.stopPolling$.complete();
   }
 
+  computeInitialChunkingSize(): number {
+    if (!this.comparison) return 16;
+
+    const cellWidth = this.comparison.grid?.cellWidth ?? 10;
+    const cellHeight = this.comparison.grid?.cellHeight ?? 10;
+    const xRange = (this.comparison.grid?.xMax ?? 1000) - (this.comparison.grid?.xMin ?? 0);
+    const yRange = (this.comparison.grid?.yMax ?? 1000) - (this.comparison.grid?.yMin ?? 0);
+
+    console.log(this.comparison.grid?.xMax);
+    console.log(this.comparison.grid?.xMin);
+    console.log("xRange: " + xRange + ", yRange: " + yRange);
+    const cellsX = Math.ceil(xRange / cellWidth);
+    const cellsY = Math.ceil(yRange / cellHeight);
+    const totalCells = cellsX * cellsY;
+
+    console.log("initial chunking size calculation:" + totalCells);
+    console.log("comparison size calculation:" + cellsX + "x" + cellsY + " cells");
+
+    if (totalCells <= 10000) return 1;
+    if (totalCells <= 40000) return 2;
+    if (totalCells <= 60000) return 3;
+    if (totalCells <= 100000) return 5
+    if (totalCells <= 200000) return 8;
+    return 15;
+  }
+
   private handleChunkingResult(result: ChunkingResult): void {
     console.log('[FINAL CHUNKING RESULT]', result);
     if (!result?.chunked_cells) {
@@ -353,14 +382,19 @@ export class ComparisonDetails implements OnInit {
       return;
     }
 
+    const flattenedCells = this.flattenCells(result.chunked_cells);
+    console.log('[FLATTENED CELLS COUNT]', flattenedCells.length);
+    console.log('[SAMPLE CELLS]', flattenedCells.slice(0, 5));
+    console.log('[BACKEND STATISTICS]', result.statistics);
+    console.log('[DIFFERENCE METRICS FROM BACKEND]', result.statistics?.difference);
+
     this.vegetationStats.set({
-      cells: this.flattenCells(result.chunked_cells),
+      cells: flattenedCells,
       fileA_metrics: result.statistics.file_a,
       fileB_metrics: result.statistics.file_b,
       difference_metrics: result.statistics.difference,
       group_mapping: result.group_mapping,
     });
-    console.log('[FLATTENED CELLS COUNT]', this.vegetationStats().cells.length);
 
     this.buildAllCharts();
   }
@@ -711,6 +745,10 @@ export class ComparisonDetails implements OnInit {
         }
       ]
     };
+  }
+
+  onOutlierToggle(): void {
+    this.showOutlierDots.update((value) => !value);
   }
 
   private buildDifferenceHistogramChart(): EChartsCoreOption {

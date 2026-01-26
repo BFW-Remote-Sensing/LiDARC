@@ -72,7 +72,7 @@ export class FormatService {
     return {
       ...metadata,
       status: metadata.status,
-      systemIdentifier: 'EPSG 31256',
+      systemIdentifier: metadata.systemIdentifier,
       type: 'File'
     };
   }

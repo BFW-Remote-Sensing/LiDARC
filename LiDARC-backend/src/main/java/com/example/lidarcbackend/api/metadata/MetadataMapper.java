@@ -40,6 +40,14 @@ public class MetadataMapper {
         dto.setErrorMessage(entity.getErrorMsg());
         dto.setActive(entity.getActive());
 
+        if (entity.getCoordinateSystem() != null) {
+            String authority = entity.getCoordinateSystem().getAuthority();
+            String code = entity.getCoordinateSystem().getCode();
+            if (authority != null && code != null) {
+                dto.setCoordinateSystem(authority + ":" + code);
+            }
+        }
+
         return dto;
     }
 }

@@ -247,3 +247,4 @@ def test_precompute_integration_with_disjoint_bboxes(minio_client, rabbitmq_ch, 
         pass
     total_count_in_df = df["count"].sum()
     check.equal(total_count_in_df, 3, "Total processed points should be 3 (1 point filtered out)")
+

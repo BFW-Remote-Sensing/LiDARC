@@ -106,6 +106,13 @@
   font-size: 12px;
 }
 
+// Custom tooltip styling for outlier info
+::ng-deep .outlier-info-tooltip {
+  font-size: 13px;
+  max-width: 300px;
+  line-height: 1.5;
+}
+
 .comparison-delete-button {
   margin-right: 70px;
   height: 60px;

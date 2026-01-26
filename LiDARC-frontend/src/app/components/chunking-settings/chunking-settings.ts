@@ -1,11 +1,15 @@
 import {Component, EventEmitter, Input, OnInit, Output, SimpleChanges} from '@angular/core';
 import {MatSlider, MatSliderThumb} from '@angular/material/slider';
 import {FormsModule, ReactiveFormsModule} from '@angular/forms';
-import {merge, of, Subject, Subscription, timer, BehaviorSubject, Observable} from 'rxjs';
+import {
+  merge, of, Subject, Subscription, timer, BehaviorSubject, Observable, startWith, combineLatest,
+  distinctUntilChanged
+} from 'rxjs';
 import {ComparisonService} from '../../service/comparison.service';
 import {catchError, debounceTime, filter, map, switchMap, takeWhile, tap} from 'rxjs/operators';
 import {ChunkedCell, ChunkingResult} from '../../dto/chunking';
 import {HttpResponse} from '@angular/common/http';
+import {ComparisonDTO} from '../../dto/comparison';
 
 @Component({
   selector: 'app-chunking-settings',
@@ -21,40 +25,55 @@ import {HttpResponse} from '@angular/common/http';
 
 export class ChunkingSettings implements OnInit{
 
-  protected groupSize: number = 2;
-  private groupSizeChange$ = new Subject<number>();
+
+  private _comparisonId?: number;
+  protected _groupSize: number = 5;
+  //@Input() groupSize: number = 3;
+  //private groupSizeChange$ = new Subject<number>();
+  private comparisonId$ = new BehaviorSubject<number | null>(null);
+  private groupSize$ = new BehaviorSubject<number>(this._groupSize);
   private pollingSubscription?: Subscription;
   @Output() visualizationData = new EventEmitter<ChunkingResult>();
 
-  private _comparisonId?: number;
+
+  //
+  // @Input()
+  // set comparisonId(value: number | null | undefined) {
+  //   if (value) {
+  //     this._comparisonId = value;
+  //     console.log("Setting of comparisonId in chunking-settings and starting initial polling of data, ID: ", this._comparisonId)
+  //     // Initial load observable with all cells
+  //     const initialLoad$ = of(this.groupSize);
+  //
+  //     this.pollingSubscription = merge(
+  //       initialLoad$,
+  //       this.groupSizeChange$
+  //     ).pipe(
+  //       debounceTime(300),
+  //       switchMap(size => this.requestVisualizationData(size, value))
+  //     ).subscribe({
+  //       next: (data) => {
+  //         console.log("Visualization updated:", data);
+  //         this.visualizationData.emit(data);
+  //       },
+  //       error: (err) => console.error("Polling failed", err)
+  //     });
+  //   }
+  // }
 
   @Input()
   set comparisonId(value: number | null | undefined) {
-    if (value) {
-      this._comparisonId = value;
-      console.log("Setting of comparisonId in chunking-settings and starting initial polling of data, ID: ", this._comparisonId)
-      // Initial load observable with all cells
-      const initialLoad$ = of(this.groupSize);
-
-      this.pollingSubscription = merge(
-        initialLoad$,
-        this.groupSizeChange$
-      ).pipe(
-        debounceTime(300),
-        switchMap(size => this.requestVisualizationData(size, value))
-      ).subscribe({
-        next: (data) => {
-          console.log("Visualization updated:", data);
-          this.visualizationData.emit(data);
-        },
-        error: (err) => console.error("Polling failed", err)
-      });
-    }
+    this.comparisonId$.next(value ?? null);
   }
 
-  get comparisonId(): number | undefined {
-    return this._comparisonId;
+  @Input()
+  set groupSizeInput(value: number | null | undefined) {
+    console.log("Setting group size in chunking-settings:", value);
+    const v = value ?? 5;
+    this._groupSize = v;
+    this.groupSize$.next(v);
   }
+
 
   constructor(
     private comparisonService: ComparisonService,
@@ -62,13 +81,28 @@ export class ChunkingSettings implements OnInit{
   ) {}
 
   ngOnInit(): void {
+    //combine latest emits when both emitted at least once
+      this.pollingSubscription = combineLatest([
+        this.comparisonId$,
+        this.groupSize$
+      ]).pipe(
+        filter(([id]) => id != null),
+        debounceTime(300), // optional: auf das Paar anwenden
+        distinctUntilChanged(([id1, s1], [id2, s2]) => id1 === id2 && s1 === s2),
+        switchMap(([id, size]) => this.requestVisualizationData(size, id!))
+      ).subscribe({
+        next: (data) => this.visualizationData.emit(data),
+        error: (err) => console.error("Polling failed", err)
+      });
+
 
   }
 
   protected onGroupSizeChange(newSize: number) {
-    console.log("Grouped into blocks of size:", this.groupSize);
+    console.log("Grouped into blocks of size:", this._groupSize);
     console.log("new size: ", newSize);
-    this.groupSizeChange$.next(newSize);
+    this._groupSize = newSize;
+    this.groupSize$.next(newSize);
   }
 
 
@@ -96,6 +130,10 @@ export class ChunkingSettings implements OnInit{
       filter(res => res.status === 'COMPLETED'),
       map(res => res.data)
     );
+  }
+
+  ngOnDestroy(): void {
+    this.pollingSubscription?.unsubscribe();
   }
 
 

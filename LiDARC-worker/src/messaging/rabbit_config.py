@@ -1,9 +1,10 @@
 import os
 from dataclasses import dataclass
 
+
 @dataclass
 class RabbitMQConfig:
-    #if env variable is set, the env var would be returned, otherwise the second (default) value
+    # if env variable is set, the env var would be returned, otherwise the second (default) value
     host: str = None
     port: int = None
     username: str = None
@@ -24,7 +25,6 @@ class RabbitMQConfig:
     routing_comparison_start: str = "worker.comparison.job.start"
     routing_chunking_comparison_start: str = "worker.chunking.comparison.job.start"
     routing_metadata_start: str = "worker.metadata.job.start"
-
 
     exchange_worker_results: str = "worker-results"
     # (Python --> Java)
@@ -50,10 +50,11 @@ class RabbitMQConfig:
         if self.vhost is None:
             self.vhost = os.getenv("RABBITMQ_VHOST", "/")
         if self.prefetch_count is None:
-            self.prefetch_count = int(os.getenv("RABBITMQ_PREFETCH", "0"))
+            self.prefetch_count = int(os.getenv("RABBITMQ_PREFETCH", "1"))
+
 
 def get_rabbitmq_config():
     return RabbitMQConfig()
 
-#exported topology --> use "rabbitConfig.*"
-#rabbitConfig = RabbitMQConfig()
+# exported topology --> use "rabbitConfig.*"
+# rabbitConfig = RabbitMQConfig()

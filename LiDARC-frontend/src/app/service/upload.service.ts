@@ -51,7 +51,10 @@ export class UploadService {
 
       reader.onload = () => {
         const parsed = new URL(url);
-        const proxiedUrl = `http://localhost:8081/minio-upload${parsed.pathname}${parsed.search}`;
+        let proxiedUrl = url;
+        if (parsed.hostname === 'minio') {
+          proxiedUrl = this.globals.toMinioProxyUrl(url);
+        }
 
         console.log('Uploading to presigned URL:', proxiedUrl);
 

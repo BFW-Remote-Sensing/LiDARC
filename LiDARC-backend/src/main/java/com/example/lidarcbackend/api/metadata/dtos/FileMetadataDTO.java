@@ -41,6 +41,7 @@ public final class FileMetadataDTO implements ComparableItemDTO {
     private Instant uploadedAt;
     private String status;
     private Long folderId;
+    private String coordinateSystem;
     private String errorMessage;
     private Boolean active;
 }

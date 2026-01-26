@@ -29,7 +29,7 @@ services:
     networks:
       - ase-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/ready" ]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -76,6 +76,12 @@ services:
       #volume mounts can be tricky ./data/postgresql was always somehow saved in another image
       #maybe we need to change the volume every time we need a fresh db
       - ${LIDAR_DATA_ROOT:-./data}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U admin -d postgres" ]
+      interval: 5s
+      timeout: 10s
+      retries: 10           # Increased retries to give it more rope
+      start_period: 45s     # The container gets 45s of "free failure" time
     networks:
       - ase-network
 
@@ -98,6 +104,10 @@ services:
     container_name: frontend
     ports:
       - "8081:8081"
+    environment:
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio}
+      - MINIO_PORT=${MINIO_PORT:-9000}
+      - MINIO_HOST=minio:9000
     networks:
       - ase-network
 
@@ -111,12 +121,11 @@ services:
     depends_on:
       minio-mc:
         condition: service_completed_successfully
-
       rabbitmq:
         condition: service_started
         restart: true
       postgres:
-        condition: service_started
+        condition: service_healthy
         restart: true
     ports:
       - "8080:8080"
@@ -126,6 +135,14 @@ services:
       - RABBITMQ_DEFAULT_USER=admin
       - RABBITMQ_DEFAULT_PASS=admin
       - APP_UPLOAD_DIR=/app/uploads
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio}
+      - MINIO_USERNAME=${MINIO_ACCESS_KEY:-admin}
+      - MINIO_PASSWORD=${MINIO_SECRET_KEY:-aseWS25LiDARC}
+      - MINIO_BUCKET=basebucket
+      - MINIO_DEFAULT_EXPIRY=10000
+      - MINIO_DEFAULT_REFRESH=5000
+      - MINIO_PORT=${MINIO_PORT:-9000}
+      - MINIO_SECURE=${MINIO_SECURE:-false}
     healthcheck:
       test: "curl --fail --silent localhost:8080/actuator/health | grep UP || exit 1"
       interval: 20s
@@ -148,6 +165,13 @@ services:
       rabbitmq:
         condition: service_started
         restart: true
+    environment:
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-admin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-aseWS25LiDARC}
+      - MINIO_BUCKET=basebucket
+      - MINIO_PORT=${MINIO_PORT:-9000}
+      - MINIO_SECURE=${MINIO_SECURE:-false}
     networks:
       - ase-network
   comparison-worker:
@@ -166,6 +190,13 @@ services:
       postgres:
         condition: service_started
         restart: true
+    environment:
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-admin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-aseWS25LiDARC}
+      - MINIO_BUCKET=basebucket
+      - MINIO_PORT=${MINIO_PORT:-9000}
+      - MINIO_SECURE=${MINIO_SECURE:-false}
     networks:
       - ase-network
 
@@ -185,6 +216,13 @@ services:
       postgres:
         condition: service_started
         restart: true
+    environment:
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-admin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-aseWS25LiDARC}
+      - MINIO_BUCKET=basebucket
+      - MINIO_PORT=${MINIO_PORT:-9000}
+      - MINIO_SECURE=${MINIO_SECURE:-false}
     networks:
       - ase-network
 
@@ -201,6 +239,13 @@ services:
       rabbitmq:
         condition: service_started
         restart: true
+    environment:
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-admin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-aseWS25LiDARC}
+      - MINIO_BUCKET=basebucket
+      - MINIO_PORT=${MINIO_PORT:-9000}
+      - MINIO_SECURE=${MINIO_SECURE:-false}
     networks:
       - ase-network
 

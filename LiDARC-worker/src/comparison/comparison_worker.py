@@ -72,145 +72,6 @@ def validate_request(json_req):
         logging.warning(f"The comparison job request is invalid")
         return False
 
-
-
-def compare_files(path_a: str, path_b: str) -> dict:
-    #TODO handle errors
-    df_a = pd.read_csv(path_a)
-    df_b = pd.read_csv(path_b)
-    logging.debug("Loaded CSV A with %d rows", len(df_a))
-    logging.debug("Loaded CSV B with %d rows", len(df_b))
-
-    # TODO should be in a defined format after preprocessing
-    def normalize(df: pd.DataFrame, column: str = "veg_height_max") -> pd.DataFrame:
-        if column not in df.columns:
-            raise ValueError(f"Column '{column}' not found in dataframe")
-
-        # Heuristic: if max height > 1000 → probably millimeters
-        max_val = df[column].max()
-
-        if max_val > 100:  # extremely unlikely for meters
-            logging.debug(f"Detected veg height in mm → converting to meters")
-            df[column] = df[column] / 1000.0
-        else:
-            logging.debug("Detected veg height already in meters")
-        return df
-
-    df_a = normalize(df_a, "veg_height_max")
-    df_b = normalize(df_b, "veg_height_max")
-
-    merged = df_a.merge(
-        df_b,
-        on=["x0", "x1", "y0", "y1"],
-        suffixes=("_a", "_b")
-    )
-
-    # TODO double check if just remove cells where values are -inf, inf is OK?
-    valid_mask = (
-            np.isfinite(merged["veg_height_max_a"]) &
-            np.isfinite(merged["veg_height_max_b"])
-    )
-    merged = merged[valid_mask]
-
-    merged["delta_z"] = merged["veg_height_max_b"] - merged["veg_height_max_a"]
-
-    logging.debug("Merged into %d matched grid cells", len(merged))
-
-
-    logging.debug("Calculating Statistics...")
-
-    # basic metrics of veg_height b
-    stats_b = {
-        "mean_veg_height": merged["veg_height_max_b"].mean(),
-        "median_veg_height": merged["veg_height_max_b"].median(),
-        "std_veg_height":merged["veg_height_max_b"].std(),
-        "min_veg_height": merged["veg_height_max_b"].min(),
-        "max_veg_height": merged["veg_height_max_b"].max(),
-        "percentiles": {
-            "p10": float(np.percentile(merged["veg_height_max_b"], 10)),
-            "p25": float(np.percentile(merged["veg_height_max_b"], 25)),
-            "p50": float(np.percentile(merged["veg_height_max_b"], 50)),
-            "p75": float(np.percentile(merged["veg_height_max_b"], 75)),
-            "p90": float(np.percentile(merged["veg_height_max_b"], 90)),
-        }
-    }
-
-    # basic metrics of veg_height b
-    stats_a = {
-        "mean_veg_height": merged["veg_height_max_a"].mean(),
-        "median_veg_height": merged["veg_height_max_a"].median(),
-        "std_veg_height": merged["veg_height_max_a"].std(),
-        "min_veg_height": merged["veg_height_max_a"].min(),
-        "max_veg_height": merged["veg_height_max_a"].max(),
-        "percentiles": {
-            "p10": float(np.percentile(merged["veg_height_max_a"], 10)),
-            "p25": float(np.percentile(merged["veg_height_max_a"], 25)),
-            "p50": float(np.percentile(merged["veg_height_max_a"], 50)),
-            "p75": float(np.percentile(merged["veg_height_max_a"], 75)),
-            "p90": float(np.percentile(merged["veg_height_max_a"], 90)),
-        }
-    }
-
-    # calculate basic statistics of the difference
-    diffs = merged["delta_z"]
-    neg = diffs[diffs <= 0]
-    pos = diffs[diffs >= 0]
-
-    stats_diff = {
-        "mean": diffs.mean(),
-        "median": diffs.median(),
-        "std": diffs.std(),
-        "most_negative": float(neg.min()) if not neg.empty else None,
-        "least_negative": float(neg.max()) if not neg.empty else None,
-        "smallest_positive": float(pos.min()) if not pos.empty else None,
-        "largest_positive": float(pos.max()) if not pos.empty else None,
-        "percentiles": {
-            "p10": float(np.percentile(diffs, 10)),
-            "p25": float(np.percentile(diffs, 25)),
-            "p50": float(np.percentile(diffs, 50)),
-            "p75": float(np.percentile(diffs, 75)),
-            "p90": float(np.percentile(diffs, 90)),
-        },
-        #TODO also calculate the slope for visualization?
-        "pearson_corr": float(merged["veg_height_max_a"].corr(merged["veg_height_max_b"]))
-    }
-
-
-    # TODO consider if needed (probably also histogram bins?)
-    #logging.debug("Simple Categorization:")
-    # categorization
-    #categories = pd.cut(
-    #    merged["delta_z"].abs(),
-    #    bins=[0, 2, 4, 5, np.inf],
-    #    labels=["almost equal", "slightly different", "different", "highly different"]
-    #)
-    #category_counts = categories.value_counts()
-    #logging.debug("Simple Categorization:")
-    #logging.debug(f"Category counts:\n{category_counts}")
-
-    cells = merged.apply(
-        lambda row: {
-            "x0": row["x0"],
-            "x1": row["x1"],
-            "y0": row["y0"],
-            "y1": row["y1"],
-            "veg_height_max_a": row["veg_height_max_a"],
-            "veg_height_max_b": row["veg_height_max_b"],
-            "delta_z": row["delta_z"],
-        },
-        axis=1
-    ).tolist()
-
-    result = {
-        "cells": cells,
-        "statistics": {
-            "file_a": stats_a,
-            "file_b": stats_b,
-            "difference": stats_diff
-        }
-    }
-    return result
-
 def round_floats(obj, ndigits=2):
     if isinstance(obj, float):
         return round(obj, ndigits)
@@ -223,11 +84,13 @@ def round_floats(obj, ndigits=2):
     return obj
 
 def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b: str) -> dict:
-    valid_mask = (
-            np.isfinite(merged["veg_height_max_a"]) &
-            np.isfinite(merged["veg_height_max_b"])
-    )
-    merged = merged[valid_mask]
+    for col in ["veg_height_max_a", "veg_height_max_b"]:
+        merged[col] = (
+            merged[col]
+            .replace([np.inf, -np.inf], np.nan)
+            .fillna(0.0)
+        )
+
     merged["delta_z"] = merged["veg_height_max_b"] - merged["veg_height_max_a"]
     logging.debug("Calculating statistics on %d grid cells", len(merged))
 
@@ -293,8 +156,13 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
     sum_y = np.sum(y)
     sum_xy = (x*y).sum()
     sum_x2 = (x*x).sum()
-    slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x**2)
-    intercept = (sum_y - slope * sum_x) / n
+    den = n * sum_x2 - sum_x ** 2
+    if den == 0:
+        slope = None
+        intercept = None
+    else:
+        slope = (n * sum_xy - sum_x * sum_y) / den
+        intercept = (sum_y - slope * sum_x) / n
 
     stats_diff = {
         "description": f"vegetational height of {group_b} - vegetational height of {group_a}",
@@ -313,12 +181,11 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
             "p90": float(np.percentile(diffs, 90)),
         },
         "histogram": histogram,
-        # TODO also calculate the slope for visualization?
         "correlation": {
             "pearson_correlation": float(merged["veg_height_max_a"].corr(merged["veg_height_max_b"])),
             "regression_line": {
-                "slope": float(slope),
-                "intercept": float(intercept),
+                "slope": None if slope is None else float(slope),
+                "intercept": None if intercept is None else float(intercept),
                 "x_min": float(x.min()),
                 "x_max": float(x.max()),
             }
@@ -336,6 +203,12 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
             "veg_height_max_a": row["veg_height_max_a"],
             "veg_height_max_b": row["veg_height_max_b"],
             "delta_z": row["delta_z"],
+            "count_a": row["count_a"],
+            "count_b": row["count_b"],
+            "out_a": row["out_a"],
+            "out_b": row["out_b"],
+            "out_c7_a": row["out_c7_a"],
+            "out_c7_b": row["out_c7_b"],
         },
         axis=1
     ).tolist()
@@ -400,8 +273,12 @@ def build_merged_dataframe(
                 cells[key][slot] = row.veg_height_max
                 if slot == "a":
                     cells[key]["count_a"] = getattr(row, "count", 0)
+                    cells[key]["out_a"] = getattr(row, "veg_height_outlier_count", 0)
+                    cells[key]["out_c7_a"] = getattr(row, "veg_height_outlier_class7_count", 0)
                 if slot == "b":
                     cells[key]["count_b"] = getattr(row, "count", 0)
+                    cells[key]["out_b"] = getattr(row, "veg_height_outlier_count", 0)
+                    cells[key]["out_c7_b"] = getattr(row, "veg_height_outlier_class7_count", 0)
 
 
         finally:
@@ -419,6 +296,10 @@ def build_merged_dataframe(
                 "veg_height_max_b": values["b"],
                 "count_a": values.get("count_a", 0),
                 "count_b": values.get("count_b", 0),
+                "out_a": values.get("out_a", 0),
+                "out_b": values.get("out_b", 0),
+                "out_c7_a": values.get("out_c7_a", 0),
+                "out_c7_b": values.get("out_c7_b", 0),
             })
 
     merged = pd.DataFrame(rows)

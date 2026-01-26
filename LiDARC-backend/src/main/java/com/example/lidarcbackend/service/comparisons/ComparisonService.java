@@ -180,7 +180,10 @@ public class ComparisonService implements IComparisonService {
             } else {
                 groupName = firstFile.getOriginalFilename();
             }
-            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderAFiles(), comparisonRequest.getGrid(), savedComparison.getId(), groupName));
+            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderAFiles(), comparisonRequest.getGrid(),
+                    savedComparison.getId(), groupName, savedComparison.getPointFilterLowerBound(),
+                    savedComparison.getPointFilterUpperBound(), savedComparison.getNeedOutlierDetection(),
+                    savedComparison.getOutlierDeviationFactor(), savedComparison.getNeedPointFilter()));
         }
         if (comparisonRequest.getFolderBFiles() != null && !comparisonRequest.getFolderBFiles().isEmpty()) {
             File firstFile = fileRepository.findById(comparisonRequest.getFolderBFiles().getFirst()).orElseThrow(() ->
@@ -192,10 +195,16 @@ public class ComparisonService implements IComparisonService {
             } else {
                 groupName = firstFile.getOriginalFilename();
             }
-            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderBFiles(), comparisonRequest.getGrid(), savedComparison.getId(), groupName));
+            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderBFiles(), comparisonRequest.getGrid(),
+                    savedComparison.getId(), groupName, savedComparison.getPointFilterLowerBound(),
+                    savedComparison.getPointFilterUpperBound(), savedComparison.getNeedOutlierDetection(),
+                    savedComparison.getOutlierDeviationFactor(), savedComparison.getNeedPointFilter()));
         }
         if (fileMetadataIds != null && !fileMetadataIds.isEmpty()) {
-            fullPlan.merge(processFolderGroup(fileMetadataIds, comparisonRequest.getGrid(), savedComparison.getId(), "legacy"));
+            fullPlan.merge(processFolderGroup(fileMetadataIds, comparisonRequest.getGrid(), savedComparison.getId(),
+                    "legacy", savedComparison.getPointFilterLowerBound(), savedComparison.getPointFilterUpperBound(),
+                    savedComparison.getNeedOutlierDetection(), savedComparison.getOutlierDeviationFactor(),
+                    savedComparison.getNeedPointFilter()));
         }
 
         //Saving all files (excluded and included)
@@ -240,7 +249,10 @@ public class ComparisonService implements IComparisonService {
         }
     }
 
-    private ComparisonPlan processFolderGroup(List<Long> fileIds, GridParameters grid, Long comparisonId, String groupName) throws NotFoundException {
+    private ComparisonPlan processFolderGroup(List<Long> fileIds, GridParameters grid, Long comparisonId,
+            String groupName, Integer pointFilterLowerBound, Integer pointFilterUpperBound,
+            Boolean outlierDetectionEnabled, Double outlierDeviationFactor, Boolean needPointFilter)
+            throws NotFoundException {
         ComparisonPlan plan = new ComparisonPlan();
         if (fileIds == null || fileIds.isEmpty()) return plan;
 
@@ -280,7 +292,18 @@ public class ComparisonService implements IComparisonService {
                         .comparisonId(comparisonId)
                         .file(new MinioObjectDto("basebucket", fileEntity.getFilename()))
                         .fileId(fileEntity.getId())
+                        .outlierDetectionEnabled(outlierDetectionEnabled)
+                        .outlierDeviationFactor(outlierDeviationFactor)
+                        .pointFilterEnabled(Boolean.TRUE.equals(needPointFilter))
                         .build();
+
+                if (pointFilterLowerBound != null) {
+                  jobDto.setPointFilterLowerBound(pointFilterLowerBound);
+                }
+                if (pointFilterUpperBound != null) {
+                  jobDto.setPointFilterUpperBound(pointFilterUpperBound);
+                }
+
                 plan.addIncludedFile(cf, jobDto);
 
                 restrictedZones.add(snappedBox);

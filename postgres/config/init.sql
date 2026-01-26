@@ -72,8 +72,12 @@ CREATE TABLE IF NOT EXISTS comparisons (
     grid_max_x DOUBLE PRECISION,
     grid_min_y DOUBLE PRECISION,
     grid_max_y DOUBLE PRECISION,
+    point_filter_lower_bound INTEGER,
+    point_filter_upper_bound INTEGER,
+    need_point_filter BOOLEAN DEFAULT FALSE,
     result_bucket TEXT,
-    result_object_key TEXT
+    result_object_key TEXT,
+    outlier_deviation_factor DOUBLE PRECISION
 );
 
 CREATE TABLE IF NOT EXISTS comparison_file (

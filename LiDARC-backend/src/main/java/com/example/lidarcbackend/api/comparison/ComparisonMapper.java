@@ -33,6 +33,11 @@ public class ComparisonMapper {
         dto.setGrid(grid);
         dto.setResultBucket(entity.getResultBucket());
         dto.setResultObjectKey(entity.getResultObjectKey());
+        dto.setPointFilterLowerBound(entity.getPointFilterLowerBound());
+
+        dto.setPointFilterUpperBound(entity.getPointFilterUpperBound());
+        dto.setNeedPointFilter(entity.getNeedPointFilter());
+        dto.setOutlierDeviationFactor(entity.getOutlierDeviationFactor());
         return dto;
     }
     public Comparison toEntityFromRequest(CreateComparisonRequest request) {
@@ -53,6 +58,10 @@ public class ComparisonMapper {
         newComparison.setGridMinY(request.getGrid().getyMin());
         newComparison.setGridMaxX(request.getGrid().getxMax());
         newComparison.setGridMaxY(request.getGrid().getyMax());
+        newComparison.setPointFilterLowerBound(request.getPointFilterLowerBound());
+        newComparison.setPointFilterUpperBound(request.getPointFilterUpperBound());
+        newComparison.setNeedPointFilter(request.getNeedPointFilter());
+        newComparison.setOutlierDeviationFactor(request.getOutlierDeviationFactor());
         return newComparison;
     }
 }
