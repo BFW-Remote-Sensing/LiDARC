@@ -344,7 +344,8 @@ def chunking_func(cells_matrix: Matrix, chunk_size: int) -> List[Cell]:
         for out_c in range(out_cols):
             bc = out_c * chunk_size  # Startcol im Original
 
-
+            sum_a = 0.0
+            sum_b = 0.0
             sum_p_a = 0.0
             sum_p_b = 0.0
             count = 0
