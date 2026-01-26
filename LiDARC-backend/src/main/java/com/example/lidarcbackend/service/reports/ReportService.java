@@ -156,7 +156,7 @@ public class ReportService implements IReportService {
     private Document assembleReport(CreateReportDto reportDto, MultipartFile[] files, Document document) throws IOException {
         //TODO: Delete / make debug
         log.info("Assembling report with: {}", reportDto);
-        List<ReportComponentDto> components = reportDto.getComponents();
+        List<ReportComponentDto> components = new ArrayList<>(reportDto.getComponents());
         Map<String, byte[]> fileToComponent = new HashMap<>();
 
         if (files != null) {
@@ -165,7 +165,7 @@ public class ReportService implements IReportService {
             }
         }
         try {
-            if (components != null && !components.isEmpty()) {
+            if (!components.isEmpty()) {
                 document.newPage();
                 Font chapterFont = new Font(Font.FontFamily.HELVETICA, 16, Font.BOLD, BaseColor.DARK_GRAY);
                 Paragraph chapterTitle = new Paragraph("Visualizations", chapterFont);
@@ -174,18 +174,15 @@ public class ReportService implements IReportService {
 
                 document.add(chapterTitle);
             }
+
             for (ReportComponentDto component : components) {
                 IReportComponent componentInstance = reportComponentFactory.getReportComponent(String.valueOf(component.getType()));
+
                 if (componentInstance == null) {
                     log.warn("Called Report generation with report type that does not exist: {}", component.getType());
                     continue;
                 }
-                if (component.getFileName() != null && !component.getFileName().isBlank()
-                    && !fileToComponent.isEmpty() && fileToComponent.containsKey(component.getFileName())) {
-                    document = componentInstance.render(document, fileToComponent.get(component.getFileName()));
-                } else {
-                    document = componentInstance.render(document);
-                }
+                document = componentInstance.render(document, component, fileToComponent);
                 document.add(new Paragraph("\n"));
             }
             document.close();

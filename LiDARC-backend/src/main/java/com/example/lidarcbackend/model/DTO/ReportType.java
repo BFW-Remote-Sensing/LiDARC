@@ -6,5 +6,6 @@ public enum ReportType {
     BOXPLOT,
     DISTRIBUTION,
     HISTO,
-    SCATTER
+    SCATTER,
+    SIDE_BY_SIDE
 }

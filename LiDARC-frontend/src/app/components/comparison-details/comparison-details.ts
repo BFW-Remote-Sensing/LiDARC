@@ -457,12 +457,23 @@ export class ComparisonDetails implements OnInit {
   createReport(): void {
     const chartImages: ChartData[] = [];
     if (this.heatmapComponent) {
-      if (this.heatmapComponent.chartInstance1) {
+      if (this.heatmapComponent.chartInstance1 && this.heatmapComponent.chartInstance2) {
         //TODO: Choose a better fiting name && See if we can make them more interactive / important for the report? Currently flat image of vis.
+        this.pushSideBySideImages(
+          chartImages,
+          this.heatmapComponent.chartInstance1,
+          this.heatmapComponent.chartInstance2,
+          'Vegetation Heatmap Comparison',
+          ['heatmap_left.png', 'heatmap_right.png'],
+          ReportType.SIDE_BY_SIDE
+        );
+      } else if (this.heatmapComponent.chartInstance1) {
         this.pushChartImage(chartImages, this.heatmapComponent.chartInstance1, 'Vegetation Heatmap Left', 'heatmap_left.png', ReportType.HEATMAP)
-      }
-      if (this.heatmapComponent.chartInstance2) {
+      } else if (this.heatmapComponent.chartInstance2) {
         this.pushChartImage(chartImages, this.heatmapComponent.chartInstance2, 'Vegetation Heatmap Right', 'heatmap_right.png', ReportType.HEATMAP)
+      }
+      if (this.heatmapComponent.differenceInstance) {
+        this.pushChartImage(chartImages, this.heatmapComponent.differenceInstance, 'Heatmap Diff', 'heatmap_diff.png', ReportType.HEATMAP)
       }
     }
     const chartsToExport = [
@@ -522,12 +533,38 @@ export class ComparisonDetails implements OnInit {
         name: name,
         fileName: fileName,
         type: type,
-        blob: this.dataURItoBlob(dataUrl)
+        files: [{fileName: fileName, blob: this.dataURItoBlob(dataUrl)}]
       });
     } catch (error) {
       //TODO: Add some error handling -> Check this
       //this.errorMessage.set(`Failed to export image for ${name}`)
       console.error(`Failed to export image for ${name}`, error);
+    }
+  }
+
+  private pushSideBySideImages(array: ChartData[], instanceLeft: any, instanceRight: any, title: string, fileNames: [string, string], type: ReportType) {
+    try {
+      if (!instanceLeft || !instanceRight) return;
+      const urlLeft = instanceLeft.getDataURL({
+        type: 'png', pixelRatio: 2, backgroundColor: '#fff', excludeComponents: ['toolbox']
+      });
+      const blobLeft = this.dataURItoBlob(urlLeft);
+      const urlRight = instanceRight.getDataURL({
+        type: 'png', pixelRatio: 2, backgroundColor: '#fff', excludeComponents: ['toolbox']
+      });
+      const blobRight = this.dataURItoBlob(urlRight);
+      const jointFileName = fileNames.join(';');
+      array.push({
+        name: title,
+        fileName: jointFileName,
+        type: type,
+        files: [
+          {fileName: fileNames[0], blob: blobLeft},
+          {fileName: fileNames[1], blob: blobRight}
+        ]
+      });
+    } catch (error) {
+      console.error(`Failed to export side-by-side images for ${title}`, error);
     }
   }
 

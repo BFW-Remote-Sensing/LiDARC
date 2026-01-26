@@ -16,4 +16,5 @@ public class ReportComponentDto {
     @NotBlank
     private ReportType type; //"heatmap_single"
     private String fileName; //"img.png -> echarts .getImage?"
+    private String title;
 }

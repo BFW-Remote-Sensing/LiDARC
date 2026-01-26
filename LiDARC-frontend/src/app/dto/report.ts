@@ -12,12 +12,16 @@ export interface ChartData {
   name: string,
   fileName: string,
   type?: ReportType,
-  blob: Blob
+  files: {
+    fileName: string;
+    blob: Blob
+  }[];
 }
 
 export enum ReportType {
   SIMPLE = "SIMPLE",
   HEATMAP = "HEATMAP",
+  SIDE_BY_SIDE = "SIDE_BY_SIDE",
   BOXPLOT = "BOXPLOT",
   DISTRIBUTION = "DISTRIBUTION",
   HISTO = "HISTO",

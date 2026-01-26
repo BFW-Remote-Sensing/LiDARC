@@ -64,10 +64,16 @@ export class ReportCreationDialogComponent {
     this.isProcessing = true;
     this.report.components = this.selectedCharts.map(chart => ({
       type: chart.type ? chart.type : ReportType.SIMPLE,
-      fileName: chart.fileName
+      fileName: chart.fileName,
+      title: chart.name
     }));
-    const filesToSend: File[] = this.selectedCharts.map(chart => {
-      return new File([chart.blob], chart.fileName, {type: 'image/png'});
+    const filesToSend: File[] = [];
+    this.selectedCharts.forEach(chart => {
+      if (chart.files && chart.files.length > 0) {
+        chart.files.forEach(f => {
+          filesToSend.push(new File([f.blob], f.fileName, {type: 'image/png'}));
+        });
+      }
     });
 
     this.comparisonService.createReport(this.data.comparison.id, this.report, filesToSend)
