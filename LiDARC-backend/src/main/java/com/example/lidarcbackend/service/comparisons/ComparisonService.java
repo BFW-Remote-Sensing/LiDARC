@@ -292,21 +292,23 @@ public class ComparisonService implements IComparisonService {
                         .bboxes(validRegions)
                         .comparisonId(savedComparison.getId())
                         .file(new MinioObjectDto("basebucket", fileEntity.getFilename()))
-                        .fileId(fileEntity.getId());
-
-                if(savedComparison.getIndividualStatisticsPercentile() != null) {
-                    builder.individualPercentile(savedComparison.getIndividualStatisticsPercentile());
-                }
-                StartPreProcessJobDto jobDto = builder.outlierDetectionEnabled(outlierDetectionEnabled)
+                        .fileId(fileEntity.getId())
+                        .outlierDetectionEnabled(outlierDetectionEnabled)
                         .outlierDeviationFactor(outlierDeviationFactor)
                         .pointFilterEnabled(Boolean.TRUE.equals(needPointFilter))
                         .build();
-if (pointFilterLowerBound != null) {
-                  jobDto.setPointFilterLowerBound(pointFilterLowerBound);
+
+                if(savedComparison.getIndividualStatisticsPercentile() != null) {
+                    jobDto.setIndividualPercentile(savedComparison.getIndividualStatisticsPercentile());
+                }
+
+                if (pointFilterLowerBound != null) {
+                    jobDto.setPointFilterLowerBound(pointFilterLowerBound);
                 }
                 if (pointFilterUpperBound != null) {
-                  jobDto.setPointFilterUpperBound(pointFilterUpperBound);
+                    jobDto.setPointFilterUpperBound(pointFilterUpperBound);
                 }
+
                 plan.addIncludedFile(cf, jobDto);
 
                 restrictedZones.add(snappedBox);
@@ -316,13 +318,13 @@ if (pointFilterLowerBound != null) {
                 TrackedJob trackedJob = new TrackedJob(
                         jobUuid,
                         JobType.PREPROCESSING,
-                        Map.of("comparisonId", comparisonId, "fileId", fileEntity.getId()),
+                        Map.of("comparisonId", savedComparison.getId(), "fileId", fileEntity.getId()),
                         Instant.now(),
                         Duration.ofMinutes(15)
                 );
                 jobTrackingService.registerJob(trackedJob);
 
-            } else {
+        } else {
                 cf.setIncluded(false);
                 cf.setStatus(ComparisonFile.Status.COMPLETED);
                 plan.addExcludedFile(cf);
@@ -514,8 +516,6 @@ if (pointFilterLowerBound != null) {
         if(payload.containsKey("statistics_p")) {
             visualizationResult.put("statistics_p", payload.get("statistics_p"));
         }
-        chunkedComparisonsStorage.put(comparisonId, visualizationResult);
-
         // Save to Redis cache with chunkSize
         chunkingCacheService.save(comparisonId, chunkSize, visualizationResult);
 

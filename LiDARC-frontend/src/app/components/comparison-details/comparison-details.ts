@@ -288,7 +288,7 @@ export class ComparisonDetails implements OnInit {
         next: (reports) => {
             this.reports.set(reports);
             this.checkIfMoreReportsExist(reports.length);
-            if (this.comparison?.individualStatisticsPercentile) {
+            if (this.comparison()!.individualStatisticsPercentile) {
               this.percentilesAvailable.set(true);
               this.showPercentiles.set(false);
             } else {

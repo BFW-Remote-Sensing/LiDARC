@@ -326,8 +326,8 @@ def create_result_df(precomp_grid, individual_percentile=None):
         "veg_height_outlier_count": precomp_grid["veg_height_outlier_count"][rows, cols],
         "veg_height_outlier_class7_count": precomp_grid["veg_height_outlier_class7_count"][rows, cols],
         "class7_count": precomp_grid["class7_count"][rows, cols],
-    })
     }
+
 
     if individual_percentile is not None:
         col_name = f"veg_height_p{individual_percentile}"
