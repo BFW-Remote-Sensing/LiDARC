@@ -502,6 +502,9 @@ export class ComparisonDetails implements OnInit {
   }
 
   createReport(): void {
+    // TODO move snapshot of heatmaps to last of charts
+    if (!this.heatmapComponent.showVisualMap) this.heatmapComponent.toggleVisualMap();
+    if (this.heatmapComponent.showZoom) this.heatmapComponent.toggleZoom();
     const chartImages: ChartData[] = [];
     if (this.heatmapComponent) {
       if (this.heatmapComponent.chartInstance1) {
@@ -510,6 +513,9 @@ export class ComparisonDetails implements OnInit {
       }
       if (this.heatmapComponent.chartInstance2) {
         this.pushChartImage(chartImages, this.heatmapComponent.chartInstance2, 'Vegetation Heatmap Right', 'heatmap_right.png')
+      }
+      if (this.heatmapComponent.differenceInstance){
+        this.pushChartImage(chartImages, this.heatmapComponent.differenceInstance, 'Vegetation Heatmap Difference', 'heatmap_difference.png')
       }
     }
     const chartsToExport = [

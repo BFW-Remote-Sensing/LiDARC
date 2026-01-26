@@ -159,7 +159,8 @@ export class Heatmap implements AfterViewInit, OnChanges {
 
 
     this.optionsLeft = this.createHeatmapOptionsWithoutDataset( this.groupMapping?.a ?? "SetA", true);
-    this.optionsRight = this.createHeatmapOptionsWithoutDataset( this.groupMapping?.b ?? "SetB", false);this.differenceOptions = this.createDeltaHeatmapOptions("Delta_z", true);
+    this.optionsRight = this.createHeatmapOptionsWithoutDataset( this.groupMapping?.b ?? "SetB", true);
+    this.differenceOptions = this.createDeltaHeatmapOptions("Delta_z", true);
 
     this.chartInstance1.setOption(this.optionsLeft);
     this.chartInstance2.setOption(this.optionsRight);
@@ -231,7 +232,7 @@ export class Heatmap implements AfterViewInit, OnChanges {
     const opt2 = {
       visualMap: [{
         ...this.BASE_VisualMap,
-        show: false, //we never want to show the legend for chart2
+        show: this.showVisualMap, //we never want to show the legend for chart2
         inRange: { color: colors }
       }]
     };
@@ -328,7 +329,7 @@ export class Heatmap implements AfterViewInit, OnChanges {
 
     if (this.showAB) {
       this.updateVisualMap(this.chartInstance1, this.showVisualMap, false);
-      //this.updateVisualMap(this.chartInstance2, this.showVisualMap, false);
+      this.updateVisualMap(this.chartInstance2, this.showVisualMap, false);
     }
     if (this.showD) {
       this.updateVisualMap(this.differenceInstance, this.showVisualMap, true);
@@ -338,9 +339,6 @@ export class Heatmap implements AfterViewInit, OnChanges {
   private applyZoomVisibility(): void {
     const show = this.showZoom;
 
-    // {type: 'slider', xAxisIndex: 0, bottom: 0, filterMode: 'none'},
-    // {type: 'slider', yAxisIndex: 0, orient: 'vertical', right: 0, filterMode: 'none'},
-
     const opt = {
       dataZoom: [
         { // x slider
@@ -349,7 +347,6 @@ export class Heatmap implements AfterViewInit, OnChanges {
           bottom: 0,
           filterMode: 'none',
           show,
-          //height: show ? 20 : 0
         },
         { // y slider
           type: 'slider',
@@ -358,7 +355,6 @@ export class Heatmap implements AfterViewInit, OnChanges {
           right: 0,
           filterMode: 'none',
           show,
-          //width: show ? 20 : 0
         }
       ]
     };
@@ -387,6 +383,7 @@ export class Heatmap implements AfterViewInit, OnChanges {
     this.groupMapping.b = this.data?.group_mapping.b ?? "SetB";
 
     this.rows = matrix.length;
+    //TODO check if we need to set this.cols even on max, as cols should all be same length
     this.cols = Math.max(...matrix.map(row => row.length));
     console.log(`Updating chart with dimensions: ${this.rows}x${this.cols}`);
 
@@ -790,7 +787,7 @@ export class Heatmap implements AfterViewInit, OnChanges {
       min: -10,
       max: 10,
       orient: 'vertical',
-      left: 0,
+      left: -10,
       top: "middle",
       calculable: true,
       dimension: 4,
