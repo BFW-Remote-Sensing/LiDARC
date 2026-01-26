@@ -421,7 +421,16 @@ export class Heatmap implements AfterViewInit, OnChanges {
         }
         const outA = cell.out_a ?? 0;
         const outB = cell.out_b ?? 0;
-        const delta_z = cell.delta_z ?? 0;
+        let delta_z = cell.delta_z ?? 0;
+        if (this.showPercentiles) {
+          const pKey = Object.keys(cell).find(
+            k => k.startsWith('veg_height_p') && k.endsWith('_a')
+          )?.replace('_a', '');
+
+          if (pKey && cell[`${pKey}_diff`] != null) {
+            delta_z = cell[`${pKey}_diff`];
+          }
+        }
         seriesDataA.push([x0, y0, x1, y1, valA, outA]);
         seriesDataB.push([x0, y0, x1, y1, valB, outB]);
         differenceData.push([x0, y0, x1, y1, delta_z]);
