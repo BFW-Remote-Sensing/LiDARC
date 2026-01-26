@@ -9,11 +9,16 @@ import pytest
 import json
 from pyproj import CRS
 from importlib.resources import files
+from unittest.mock import MagicMock
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../src"))
 
 # had to change to let src import work
 sys.path.insert(0, project_root)
+sys.path.insert(0, os.path.join(project_root, "visualization_chunking"))
+sys.path.insert(0, os.path.join(project_root, "preprocess"))
+sys.path.insert(0, os.path.join(project_root, "metadata"))
+sys.path.insert(0, os.path.join(project_root, "comparison"))
 
 def pytest_addoption(parser):
     parser.addoption(
@@ -45,6 +50,25 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "e2e" in item.keywords:
             item.add_marker(skip_it)
+
+@pytest.fixture(scope="session", autouse=True)
+def mock_redis(request):
+    """Mock redis for all tests to avoid connection errors, unless --e2e is passed."""
+    if request.config.getoption("--e2e"):
+        yield
+        return
+
+    with MagicMock() as mock:
+        # We need to mock redis.Redis and the get_redis_cache singleton if possible
+        # But mocking the environment variable REDIS_HOST usually helps too.
+        # For simplicity, we can let the real code try to connect if it wants,
+        # but if we are in unit tests, we should probably mock it.
+        try:
+            import redis
+            redis.Redis = MagicMock()
+        except ImportError:
+            pass
+        yield mock
 
 @pytest.fixture(scope="session")
 def load_fixture():

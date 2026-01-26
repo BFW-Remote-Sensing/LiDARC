@@ -25,7 +25,7 @@ public interface IComparisonService {
 
     void saveVisualizationComparison(Map<String, Object> result);
 
-    Optional<Object> pollVisualizationResults(Long comparisonId);
+    Optional<Object> pollVisualizationResults(Long comparisonId, int chunkSize);
 
     void processPreprocessingResult(Map<String, Object> result);
 

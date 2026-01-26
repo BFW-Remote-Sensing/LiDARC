@@ -15,6 +15,18 @@ spec:
       labels:
         app: backend
     spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h postgres -p 5432 -U admin; 
+              do echo "Waiting for postgres..."; sleep 2; done;
+          env:
+            - name: POSTGRES_USER
+              value: "admin"
       imagePullSecrets:
         - name: regcred
       enableServiceLinks: false
@@ -23,6 +35,10 @@ spec:
           image: backend:latest
           imagePullPolicy: IfNotPresent
           env:
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
             - name: POSTGRES_HOST
               value: "postgres"
             - name: POSTGRES_PASSWORD
