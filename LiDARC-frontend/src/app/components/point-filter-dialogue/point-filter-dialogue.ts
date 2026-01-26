@@ -74,12 +74,12 @@ export class PointFilterDialogue {
     }
 
     if (lower < 0 || lower > 100) {
-      this.errorMessage = 'Lower bound must be between 0 and 100';
+      this.errorMessage = 'Lower bound must be between 0.00 and 100.00';
       return false;
     }
 
     if (upper < 0 || upper > 100) {
-      this.errorMessage = 'Upper bound must be between 0 and 100';
+      this.errorMessage = 'Upper bound must be between 0.00 and 100.00';
       return false;
     }
 
@@ -104,8 +104,8 @@ export class PointFilterDialogue {
   onConfirm() {
     if (this.validateBounds()) {
       const result: PointFilterResult = {
-        lowerBound: Number(this.lowerBound),
-        upperBound: Number(this.upperBound)
+        lowerBound: Math.round(Number(this.lowerBound) * 100) / 100,
+        upperBound: Math.round(Number(this.upperBound) * 100) / 100
       };
       this.dialogRef.close(result);
     }

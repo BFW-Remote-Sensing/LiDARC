@@ -32,9 +32,9 @@ public class CreateComparisonRequest {
     private List<Long> folderAFiles;
     private List<Long> folderBFiles;
 
-    private Integer pointFilterLowerBound;
+    private Double pointFilterLowerBound;
 
-    private Integer pointFilterUpperBound;
+    private Double pointFilterUpperBound;
 
     private Boolean needPointFilter;
 

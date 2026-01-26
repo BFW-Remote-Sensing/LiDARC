@@ -75,10 +75,10 @@ public class Comparison {
     private Double gridMaxY;
 
     @Column(name = "point_filter_lower_bound")
-    private Integer pointFilterLowerBound;
+    private Double pointFilterLowerBound;
 
     @Column(name = "point_filter_upper_bound")
-    private Integer pointFilterUpperBound;
+    private Double pointFilterUpperBound;
 
     @Column(name = "need_point_filter")
     private Boolean needPointFilter;

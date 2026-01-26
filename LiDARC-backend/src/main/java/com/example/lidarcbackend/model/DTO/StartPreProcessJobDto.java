@@ -19,8 +19,8 @@ public class StartPreProcessJobDto {
     private List<BoundingBox> bboxes;
     private Long comparisonId;
     private Long fileId;
-    private Integer pointFilterLowerBound;
-    private Integer pointFilterUpperBound;
+    private Double pointFilterLowerBound;
+    private Double pointFilterUpperBound;
     private Boolean pointFilterEnabled;
     private Boolean outlierDetectionEnabled;
     private Double outlierDeviationFactor;

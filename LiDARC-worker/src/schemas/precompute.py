@@ -51,12 +51,12 @@ schema = {
             "minimum": 1
         },
         "pointFilterLowerBound": {
-            "type": ["integer", "null"],
+            "type": ["number", "null"],
             "minimum": 0,
             "maximum": 100
         },
         "pointFilterUpperBound": {
-            "type": ["integer", "null"],
+            "type": ["number", "null"],
             "minimum": 0,
             "maximum": 100
         },

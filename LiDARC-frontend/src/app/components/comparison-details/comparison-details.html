@@ -223,14 +223,14 @@
         <h4>
           Lower Bound:
           <span class="coordinate">
-            {{ comparison()!.pointFilterLowerBound != null ? comparison()!.pointFilterLowerBound : 0 }}%
+            {{ comparison()!.pointFilterLowerBound != null ? comparison()!.pointFilterLowerBound!.toFixed(2) : '0.00' }}%
           </span>
         </h4>
         <mat-icon>east</mat-icon>
         <h4>
           Upper Bound:
           <span class="coordinate">
-            {{ comparison()!.pointFilterUpperBound != null ? comparison()!.pointFilterUpperBound : 100 }}%
+            {{ comparison()!.pointFilterUpperBound != null ? comparison()!.pointFilterUpperBound!.toFixed(2) : '100.00' }}%
           </span>
         </h4>
       </div>
@@ -238,7 +238,7 @@
       comparison()!.pointFilterUpperBound != null && comparison()!.pointFilterUpperBound !== 100) {
       <div style="padding: 8px 0; font-size: 0.9em; color: #666;">
         <mat-icon style="font-size: 16px; vertical-align: middle; margin-right: 4px;">info</mat-icon>
-        Points filtered to {{ comparison()!.pointFilterLowerBound ?? 0 }}th-{{ comparison()!.pointFilterUpperBound ?? 100 }}th
+        Points filtered to {{ (comparison()!.pointFilterLowerBound ?? 0).toFixed(2) }}th-{{ (comparison()!.pointFilterUpperBound ?? 100).toFixed(2) }}th
         percentile based on vegetation height
       </div>
       }

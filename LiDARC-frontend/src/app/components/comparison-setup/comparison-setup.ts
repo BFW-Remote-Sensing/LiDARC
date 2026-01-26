@@ -354,7 +354,7 @@ export class ComparisonSetup {
   openPointFilterDialog(): void {
     const data: PointFilterDialogData = {
       title: 'Configure Point Filter',
-      subtitle: 'Specify lower and upper bounds (0-100) to filter points by percentile. Everything under lower bound and over upper bound will be excluded from calculations.',
+      subtitle: 'Specify lower and upper bounds (0.00-100.00) to filter points by percentile. Everything under lower bound and over upper bound will be excluded from calculations.',
       primaryButtonText: 'Apply',
       secondaryButtonText: 'Cancel',
       initialLowerBound: this.comparison.pointFilterLowerBound,
