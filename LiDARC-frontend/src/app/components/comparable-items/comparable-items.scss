@@ -1,23 +1,8 @@
-/* In your component's CSS/SCSS file */
-
-.status-default {
-    color: black;
-    /* Default text color */
-    font-weight: bold;
-}
-
-/* Status: Ready */
-.status-ready {
-    color: green;
-    font-weight: bold;
-    /* Optional: adds emphasis */
-}
-
-/* Status: Error */
-.status-error {
-    color: red;
-    font-weight: bold;
-    /* Optional: adds emphasis */
+::ng-deep .mat-mdc-tooltip .mdc-tooltip__surface {
+    max-width: 400px !important;
+    white-space: pre-line !important;
+    word-break: break-word;
+    padding: 8px 12px;
 }
 
 .upper-section {

@@ -5,6 +5,7 @@ import java.util.Map;
 import com.example.lidarcbackend.api.folder.dtos.CreateFolderDTO;
 import com.example.lidarcbackend.api.folder.dtos.FolderDTO;
 import com.example.lidarcbackend.api.metadata.dtos.FolderFilesDTO;
+import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.model.DTO.CreateEmptyFolderDto;
 import com.example.lidarcbackend.model.DTO.EmptyFolderDto;
 import com.example.lidarcbackend.model.DTO.StatusOfUploadedFolderDto;
@@ -23,4 +24,6 @@ public interface IFolderService {
   EmptyFolderDto createFolderEmpty(CreateEmptyFolderDto emptyDto);
 
   UploadedFolderDto folderUploaded(StatusOfUploadedFolderDto folderDto);
+
+  void deleteFolder(Long id) throws NotFoundException;
 }

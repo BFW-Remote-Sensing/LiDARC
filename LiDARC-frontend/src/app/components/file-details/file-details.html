@@ -9,12 +9,12 @@
 @else if (errorMessage()) {
 <app-text-card type="error" message="{{ errorMessage() }}"></app-text-card>
 }
-@else if(metadata) {
+@else if(metadata()) {
 <div class="file-details-container">
 
     <header class="metadata-header mat-elevation-z2">
         <mat-icon class="header-icon">description</mat-icon>
-        <h1>File Details: {{ metadata.originalFilename }}</h1>
+        <h1>File Details: {{ metadata()!.originalFilename }} {{metadata()!.active ? '' : '(Archived)'}} </h1>
     </header>
 
     <div class="content-wrapper">
@@ -29,9 +29,21 @@
                         <span>
                             Status
                         </span>
-                        <span>
-                            {{ metadata.status | titlecase }}
-                        </span>
+                        <div class="status-column">
+                            <span [ngClass]="{
+        'status-ready': metadata()!.status === 'PROCESSED',
+        'status-error': metadata()!.status === 'FAILED',
+        'status-default': ['UPLOADED', 'PROCESSING', 'UPLOADING'].includes(metadata()!.status)
+    }">{{ metadata()!.status | titlecase }}</span>
+                            @if (['UPLOADED', 'PROCESSING', 'UPLOADING'].includes(metadata()!.status)) {
+                            <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+                            }
+                            @else if (metadata()!.status === 'FAILED') {
+                            <mat-icon [matTooltip]="metadata()!.errorMessage" matTooltipPosition="above">
+                                error
+                            </mat-icon>
+                            }
+                        </div>
                     </div>
                 </mat-list-item>
                 <mat-divider></mat-divider>
@@ -43,7 +55,7 @@
                             Size
                         </span>
                         <span>
-                            {{ metadata.sizeBytes | formatBytes }}
+                            {{ metadata()!.sizeBytes | formatBytes }}
                         </span>
                     </div>
                 </mat-list-item>
@@ -56,7 +68,7 @@
                             Point Count
                         </span>
                         <span>
-                            {{ metadata.pointCount ?? 'N/A' }}
+                            {{ metadata()!.pointCount ?? 'N/A' }}
                         </span>
                     </div>
                 </mat-list-item>
@@ -69,7 +81,7 @@
                             Capture Year
                         </span>
                         <span>
-                            {{ metadata.captureYear ?? 'N/A' }}
+                            {{ metadata()!.captureYear ?? 'N/A' }}
                         </span>
                     </div>
                 </mat-list-item>
@@ -82,7 +94,7 @@
                             Uploaded At
                         </span>
                         <span>
-                            {{ metadata.uploadedAt ? (metadata.uploadedAt | date:'medium') : 'N/A' }}
+                            {{ metadata()?.uploadedAt ? (metadata()!.uploadedAt | date: 'MMM d, y, HH:mm') : 'N/A' }}
                         </span>
                     </div>
                 </mat-list-item>
@@ -95,7 +107,8 @@
                             File Created At
                         </span>
                         <span>
-                            {{ metadata.fileCreationDate ? (metadata.fileCreationDate | date:'medium') : 'N/A' }}
+                            {{ metadata()?.fileCreationDate ? (metadata()!.fileCreationDate | date: 'MMM d, y, HH:mm') :
+                            'N/A' }}
                         </span>
                     </div>
                 </mat-list-item>
@@ -109,7 +122,7 @@
                         Capture Software
                     </span>
                     <span>
-                        {{ metadata.captureSoftware ?? 'N/A' }}
+                        {{ metadata()?.captureSoftware ?? 'N/A' }}
                     </span>
                 </div>
             </mat-list-item>
@@ -122,7 +135,7 @@
                         Las Version
                     </span>
                     <span>
-                        {{ metadata.lasVersion ?? 'N/A' }}
+                        {{ metadata()?.lasVersion ?? 'N/A' }}
                     </span>
                 </div>
             </mat-list-item>
@@ -135,7 +148,7 @@
                         System Identifier
                     </span>
                     <span>
-                        {{ metadata.systemIdentifier ?? 'N/A' }}
+                        {{ metadata()?.systemIdentifier ?? 'N/A' }}
                     </span>
                 </div>
             </mat-list-item>
@@ -153,21 +166,21 @@
                     <h4>
                         X<sub style="font-size: 0.6em;">min</sub>:
                         <span class="coordinate">
-                            {{ metadata.minX != null ? (metadata.minX | number:'1.2-6') : 'N/A' }}
+                            {{ metadata()?.minX != null ? (metadata()!.minX | number:'1.2-6') : 'N/A' }}
                         </span>
                     </h4>
                     <mat-divider></mat-divider>
                     <h4>
                         Y<sub style="font-size: 0.6em;">min</sub>:
                         <span class="coordinate">
-                            {{ metadata.minY != null ? (metadata.minY | number:'1.2-6') : 'N/A' }}
+                            {{ metadata()?.minY != null ? (metadata()!.minY | number:'1.2-6') : 'N/A' }}
                         </span>
                     </h4>
                     <mat-divider></mat-divider>
                     <h4>
                         Z<sub style="font-size: 0.6em;">min</sub>:
                         <span class="coordinate">
-                            {{ metadata.minZ != null ? (metadata.minZ | number:'1.2-6') : 'N/A' }}
+                            {{ metadata()?.minZ != null ? (metadata()!.minZ | number:'1.2-6') : 'N/A' }}
                         </span>
                     </h4>
                 </div>
@@ -178,26 +191,35 @@
                     <h4>
                         X<sub style="font-size: 0.6em;">max</sub>:
                         <span class="coordinate">
-                            {{ metadata.maxX != null ? (metadata.maxX | number:'1.2-6') : 'N/A' }}
+                            {{ metadata()?.maxX != null ? (metadata()!.maxX | number:'1.2-6') : 'N/A' }}
                         </span>
                     </h4>
                     <mat-divider></mat-divider>
                     <h4>
                         Y<sub style="font-size: 0.6em;">max</sub>:
                         <span class="coordinate">
-                            {{ metadata.maxY != null ? (metadata.maxY | number:'1.2-6') : 'N/A' }}
+                            {{ metadata()?.maxY != null ? (metadata()!.maxY | number:'1.2-6') : 'N/A' }}
                         </span>
                     </h4>
                     <mat-divider></mat-divider>
                     <h4>
                         Z<sub style="font-size: 0.6em;">max</sub>:
                         <span class="coordinate">
-                            {{ metadata.maxZ != null ? (metadata.maxZ | number:'1.2-6') : 'N/A' }}
+                            {{ metadata()?.maxZ != null ? (metadata()!.maxZ | number:'1.2-6') : 'N/A' }}
                         </span>
                     </h4>
                 </div>
             </div>
         </section>
     </div>
+    @if ((metadata()!.status === 'PROCESSED' || metadata()!.status === 'FAILED') && metadata()!.active)
+    {
+    <div class="delete-button-container">
+        <button matButton="filled" color="warn" (click)="onDeleteFile()">
+            <mat-icon>delete</mat-icon>
+            Delete File
+        </button>
+    </div>
+    }
 </div>
 }

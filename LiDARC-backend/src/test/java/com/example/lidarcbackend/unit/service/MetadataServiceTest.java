@@ -82,7 +82,7 @@ public class MetadataServiceTest {
         return Map.of(
                 "status", "success",
                 "job_id", "job-123",
-                "payload", Map.of("metadata", metadata)
+                "payload", Map.of("metadata", metadata, "file_name","graz2021_block6_060_065_elv.las")
         );
     }
 
@@ -114,7 +114,7 @@ public class MetadataServiceTest {
     void processMetadata_missingJobId_shouldNotSave() {
         Map<String, Object> result = Map.of(
                 "status", "success",
-                "payload", Map.of("metadata", validMetadata(null))
+                "payload", Map.of("metadata", validMetadata(null), "file_name", "graz2021_block6_060_065_elv.las")
         );
 
         metadataService.processMetadata(result);
@@ -124,10 +124,17 @@ public class MetadataServiceTest {
 
     @Test
     void processMetadata_metadataWithoutExistingFile_shouldSkipSave() {
-        when(fileRepository.findFileByFilename(any()))
+        when(fileRepository.findFileByFilename("unknown.las"))
                 .thenReturn(Optional.empty());
 
-        metadataService.processMetadata(successResult(validMetadata(null)));
+        metadataService.processMetadata(Map.of(
+                "status", "success",
+                "job_id", "job-123",
+                "payload", Map.of(
+                        "metadata", validMetadata(Map.of("filename", "unknown.las")),
+                        "file_name", "unknown.las"
+                        )
+                ));
 
         verify(fileRepository, never()).save(any());
     }
@@ -184,12 +191,16 @@ public class MetadataServiceTest {
         Map<String, Object> result = Map.of(
                 "status", "error",
                 "job_id", "job-123",
-                "payload", Map.of("msg", "worker failed")
+                "payload", Map.of("msg", "worker failed", "file_name", "graz2021_block6_060_065_elv.las")
         );
 
         metadataService.processMetadata(result);
+        ArgumentCaptor<File> captor = ArgumentCaptor.forClass(File.class);
+        verify(fileRepository).save(captor.capture());
 
-        verify(fileRepository, never()).save(any());
+        File saved = captor.getValue();
+        assertEquals("graz2021_block6_060_065_elv.las", saved.getFilename());
+        assertEquals("worker failed", saved.getErrorMsg());
     }
 
 }

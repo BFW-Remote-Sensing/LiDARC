@@ -1,6 +1,6 @@
-import { HttpClient } from "@angular/common/http";
+import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Observable } from "rxjs";
+import { catchError, Observable, throwError } from "rxjs";
 import { Globals, defaultFolderPath, headers } from "../globals/globals";
 import { FolderFilesDTO } from "../dto/folderFiles";
 import { CreateFolderDTO } from "../dto/createFolder";
@@ -23,9 +23,9 @@ export class FolderService {
         );
     }
 
-    getFolders(): Observable<FolderDTO[]> {
+    getFoldersWithoutComparison(): Observable<FolderDTO[]> {
         return this.httpClient.get<FolderDTO[]>(
-            this.globals.backendUri + defaultFolderPath + '/all',
+            this.globals.backendUri + defaultFolderPath + '/actives-without-comparison',
             { headers }
         );
     }
@@ -35,6 +35,27 @@ export class FolderService {
             this.globals.backendUri + defaultFolderPath,
             newFolder,
             { headers }
+        );
+    }
+
+    deleteFolderById(id: number): Observable<void> {
+        return this.httpClient.delete<void>(
+            this.globals.backendUri + defaultFolderPath + `/${id}`,
+            { headers }
+        ).pipe(
+            catchError((error: HttpErrorResponse) => {
+                console.error('Captured error:', error);
+
+                let errorMessage = 'An error occurred while deleting the folder.';
+
+                if (error.error && typeof error.error.message === 'string') {
+                    errorMessage = error.error.message;
+                } else if (typeof error.error === 'string') {
+                    errorMessage = error.error;
+                }
+
+                return throwError(() => new Error(errorMessage));
+            })
         );
     }
 }
