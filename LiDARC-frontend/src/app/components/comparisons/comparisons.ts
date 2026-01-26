@@ -43,7 +43,7 @@ import { StatusService } from '../../service/status.service';
   styleUrls: ['./comparisons.scss', '../stored-files/stored-files.scss'],
 })
 export class Comparisons {
-  displayedColumns: string[] = ['name', 'status', 'filesLength',  'outlierDetection',  'resultReportUrl', 'createdAt', 'actions'];
+  displayedColumns: string[] = ['name', 'status', 'filesLength',  'outlierDetection',  'resultReportUrl','individualStatisticsPercentile', 'createdAt', 'actions'];
   dataSource = new MatTableDataSource<ComparisonDTO>([]);
   private readonly comparisonService = inject(ComparisonService);
   public loading: WritableSignal<boolean> = signal(true);

@@ -17,6 +17,9 @@ public class CreateComparisonRequest {
 
     private Boolean needOutlierDetection;
 
+
+    private Double individualStatisticsPercentile;
+
     private Long folderAId;
 
     private Long folderBId;

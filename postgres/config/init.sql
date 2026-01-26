@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS comparisons (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name TEXT NOT NULL,
     need_outlier_detection BOOLEAN DEFAULT FALSE,
+    individual_statistics_percentile DOUBLE PRECISION,
     created_at TIMESTAMP,
     status VARCHAR(32) NOT NULL DEFAULT 'PREPROCESSING' CHECK (status in ('PREPROCESSING', 'COMPARING', 'COMPLETED', 'FAILED')),
     error_message TEXT,

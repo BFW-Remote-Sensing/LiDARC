@@ -4,6 +4,7 @@ import {FolderDTO} from "./folder";
 export type CreateComparison = {
     name: string;
     needOutlierDetection: boolean;
+    individualStatisticsPercentile: number | null;
     folderAId?: number;
     folderBId?: number;
     folderAFiles: number[];

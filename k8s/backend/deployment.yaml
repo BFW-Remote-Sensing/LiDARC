@@ -17,16 +17,21 @@ spec:
     spec:
       initContainers:
         - name: wait-for-postgres
-          image: postgres:16-alpine
+          image: postgres:latest
           command:
             - sh
             - -c
             - |
-              until pg_isready -h postgres -p 5432 -U admin; 
+              until PGPASSWORD=$POSTGRES_PASSWORD pg_isready -h postgres -p 5432 -U admin; 
               do echo "Waiting for postgres..."; sleep 2; done;
           env:
             - name: POSTGRES_USER
               value: "admin"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets
+                  key: postgres-password
       imagePullSecrets:
         - name: regcred
       enableServiceLinks: false

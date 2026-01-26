@@ -27,6 +27,9 @@ public class Comparison {
     private Boolean needOutlierDetection;
 
 
+    @Column(name = "individual_statistics_percentile")
+    private Double individualStatisticsPercentile;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

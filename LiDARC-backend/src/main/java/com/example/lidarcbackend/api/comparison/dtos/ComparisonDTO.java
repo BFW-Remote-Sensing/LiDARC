@@ -17,6 +17,8 @@ public class ComparisonDTO {
 
     private Boolean needOutlierDetection;
 
+    private Double individualStatisticsPercentile;
+
     private LocalDateTime createdAt;
 
     private String status;

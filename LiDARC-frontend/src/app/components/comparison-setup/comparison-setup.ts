@@ -72,6 +72,7 @@ export class ComparisonSetup {
   @Input() comparison: CreateComparison = {
     name: '',
     needOutlierDetection: false,
+    individualStatisticsPercentile: null,
     folderAFiles: [],
     folderBFiles: [],
     grid: null,
@@ -133,6 +134,23 @@ export class ComparisonSetup {
       }
     }
     return needed;
+  }
+
+  onIndividualPercentileToggle(checked: boolean): void {
+    if (checked) {
+      this.comparison.individualStatisticsPercentile ??= 99;
+    } else {
+      this.comparison.individualStatisticsPercentile = null;
+    }
+  }
+
+  normalizePercentile(): void {
+    let value = this.comparison.individualStatisticsPercentile;
+    if (value == null) {
+      return;
+    }
+    value = Math.min(99.99, Math.max(0.01, value));
+    this.comparison.individualStatisticsPercentile = Math.round(value * 100) / 100;
   }
 
 

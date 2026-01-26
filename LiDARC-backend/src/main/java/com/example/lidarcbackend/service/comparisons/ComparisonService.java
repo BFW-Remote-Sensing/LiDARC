@@ -182,7 +182,7 @@ public class ComparisonService implements IComparisonService {
                 groupName = firstFile.getOriginalFilename();
             }
             fullPlan.merge(processFolderGroup(comparisonRequest.getFolderAFiles(), comparisonRequest.getGrid(),
-                    savedComparison.getId(), groupName, savedComparison.getPointFilterLowerBound(),
+                    savedComparison, groupName, savedComparison.getPointFilterLowerBound(),
                     savedComparison.getPointFilterUpperBound(), savedComparison.getNeedOutlierDetection(),
                     savedComparison.getOutlierDeviationFactor(), savedComparison.getNeedPointFilter()));
         }
@@ -197,12 +197,12 @@ public class ComparisonService implements IComparisonService {
                 groupName = firstFile.getOriginalFilename();
             }
             fullPlan.merge(processFolderGroup(comparisonRequest.getFolderBFiles(), comparisonRequest.getGrid(),
-                    savedComparison.getId(), groupName, savedComparison.getPointFilterLowerBound(),
+                    savedComparison, groupName, savedComparison.getPointFilterLowerBound(),
                     savedComparison.getPointFilterUpperBound(), savedComparison.getNeedOutlierDetection(),
                     savedComparison.getOutlierDeviationFactor(), savedComparison.getNeedPointFilter()));
         }
         if (fileMetadataIds != null && !fileMetadataIds.isEmpty()) {
-            fullPlan.merge(processFolderGroup(fileMetadataIds, comparisonRequest.getGrid(), savedComparison.getId(),
+            fullPlan.merge(processFolderGroup(fileMetadataIds, comparisonRequest.getGrid(), savedComparison,
                     "legacy", savedComparison.getPointFilterLowerBound(), savedComparison.getPointFilterUpperBound(),
                     savedComparison.getNeedOutlierDetection(), savedComparison.getOutlierDeviationFactor(),
                     savedComparison.getNeedPointFilter()));
@@ -250,7 +250,7 @@ public class ComparisonService implements IComparisonService {
         }
     }
 
-    private ComparisonPlan processFolderGroup(List<Long> fileIds, GridParameters grid, Long comparisonId,
+    private ComparisonPlan processFolderGroup(List<Long> fileIds, GridParameters grid, Comparison savedComparison,
             String groupName, Double pointFilterLowerBound, Double pointFilterUpperBound,
             Boolean outlierDetectionEnabled, Double outlierDeviationFactor, Boolean needPointFilter)
             throws NotFoundException {
@@ -278,7 +278,7 @@ public class ComparisonService implements IComparisonService {
             }
 
             ComparisonFile cf = new ComparisonFile();
-            cf.setComparisonId(comparisonId);
+            cf.setComparisonId(savedComparison.getId());
             cf.setFileId(fileEntity.getId());
             cf.setGroupName(groupName);
             cf.setStatus(ComparisonFile.Status.PREPROCESSING);
@@ -290,7 +290,7 @@ public class ComparisonService implements IComparisonService {
                         .jobId(uniqueJobId)
                         .grid(grid)
                         .bboxes(validRegions)
-                        .comparisonId(comparisonId)
+                        .comparisonId(savedComparison.getId())
                         .file(new MinioObjectDto("basebucket", fileEntity.getFilename()))
                         .fileId(fileEntity.getId())
                         .outlierDetectionEnabled(outlierDetectionEnabled)
@@ -298,11 +298,15 @@ public class ComparisonService implements IComparisonService {
                         .pointFilterEnabled(Boolean.TRUE.equals(needPointFilter))
                         .build();
 
+                if(savedComparison.getIndividualStatisticsPercentile() != null) {
+                    jobDto.setIndividualPercentile(savedComparison.getIndividualStatisticsPercentile());
+                }
+
                 if (pointFilterLowerBound != null) {
-                  jobDto.setPointFilterLowerBound(pointFilterLowerBound);
+                    jobDto.setPointFilterLowerBound(pointFilterLowerBound);
                 }
                 if (pointFilterUpperBound != null) {
-                  jobDto.setPointFilterUpperBound(pointFilterUpperBound);
+                    jobDto.setPointFilterUpperBound(pointFilterUpperBound);
                 }
 
                 plan.addIncludedFile(cf, jobDto);
@@ -314,13 +318,13 @@ public class ComparisonService implements IComparisonService {
                 TrackedJob trackedJob = new TrackedJob(
                         jobUuid,
                         JobType.PREPROCESSING,
-                        Map.of("comparisonId", comparisonId, "fileId", fileEntity.getId()),
+                        Map.of("comparisonId", savedComparison.getId(), "fileId", fileEntity.getId()),
                         Instant.now(),
                         Duration.ofMinutes(15)
                 );
                 jobTrackingService.registerJob(trackedJob);
 
-            } else {
+        } else {
                 cf.setIncluded(false);
                 cf.setStatus(ComparisonFile.Status.COMPLETED);
                 plan.addExcludedFile(cf);
@@ -509,7 +513,9 @@ public class ComparisonService implements IComparisonService {
         if (payload.containsKey("group_mapping")) {
             visualizationResult.put("group_mapping", payload.get("group_mapping"));
         }
-
+        if(payload.containsKey("statistics_p")) {
+            visualizationResult.put("statistics_p", payload.get("statistics_p"));
+        }
         // Save to Redis cache with chunkSize
         chunkingCacheService.save(comparisonId, chunkSize, visualizationResult);
 

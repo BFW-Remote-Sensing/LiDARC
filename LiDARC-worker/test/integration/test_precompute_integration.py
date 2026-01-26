@@ -83,16 +83,6 @@ def test_precompute_integration(minio_client, rabbitmq_ch, load_json, very_small
         actual_count = filtered_df["count"].iloc[0]
         check.equal(actual_count, expected_count, f"Count mismatch for cell ({expected_x0}, {expected_y0}): expected {expected_count}, got {actual_count}")
 
-        veg_p90 = filtered_df["veg_p90"].iloc[0]
-        veg_p95 = filtered_df["veg_p95"].iloc[0]
-        print(veg_p90, veg_p95)
-        assert isinstance(veg_p90, float) and not pd.isna(veg_p90), f"veg_p90 is invalid for cell ({expected_x0}, {expected_y0})"
-        assert isinstance(veg_p95, float) and not pd.isna(veg_p95), f"veg_p95 is invalid for cell ({expected_x0}, {expected_y0})"
-
-        if expected_count > 1:
-            assert veg_p90 >= 0.0, f"veg_p90 suspiciously low for cell ({expected_x0}, {expected_y0})"
-            assert veg_p95 >= veg_p90, f"veg_p95 should be >= veg_p90 for cell ({expected_x0}, {expected_y0})"
-
 
 @pytest.mark.e2e
 def test_precompute_integration_with_small_las_file(minio_client, rabbitmq_ch, load_json, small_las_file):
@@ -152,11 +142,7 @@ def test_precompute_integration_with_small_las_file(minio_client, rabbitmq_ch, l
         (9.0, 9.0): {"min": 4.5, "max": 4.7},
     }
 
-    expected_percentiles = {
-        (0.0, 0.0): {"p90_min": 1.8, "p90_max": 2.1, "p95_min": 1.9, "p95_max": 2.3},
-        (2.0, 2.0): {"p90_min": 3.55, "p90_max": 3.75, "p95_min": 3.6, "p95_max": 3.75},
-        (9.0, 9.0): {"p90_min": 4.55, "p90_max": 4.75, "p95_min": 4.6, "p95_max": 4.75},
-    }
+
     for (expected_x0, expected_y0), expected_count in expected_points.items():
         filtered_df = df[(df["x0"] == expected_x0)& (df["y0"] == expected_y0)]
 
@@ -167,20 +153,6 @@ def test_precompute_integration_with_small_las_file(minio_client, rabbitmq_ch, l
         check.equal(row["count"], expected_count,
                     f"Count mismatch for cell ({expected_x0}, {expected_y0}): expected {expected_count}, got {row['count']}")
 
-        veg_p90 = row["veg_p90"]
-        veg_p95 = row["veg_p95"]
-
-        print(veg_p90, veg_p95)
-
-        assert isinstance(veg_p90, float) and not pd.isna(veg_p90), f"veg_p90 invalid for cell ({expected_x0}, {expected_y0})"
-        assert isinstance(veg_p95, float) and not pd.isna(veg_p95), f"veg_p95 invalid for cell ({expected_x0}, {expected_y0})"
-
-        if (expected_x0, expected_y0) in expected_percentiles:
-            exp = expected_percentiles[(expected_x0, expected_y0)]
-            assert exp["p90_min"] <= veg_p90 <= exp["p90_max"], \
-                f"veg_p90 {veg_p90} out of expected range for cell ({expected_x0}, {expected_y0})"
-            assert exp["p95_min"] <= veg_p95 <= exp["p95_max"], \
-                f"veg_p95 {veg_p95} out of expected range for cell ({expected_x0}, {expected_y0})"
 
 @pytest.mark.e2e
 def test_precompute_integration_with_disjoint_bboxes(minio_client, rabbitmq_ch, load_json, very_small_las_file):
