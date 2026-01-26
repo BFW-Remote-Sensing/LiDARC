@@ -120,8 +120,12 @@ public class ComparisonController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteComparison(@PathVariable Long id) {
-        comparisonService.deleteComparisonById(id);
-        return ResponseEntity.noContent().build();
+        try {
+            comparisonService.deleteComparisonById(id);
+            return ResponseEntity.noContent().build();
+        } catch (NotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+        }
     }
 
     @GetMapping("/{id}/reports")

@@ -35,8 +35,10 @@ public class MetadataMapper {
         dto.setFileCreationDate(entity.getFileCreationDate());
         dto.setPointCount(entity.getPointCount());
         dto.setUploadedAt(entity.getUploadedAt());
-        dto.setStatus(entity.getStatus());
+        dto.setStatus(entity.getStatus().toString());
         dto.setFolderId(entity.getFolder() != null ? entity.getFolder().getId() : null);
+        dto.setErrorMessage(entity.getErrorMsg());
+        dto.setActive(entity.getActive());
 
         if (entity.getCoordinateSystem() != null) {
             String authority = entity.getCoordinateSystem().getAuthority();

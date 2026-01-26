@@ -1,15 +1,6 @@
 package com.example.lidarcbackend.model.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -17,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -86,8 +78,12 @@ public class File {
     @CreationTimestamp //TODO change this to the actual upload time when implementing uploadFinished
     private Instant uploadedAt;
 
-    @Column(name = "status")
-    private String status;
+    @Column(name = "status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private FileStatus status;
+
+    @Column(name = "error_msg")
+    private String errorMsg;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "folder_id")
@@ -95,6 +91,22 @@ public class File {
 
     @OneToMany(mappedBy = "file")
     private Set<Url> urls = new LinkedHashSet<>();
+
+    public enum FileStatus {
+        UPLOADING,
+        UPLOADED,
+        PROCESSING,
+        PROCESSED,
+        FAILED
+    }
+
+    @ColumnDefault("true")
+    @Column(name = "active")
+    private Boolean active;
+
+    public boolean isFinalized() {
+        return this.status == FileStatus.FAILED || this.status == FileStatus.PROCESSED;
+    }
 
     public File() {
 
