@@ -44,13 +44,23 @@ spec:
               subPath: postgres
           livenessProbe:
             exec:
-              command: [ "pg_isready", "-U", "admin", "-d", "postgres" ]
+              command:
+                - sh
+                - -c
+                - |
+                  # Check the 'admin' db, and use the password
+                  PGPASSWORD=$POSTGRES_PASSWORD pg_isready -U admin -d admin -h 127.0.0.1
             initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 5
+            failureThreshold: 5
           readinessProbe:
             exec:
-              command: [ "pg_isready", "-U", "admin", "-d", "postgres" ]
+              command:
+                - sh
+                - -c
+                - |
+                  PGPASSWORD=$POSTGRES_PASSWORD pg_isready -U admin -d admin -h 127.0.0.1
             initialDelaySeconds: 5
             periodSeconds: 5
       volumes:
