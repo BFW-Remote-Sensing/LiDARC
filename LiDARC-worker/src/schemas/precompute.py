@@ -56,12 +56,12 @@ schema = {
             "maximum": 99.99
         },
         "pointFilterLowerBound": {
-            "type": ["integer", "null"],
+            "type": ["number", "null"],
             "minimum": 0,
             "maximum": 100
         },
         "pointFilterUpperBound": {
-            "type": ["integer", "null"],
+            "type": ["number", "null"],
             "minimum": 0,
             "maximum": 100
         },

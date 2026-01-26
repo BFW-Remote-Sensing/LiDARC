@@ -71,10 +71,7 @@ import {finalize, Observable } from 'rxjs';import {MatSnackBar, MatSnackBarModul
 export class ComparisonSetup {
   @Input() comparison: CreateComparison = {
     name: '',
-    needHighestVegetation: false,
     needOutlierDetection: false,
-    needStatisticsOverScenery: false,
-    needMostDifferences: false,
     individualStatisticsPercentile: null,
     folderAFiles: [],
     folderBFiles: [],
@@ -159,14 +156,7 @@ export class ComparisonSetup {
 
   startComparisonDisabled(): boolean {
     return this.comparison.name.trim() === '' ||
-      this.comparison.grid === null ||
-      (
-        this.comparison.needHighestVegetation === false &&
-        this.comparison.needOutlierDetection === false &&
-        this.comparison.needStatisticsOverScenery === false &&
-        this.comparison.needPointFilter === false &&
-        this.comparison.needMostDifferences === false
-      );
+      this.comparison.grid === null;
   }
 
   ngOnInit(): void {
@@ -372,7 +362,7 @@ export class ComparisonSetup {
   openPointFilterDialog(): void {
     const data: PointFilterDialogData = {
       title: 'Configure Point Filter',
-      subtitle: 'Specify lower and upper bounds (0-100) to filter points by percentile. Everything under lower bound and over upper bound will be excluded from calculations.',
+      subtitle: 'Specify lower and upper bounds (0.00-100.00) to filter points by percentile. Everything under lower bound and over upper bound will be excluded from calculations.',
       primaryButtonText: 'Apply',
       secondaryButtonText: 'Cancel',
       initialLowerBound: this.comparison.pointFilterLowerBound,

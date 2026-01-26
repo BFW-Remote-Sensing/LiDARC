@@ -202,12 +202,6 @@
         <mat-label>Comparison Name</mat-label>
         <input matInput [(ngModel)]="comparison.name" [disabled]="loadingStart()" maxlength="60" />
       </mat-form-field>
-      <div>
-        <mat-checkbox [checked]="comparison.needHighestVegetation" [disabled]="loadingStart()"
-          (change)="comparison.needHighestVegetation = $event.checked">
-          Highest Vegetation
-        </mat-checkbox>
-      </div>
 
       <div class="outlier-detection-container">
         <mat-checkbox [checked]="comparison.needOutlierDetection" [disabled]="loadingStart()"
@@ -247,18 +241,6 @@
             </div>
           </div>
         }
-      </div>
-      <div>
-        <mat-checkbox [checked]="comparison.needStatisticsOverScenery" [disabled]="loadingStart()"
-          (change)="comparison.needStatisticsOverScenery = $event.checked">
-          Statistics over Scenery
-        </mat-checkbox>
-      </div>
-      <div>
-        <mat-checkbox [checked]="comparison.needMostDifferences" [disabled]="loadingStart()"
-          (change)="comparison.needMostDifferences = $event.checked">
-          Most Differences
-        </mat-checkbox>
       </div>
       <div>
         <mat-checkbox [checked]="comparison.individualStatisticsPercentile !== null" [disabled]="loadingStart()"
@@ -305,13 +287,13 @@
             <div class="filter-bound-item">
               <mat-icon class="bound-icon">vertical_align_bottom</mat-icon>
               <span class="bound-label">Lower Bound:</span>
-              <span class="bound-value">{{ comparison.pointFilterLowerBound }}%</span>
+              <span class="bound-value">{{ comparison.pointFilterLowerBound?.toFixed(2) }}%</span>
             </div>
             <mat-divider></mat-divider>
             <div class="filter-bound-item">
               <mat-icon class="bound-icon">vertical_align_top</mat-icon>
               <span class="bound-label">Upper Bound:</span>
-              <span class="bound-value">{{ comparison.pointFilterUpperBound }}%</span>
+              <span class="bound-value">{{ comparison.pointFilterUpperBound?.toFixed(2) }}%</span>
             </div>
           </div>
           } @else {

@@ -22,8 +22,8 @@ public class StartPreProcessJobDto {
     private Long comparisonId;
     private Long fileId;
     private Double individualPercentile;
-    private Integer pointFilterLowerBound;
-    private Integer pointFilterUpperBound;
+    private Double pointFilterLowerBound;
+    private Double pointFilterUpperBound;
     private Boolean pointFilterEnabled;
     private Boolean outlierDetectionEnabled;
     private Double outlierDeviationFactor;

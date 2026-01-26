@@ -170,7 +170,7 @@ export class UploadComponent implements OnInit, OnDestroy {
   private startUpload(fileUpload: UploadFile) {
     if (fileUpload.status === 'uploading') return;
 
-    this.uploadQueue.updateFile(fileUpload.id, {status: 'uploading', progress: 0});
+    this.uploadQueue.updateFile(fileUpload.id, { status: 'hashing', progress: 0 });
     this.cdr.detectChanges(); // ✓ Detect upload start
 
     const sub = this.uploadService
@@ -193,10 +193,10 @@ export class UploadComponent implements OnInit, OnDestroy {
   private handleUploadEvent(event: any, fileUpload: UploadFile) {
     if (event.type === HttpEventType.UploadProgress && event.total) {
       const progress = Math.round((100 * event.loaded) / event.total);
-      this.uploadQueue.updateFile(fileUpload.id, {progress});
+      this.uploadQueue.updateFile(fileUpload.id, { status: 'uploading', progress });
     } else if (event instanceof HttpResponse) {
       if (event.status === 200) {
-        this.uploadQueue.updateFile(fileUpload.id, {status: 'done', progress: 100});
+        this.uploadQueue.updateFile(fileUpload.id, { status: 'done', progress: 100 });
         this.cdr.detectChanges(); // ✓ Detect completion
 
         this.uploadService.onComplete?.(fileUpload.file, fileUpload.hash).subscribe({
@@ -204,15 +204,22 @@ export class UploadComponent implements OnInit, OnDestroy {
             console.log('Upload completed:', fileUpload.file.name);
             this.cdr.detectChanges(); // ✓ Detect completion callback
           },
-          error: () => {
-            console.error('Failed to notify backend');
-            this.uploadQueue.updateFile(fileUpload.id, {status: 'error'});
+          error: (err) => {
+            const statusCode = err?.status || 'Unknown';
+            const errorMsg = err?.error?.message || err?.message || 'Failed to notify backend';
+            console.error('Failed to notify backend:', err);
+            this.toastr.error(`${errorMsg} (Status: ${statusCode})`, `Backend Notification Failed: ${fileUpload.file.name}`);
+            this.uploadQueue.updateFile(fileUpload.id, { status: 'error' });
             this.cdr.detectChanges(); // ✓ Detect backend error
           }
         });
       } else {
-        this.toastr.error(`Upload failed: ${fileUpload.file.name}`);
-        this.uploadQueue.updateFile(fileUpload.id, {status: 'error'});
+        const statusText = event.statusText || 'Unknown Error';
+        this.toastr.error(
+          `${fileUpload.file.name} - ${statusText} (Status: ${event.status})`,
+          'Upload Failed'
+        );
+        this.uploadQueue.updateFile(fileUpload.id, { status: 'error' });
         this.cdr.detectChanges(); // ✓ Detect error status
       }
     }
@@ -220,8 +227,23 @@ export class UploadComponent implements OnInit, OnDestroy {
 
   private handleUploadError(_error: any, fileUpload: UploadFile) {
     console.error('handleUploadError called for file:', fileUpload.file.name, 'error:', _error);
-    this.toastr.error(`Could not upload: ${fileUpload.file.name}`);
-    this.uploadQueue.updateFile(fileUpload.id, {status: 'error', progress: 0});
+
+    // Extract status code and error details
+    const statusCode = _error?.status || _error?.statusCode || 'Unknown';
+    const statusText = _error?.statusText || '';
+    const errorMessage = _error?.error?.message || _error?.message || 'Upload failed';
+
+    // Build descriptive error message
+    let errorDetail = errorMessage;
+    if (statusText && statusText !== errorMessage) {
+      errorDetail += ` - ${statusText}`;
+    }
+
+    this.toastr.error(
+      `${fileUpload.file.name}: ${errorDetail} (Status: ${statusCode})`,
+      'Upload Error'
+    );
+    this.uploadQueue.updateFile(fileUpload.id, { status: 'error', progress: 0 });
     this.cdr.detectChanges(); // ✓ Detect error immediately
   }
 
