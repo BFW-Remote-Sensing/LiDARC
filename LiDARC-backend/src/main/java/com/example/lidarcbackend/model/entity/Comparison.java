@@ -34,6 +34,9 @@ public class Comparison {
     @Column(name = "need_most_differences")
     private Boolean needMostDifferences;
 
+    @Column(name = "individual_statistics_percentile")
+    private Double individualStatisticsPercentile;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
