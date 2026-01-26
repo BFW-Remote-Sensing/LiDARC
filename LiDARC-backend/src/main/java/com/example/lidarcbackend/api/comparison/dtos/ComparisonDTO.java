@@ -45,6 +45,14 @@ public class ComparisonDTO {
 
     private FolderDTO folderB;
 
+    private Integer pointFilterLowerBound;
+
+    private Integer pointFilterUpperBound;
+
+    private Boolean needPointFilter;
+
+    private Double outlierDeviationFactor;
+
     public ComparisonDTO() {
 
     }

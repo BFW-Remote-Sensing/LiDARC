@@ -1,5 +1,5 @@
-import { FileMetadataDTO } from "./fileMetadata";
-import { FolderDTO } from "./folder";
+import {FileMetadataDTO} from "./fileMetadata";
+import {FolderDTO} from "./folder";
 
 export type CreateComparison = {
     name: string;
@@ -13,6 +13,10 @@ export type CreateComparison = {
     folderAFiles: number[];
     folderBFiles: number[];
     grid: GridParameters | null;
+    pointFilterLowerBound?: number | null;
+    pointFilterUpperBound?: number | null;
+    needPointFilter?: boolean;
+    outlierDeviationFactor?: number;
 }
 
 export type GridParameters = {

@@ -2,23 +2,26 @@ import os
 import threading
 from multiprocessing.pool import job_counter
 
-import pytest
 import pika
-
-import preprocess.preprocess_worker as preprocess
-import metadata.metadata_worker as metadata
-from messaging.rabbit_config import get_rabbitmq_config
+import pytest
+from minio import Minio
 from testcontainers.minio import MinioContainer
 from testcontainers.rabbitmq import RabbitMqContainer
-from minio import Minio
+from testcontainers.redis import RedisContainer
+import redis
 
+import metadata.metadata_worker as metadata
+import preprocess.preprocess_worker as preprocess
+from messaging.rabbit_config import get_rabbitmq_config
 from messaging.rabbit_connect import create_rabbit_con_and_return_channel
 from messaging.result_publisher import ResultPublisher
 
 rabbitConfig = get_rabbitmq_config()
 
+
 def running_in_ci_mode():
     return os.getenv("CI") == "true" or os.getenv("GITLAB_CI") == "true"
+
 
 @pytest.fixture(scope="module", autouse=True)
 def minio_client(request, very_small_las_file):
@@ -36,6 +39,7 @@ def minio_client(request, very_small_las_file):
         )
         if not client.bucket_exists("basebucket"):
             client.make_bucket("basebucket")
+
         def upload_file(file_path, object_name="small.las"):
             client.fput_object(bucket_name="basebucket",
                                object_name=object_name,
@@ -53,18 +57,22 @@ def minio_client(request, very_small_las_file):
         request.addfinalizer(teardown)
         os.environ["MINIO_ACCESS_KEY"] = minio.access_key
         os.environ["MINIO_SECRET_KEY"] = minio.secret_key
-        os.environ["MINIO_ENDPOINT"] = f"{minio.get_container_host_ip()}:{minio.get_exposed_port(9000)}"
+        os.environ["MINIO_ENDPOINT"] = f"{minio.get_container_host_ip()}"
+        os.environ["MINIO_PORT"] = f"{minio.get_exposed_port(9000)}"
         client = minio.get_client()
         if not client.bucket_exists("basebucket"):
             client.make_bucket("basebucket")
+
         def upload_file(file_path, object_name="small.las"):
             client.fput_object(bucket_name="basebucket",
-                           object_name=object_name,
-                           file_path=file_path)
+                               object_name=object_name,
+                               file_path=file_path)
 
             objects = list(client.list_objects("basebucket", recursive=True))
             assert len(objects) > 0, "Expected atleast one object in bucket after upload"
+
         yield client, upload_file
+
 
 @pytest.fixture(scope="module", autouse=True)
 def rabbitmq_ch(request):
@@ -82,18 +90,53 @@ def rabbitmq_ch(request):
 
         request.addfinalizer(teardown)
         rabbitmq.get_connection_params()
-        os.environ["RABBITMQ_USER"]= rabbitmq.username
+        os.environ["RABBITMQ_USER"] = rabbitmq.username
         os.environ["RABBITMQ_PASSWORD"] = rabbitmq.password
         os.environ["RABBITMQ_HOST"] = rabbitmq.get_container_host_ip()
         os.environ["RABBITMQ_PORT"] = str(rabbitmq.get_exposed_port(5672))
-        os.environ["RABBITMQ_VHOST"] =  rabbitmq.vhost
+        os.environ["RABBITMQ_VHOST"] = rabbitmq.vhost
 
         credentials = pika.PlainCredentials(username=rabbitmq.username, password=rabbitmq.password)
         connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=rabbitmq.get_container_host_ip(), port=rabbitmq.get_exposed_port(5672), virtual_host=rabbitmq.vhost, credentials=credentials))
+            pika.ConnectionParameters(host=rabbitmq.get_container_host_ip(), port=rabbitmq.get_exposed_port(5672),
+                                      virtual_host=rabbitmq.vhost, credentials=credentials))
         ch = connection.channel()
         rabbit_test_declarations(ch)
         yield ch
+
+
+@pytest.fixture(scope="module", autouse=True)
+def redis_client(request):
+    running_in_ci = running_in_ci_mode()
+    if running_in_ci:
+        host = os.getenv("REDIS_HOST", "redis")
+        port = int(os.getenv("REDIS_PORT", "6379"))
+        client = redis.Redis(host=host, port=port, decode_responses=True)
+        yield client
+    else:
+        redis_container = RedisContainer("redis:latest")
+        redis_container.start()
+
+        def teardown():
+            redis_container.stop()
+
+        request.addfinalizer(teardown)
+
+        host = redis_container.get_container_host_ip()
+        port = redis_container.get_exposed_port(6379)
+        os.environ["REDIS_HOST"] = host
+        os.environ["REDIS_PORT"] = str(port)
+
+        client = redis_container.get_client(decode_responses=True)
+        yield client
+
+
+@pytest.fixture(autouse=True)
+def flush_redis(redis_client):
+    """Flush redis before each test to ensure isolation."""
+    redis_client.flushall()
+    yield
+
 
 @pytest.fixture
 def run_preprocess_worker(rabbitmq_ch, minio_client):
@@ -101,16 +144,19 @@ def run_preprocess_worker(rabbitmq_ch, minio_client):
     thread.start()
     yield thread
 
+
 @pytest.fixture
 def run_metadata_worker(rabbitmq_metadata_ch, minio_client):
     thread = threading.Thread(target=metadata.main(), daemon=True)
     thread.start()
     yield thread
 
+
 @pytest.fixture()
 def result_publisher(rabbitmq_ch):
     publisher = ResultPublisher(ch=rabbitmq_ch)
     yield publisher
+
 
 def rabbit_test_declarations(ch):
     job_exchange_name = rabbitConfig.exchange_worker_job
@@ -131,4 +177,3 @@ def rabbit_test_declarations(ch):
     ch.queue_declare(queue=rabbitConfig.queue_metadata_result, durable=True)
     ch.queue_bind(queue=rabbitConfig.queue_metadata_result, exchange=result_exchange_name,
                   routing_key=rabbitConfig.routing_metadata_result)
-

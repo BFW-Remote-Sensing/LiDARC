@@ -54,6 +54,28 @@ schema = {
             "type": "number",
             "minimum": 0.01,
             "maximum": 99.99
+        },
+        "pointFilterLowerBound": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "maximum": 100
+        },
+        "pointFilterUpperBound": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "maximum": 100
+        },
+        "pointFilterEnabled": {
+            "type": "boolean"
+        },
+        "outlierDetectionEnabled": {
+            "type": "boolean"
+        },
+        "outlierDeviationFactor": {
+            "anyOf": [
+                {"type": "number", "minimum": 0},
+                {"type": "null"}
+            ]
         }
     },
     "additionalProperties": False

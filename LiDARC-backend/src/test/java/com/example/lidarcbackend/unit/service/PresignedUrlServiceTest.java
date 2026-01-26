@@ -227,4 +227,198 @@ public class PresignedUrlServiceTest {
     assertThat(fileCaptor.getValue().getFolder()).isNull();
   }
 
+  @Test
+  void invalidateUrls_deletes_expired_url_without_file() {
+    // arrange
+    Instant pastTime = Instant.now().minusSeconds(60);
+    Url expiredUrl = new Url();
+    expiredUrl.setId(1L);
+    expiredUrl.setFile(null);
+    expiredUrl.setExpiresAt(pastTime);
+
+    when(urlRepository.getUrlsByExpiresAtBefore(any(Instant.class))).thenReturn(List.of(expiredUrl));
+
+    // act
+    presignedUrlService.invalidateUrls();
+
+    // assert
+    verify(urlRepository).delete(expiredUrl);
+  }
+
+  @Test
+  void invalidateUrls_deletes_expired_url_for_non_uploaded_file() throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+    // arrange
+    Instant pastTime = Instant.now().minusSeconds(60);
+    File file = new File();
+    file.setId(1L);
+    file.setFilename("testfile.txt");
+    file.setUploaded(false);
+
+    Url expiredUrl = new Url();
+    expiredUrl.setId(2L);
+    expiredUrl.setFile(file);
+    expiredUrl.setMethod(Method.GET);
+    expiredUrl.setExpiresAt(pastTime);
+
+    when(urlRepository.getUrlsByExpiresAtBefore(any(Instant.class))).thenReturn(List.of(expiredUrl));
+
+    // act
+    presignedUrlService.invalidateUrls();
+
+    // assert
+    verify(urlRepository).delete(expiredUrl);
+    verify(minioClient, never()).getPresignedObjectUrl(any());
+  }
+
+  @Test
+  void invalidateUrls_refreshes_url_for_uploaded_file_with_get_method() throws Exception {
+    // arrange
+    Instant pastTime = Instant.now().minusSeconds(60);
+    File file = new File();
+    file.setId(5L);
+    file.setFilename("uploadedfile.txt");
+    file.setOriginalFilename("uploadedfile.txt");
+    file.setUploaded(true);
+
+    Url expiredUrl = new Url();
+    expiredUrl.setId(3L);
+    expiredUrl.setFile(file);
+    expiredUrl.setMethod(Method.GET);
+    expiredUrl.setExpiresAt(pastTime);
+    expiredUrl.setPresignedURL("http://old-url");
+
+    when(urlRepository.getUrlsByExpiresAtBefore(any(Instant.class))).thenReturn(List.of(expiredUrl));
+    when(minioProperties.getDefaultExpiryTime()).thenReturn(3600);
+    when(minioProperties.getBucket()).thenReturn("bucket");
+    when(minioClient.getPresignedObjectUrl(any())).thenReturn("http://new-url");
+    when(urlRepository.save(any(Url.class))).thenAnswer(inv -> {
+      Url u = inv.getArgument(0);
+      u.setId(4L);
+      return u;
+    });
+
+    // act
+    presignedUrlService.invalidateUrls();
+
+    // assert
+    verify(urlRepository).delete(expiredUrl);
+    verify(minioClient).getPresignedObjectUrl(any());
+    ArgumentCaptor<Url> savedUrlCaptor = ArgumentCaptor.forClass(Url.class);
+    verify(urlRepository).save(savedUrlCaptor.capture());
+    assertThat(savedUrlCaptor.getValue().getPresignedURL()).isEqualTo("http://new-url");
+    assertThat(savedUrlCaptor.getValue().getFile()).isSameAs(file);
+    assertThat(savedUrlCaptor.getValue().getMethod()).isEqualTo(Method.GET);
+  }
+
+  @Test
+  void invalidateUrls_does_not_refresh_url_for_uploaded_file_with_put_method() throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+    // arrange
+    Instant pastTime = Instant.now().minusSeconds(60);
+    File file = new File();
+    file.setId(6L);
+    file.setFilename("uploadedfile2.txt");
+    file.setUploaded(true);
+
+    Url expiredUrl = new Url();
+    expiredUrl.setId(7L);
+    expiredUrl.setFile(file);
+    expiredUrl.setMethod(Method.PUT);
+    expiredUrl.setExpiresAt(pastTime);
+
+    when(urlRepository.getUrlsByExpiresAtBefore(any(Instant.class))).thenReturn(List.of(expiredUrl));
+
+    // act
+    presignedUrlService.invalidateUrls();
+
+    // assert
+    verify(urlRepository).delete(expiredUrl);
+    verify(minioClient, never()).getPresignedObjectUrl(any());
+  }
+
+  @Test
+  void invalidateUrls_handles_error_gracefully_when_url_generation_fails() throws Exception {
+    // arrange
+    Instant pastTime = Instant.now().minusSeconds(60);
+    File file = new File();
+    file.setId(8L);
+    file.setFilename("failfile.txt");
+    file.setOriginalFilename("failfile.txt");
+    file.setUploaded(true);
+
+    Url expiredUrl = new Url();
+    expiredUrl.setId(9L);
+    expiredUrl.setFile(file);
+    expiredUrl.setMethod(Method.GET);
+    expiredUrl.setExpiresAt(pastTime);
+
+    when(urlRepository.getUrlsByExpiresAtBefore(any(Instant.class))).thenReturn(List.of(expiredUrl));
+    when(minioProperties.getDefaultExpiryTime()).thenReturn(3600);
+    when(minioProperties.getBucket()).thenReturn("bucket");
+    when(minioClient.getPresignedObjectUrl(any())).thenThrow(new IOException("Minio connection error"));
+
+    // act & assert - should not throw exception
+    presignedUrlService.invalidateUrls();
+
+    verify(urlRepository).delete(expiredUrl);
+    verify(minioClient).getPresignedObjectUrl(any());
+    verify(urlRepository, never()).save(any(Url.class));
+  }
+
+  @Test
+  void invalidateUrls_processes_multiple_expired_urls() throws Exception {
+    // arrange
+    Instant pastTime = Instant.now().minusSeconds(60);
+
+    File file1 = new File();
+    file1.setId(10L);
+    file1.setFilename("file1.txt");
+    file1.setOriginalFilename("file1.txt");
+    file1.setUploaded(true);
+
+    File file2 = new File();
+    file2.setId(11L);
+    file2.setFilename("file2.txt");
+    file2.setUploaded(false);
+
+    Url expiredUrl1 = new Url();
+    expiredUrl1.setId(12L);
+    expiredUrl1.setFile(file1);
+    expiredUrl1.setMethod(Method.GET);
+    expiredUrl1.setExpiresAt(pastTime);
+
+    Url expiredUrl2 = new Url();
+    expiredUrl2.setId(13L);
+    expiredUrl2.setFile(file2);
+    expiredUrl2.setMethod(Method.PUT);
+    expiredUrl2.setExpiresAt(pastTime);
+
+    when(urlRepository.getUrlsByExpiresAtBefore(any(Instant.class))).thenReturn(List.of(expiredUrl1, expiredUrl2));
+    when(minioProperties.getDefaultExpiryTime()).thenReturn(3600);
+    when(minioProperties.getBucket()).thenReturn("bucket");
+    when(minioClient.getPresignedObjectUrl(any())).thenReturn("http://new-url");
+    when(urlRepository.save(any(Url.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    // act
+    presignedUrlService.invalidateUrls();
+
+    // assert
+    verify(urlRepository).delete(expiredUrl1);
+    verify(urlRepository).delete(expiredUrl2);
+    verify(minioClient).getPresignedObjectUrl(any());
+    verify(urlRepository).save(any(Url.class));
+  }
+
+  @Test
+  void invalidateUrls_does_not_process_when_no_expired_urls() throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+    // arrange
+    when(urlRepository.getUrlsByExpiresAtBefore(any(Instant.class))).thenReturn(Collections.emptyList());
+
+    // act
+    presignedUrlService.invalidateUrls();
+
+    // assert
+    verify(urlRepository, never()).delete(any());
+    verify(minioClient, never()).getPresignedObjectUrl(any());
+  }
+
 }

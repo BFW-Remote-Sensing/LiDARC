@@ -260,6 +260,12 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
             "veg_height_max_a": row["veg_height_max_a"],
             "veg_height_max_b": row["veg_height_max_b"],
             "delta_z": row["delta_z"],
+            "count_a": row["count_a"],
+            "count_b": row["count_b"],
+            "out_a": row["out_a"],
+            "out_b": row["out_b"],
+            "out_c7_a": row["out_c7_a"],
+            "out_c7_b": row["out_c7_b"],
             **{col: row[col] for col in percentile_columns},
             **{col.replace("_a", "_b"): row[col.replace("_a", "_b")] for col in percentile_columns},
             ** {col.replace("_a", "_diff"): row[col.replace("_a", "_diff")] for col in percentile_columns}
@@ -338,8 +344,12 @@ def build_merged_dataframe(
                 cells[key][slot] = row["veg_height_max"]
                 if slot == "a":
                     cells[key]["count_a"] = row.get("count", 0) if "count" in row else 0
+                    cells[key]["out_a"] = getattr(row, "veg_height_outlier_count", 0)
+                    cells[key]["out_c7_a"] = getattr(row, "veg_height_outlier_class7_count", 0)
                 if slot == "b":
                     cells[key]["count_b"] = row.get("count", 0) if "count" in row else 0
+                    cells[key]["out_b"] = getattr(row, "veg_height_outlier_count", 0)
+                    cells[key]["out_c7_b"] = getattr(row, "veg_height_outlier_class7_count", 0)
 
                 for col in percentile_cols:
                     if "percentiles" not in cells[key]:
@@ -347,6 +357,8 @@ def build_merged_dataframe(
                     if col not in cells[key]["percentiles"]:
                         cells[key]["percentiles"][col] = {"a": None, "b": None}
                     cells[key]["percentiles"][col][slot] = row[col]
+
+
 
 
         finally:
@@ -364,6 +376,10 @@ def build_merged_dataframe(
                 "veg_height_max_b": values["b"],
                 "count_a": values.get("count_a", 0),
                 "count_b": values.get("count_b", 0),
+                "out_a": values.get("out_a", 0),
+                "out_b": values.get("out_b", 0),
+                "out_c7_a": values.get("out_c7_a", 0),
+                "out_c7_b": values.get("out_c7_b", 0),
             }
             for col, col_vals in values.get("percentiles", {}).items():
                 row_data[f"{col}_a"] = col_vals["a"]

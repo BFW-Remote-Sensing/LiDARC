@@ -21,4 +21,6 @@ export interface FileMetadataDTO {
     type?: string;
     folderId?: number;
     coordinateSystem?: string;
+    errorMessage?: string;
+    active?: boolean;
 }

@@ -25,10 +25,6 @@
         }
       </div>
     </div>
-    <button mat-raised-button color="warn" (click)="deleteSelectedFiles()"
-      [disabled]="selectedItemService.items.size === 0">
-      Delete
-    </button>
   </div>
   @if (loading()) {
   <div class="flex-center">
@@ -70,15 +66,20 @@
     <!-- Status Column -->
     <ng-container matColumnDef="status">
       <th mat-header-cell *matHeaderCellDef>Status</th>
-      <td mat-cell *matCellDef="let element" [ngClass]="{
+      <td mat-cell *matCellDef="let element">
+        <div class="status-column">
+          <span [ngClass]="{
         'status-ready': element.status === 'PROCESSED',
         'status-error': element.status === 'FAILED',
-        'status-default': element.status === 'UPLOADED' || element.status === 'PROCESSING'
-    }">
-        <div style="display: flex; column-gap: 10px;">
-          <span>{{ element.status }}</span>
-          @if (element.status === 'PROCESSING') {
+        'status-default': ['UPLOADED', 'PROCESSING', 'UPLOADING'].includes(element.status)
+    }">{{ element.status | titlecase }}</span>
+          @if (['UPLOADED', 'PROCESSING', 'UPLOADING'].includes(element.status)) {
           <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+          }
+          @else if (element.status === 'FAILED') {
+          <mat-icon [matTooltip]="element.errorMessage" matTooltipPosition="above">
+            error
+          </mat-icon>
           }
         </div>
       </td>

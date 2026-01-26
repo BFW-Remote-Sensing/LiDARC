@@ -5,15 +5,23 @@ import com.example.lidarcbackend.api.comparison.dtos.*;
 import com.example.lidarcbackend.api.folder.dtos.FolderDTO;
 import com.example.lidarcbackend.api.metadata.MetadataMapper;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
+import com.example.lidarcbackend.configuration.MinioProperties;
 import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.exception.ValidationException;
 import com.example.lidarcbackend.model.DTO.*;
+import com.example.lidarcbackend.model.JobType;
+import com.example.lidarcbackend.model.TrackedJob;
 import com.example.lidarcbackend.model.entity.*;
 import com.example.lidarcbackend.repository.*;
+import com.example.lidarcbackend.repository.projection.FileUsageCount;
+import com.example.lidarcbackend.repository.projection.FolderUsageCount;
+import com.example.lidarcbackend.service.IJobTrackingService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.example.lidarcbackend.service.files.IMetadataService;
 import com.example.lidarcbackend.service.files.WorkerStartService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.minio.MinioClient;
+import io.minio.RemoveObjectArgs;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
@@ -26,9 +34,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
+  import java.util.stream.Stream;
 
 
 @Service
@@ -41,6 +50,7 @@ public class ComparisonService implements IComparisonService {
     private final FileRepository fileRepository;
     private final FolderRepository folderRepository;
     private final IMetadataService metadataService;
+    private final IJobTrackingService jobTrackingService;
     private final Validator validator;
     private final RabbitTemplate rabbitTemplate;
     private final ComparisonMapper mapper;
@@ -48,6 +58,9 @@ public class ComparisonService implements IComparisonService {
     private final MetadataMapper metadataMapper;
     private final WorkerStartService workerStartService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ChunkingResultCacheService chunkingCacheService;
+    private final MinioClient minioClient;
+    protected final MinioProperties minioProperties;
 
     public ComparisonService(
             ComparisonRepository comparisonRepository,
@@ -56,6 +69,7 @@ public class ComparisonService implements IComparisonService {
             FileRepository fileRepository,
             FolderRepository folderRepository,
             IMetadataService metadataService,
+            IJobTrackingService jobTrackingService,
             Validator validator,
             RabbitTemplate rabbitTemplate,
             ComparisonMapper mapper,
@@ -63,13 +77,19 @@ public class ComparisonService implements IComparisonService {
             MetadataMapper metadataMapper,
             ReportRepository reportRepository,
             WorkerStartService workerStartService,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            MinioClient minioClient,
+            MinioProperties minioProperties,
+            ChunkingResultCacheService chunkingCacheService
+    ) {
+
         this.comparisonRepository = comparisonRepository;
         this.comparisonFileRepository = comparisonFileRepository;
         this.comparisonFolderRepository = comparisonFolderRepository;
         this.folderRepository = folderRepository;
         this.fileRepository = fileRepository;
         this.metadataService = metadataService;
+        this.jobTrackingService = jobTrackingService;
         this.validator = validator;
         this.rabbitTemplate = rabbitTemplate;
         this.mapper = mapper;
@@ -78,9 +98,10 @@ public class ComparisonService implements IComparisonService {
         this.reportRepository = reportRepository;
         this.workerStartService = workerStartService;
         this.eventPublisher = eventPublisher;
+        this.minioClient = minioClient;
+        this.minioProperties = minioProperties;
+        this.chunkingCacheService = chunkingCacheService;
     }
-
-    private final Map<Long, Object> chunkedComparisonsStorage = new ConcurrentHashMap<>();
 
     @Override
     public Page<ComparisonDTO> getPagedComparisons(Pageable pageable, String search) {
@@ -160,7 +181,10 @@ public class ComparisonService implements IComparisonService {
             } else {
                 groupName = firstFile.getOriginalFilename();
             }
-            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderAFiles(), comparisonRequest.getGrid(), savedComparison, groupName));
+            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderAFiles(), comparisonRequest.getGrid(),
+                    savedComparison, groupName, savedComparison.getPointFilterLowerBound(),
+                    savedComparison.getPointFilterUpperBound(), savedComparison.getNeedOutlierDetection(),
+                    savedComparison.getOutlierDeviationFactor(), savedComparison.getNeedPointFilter()));
         }
         if (comparisonRequest.getFolderBFiles() != null && !comparisonRequest.getFolderBFiles().isEmpty()) {
             File firstFile = fileRepository.findById(comparisonRequest.getFolderBFiles().getFirst()).orElseThrow(() ->
@@ -172,10 +196,16 @@ public class ComparisonService implements IComparisonService {
             } else {
                 groupName = firstFile.getOriginalFilename();
             }
-            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderBFiles(), comparisonRequest.getGrid(), savedComparison, groupName));
+            fullPlan.merge(processFolderGroup(comparisonRequest.getFolderBFiles(), comparisonRequest.getGrid(),
+                    savedComparison, groupName, savedComparison.getPointFilterLowerBound(),
+                    savedComparison.getPointFilterUpperBound(), savedComparison.getNeedOutlierDetection(),
+                    savedComparison.getOutlierDeviationFactor(), savedComparison.getNeedPointFilter()));
         }
         if (fileMetadataIds != null && !fileMetadataIds.isEmpty()) {
-            fullPlan.merge(processFolderGroup(fileMetadataIds, comparisonRequest.getGrid(), savedComparison, "legacy"));
+            fullPlan.merge(processFolderGroup(fileMetadataIds, comparisonRequest.getGrid(), savedComparison,
+                    "legacy", savedComparison.getPointFilterLowerBound(), savedComparison.getPointFilterUpperBound(),
+                    savedComparison.getNeedOutlierDetection(), savedComparison.getOutlierDeviationFactor(),
+                    savedComparison.getNeedPointFilter()));
         }
 
         //Saving all files (excluded and included)
@@ -220,7 +250,10 @@ public class ComparisonService implements IComparisonService {
         }
     }
 
-    private ComparisonPlan processFolderGroup(List<Long> fileIds, GridParameters grid, Comparison savedComparison, String groupName) throws NotFoundException {
+    private ComparisonPlan processFolderGroup(List<Long> fileIds, GridParameters grid, Comparison savedComparison,
+            String groupName, Integer pointFilterLowerBound, Integer pointFilterUpperBound,
+            Boolean outlierDetectionEnabled, Double outlierDeviationFactor, Boolean needPointFilter)
+            throws NotFoundException {
         ComparisonPlan plan = new ComparisonPlan();
         if (fileIds == null || fileIds.isEmpty()) return plan;
 
@@ -247,18 +280,13 @@ public class ComparisonService implements IComparisonService {
             ComparisonFile cf = new ComparisonFile();
             cf.setComparisonId(savedComparison.getId());
             cf.setFileId(fileEntity.getId());
-                cf.setGroupName(groupName);
+            cf.setGroupName(groupName);
+            cf.setStatus(ComparisonFile.Status.PREPROCESSING);
 
             if (!validRegions.isEmpty()) {
                 cf.setIncluded(true);
-                String uniqueJobId = String.format("c%d_%s_f%d_%s",
-                        savedComparison.getId(),
-                        groupName,
-                        fileEntity.getId(),
-                        UUID.randomUUID().toString().substring(0, 8)
-                );
-
-                StartPreProcessJobDto.StartPreProcessJobDtoBuilder builder = StartPreProcessJobDto.builder()
+                String uniqueJobId = UUID.randomUUID().toString();
+                StartPreProcessJobDto jobDto = StartPreProcessJobDto.builder()
                         .jobId(uniqueJobId)
                         .grid(grid)
                         .bboxes(validRegions)
@@ -269,13 +297,34 @@ public class ComparisonService implements IComparisonService {
                 if(savedComparison.getIndividualStatisticsPercentile() != null) {
                     builder.individualPercentile(savedComparison.getIndividualStatisticsPercentile());
                 }
-                StartPreProcessJobDto jobDto = builder.build();
-
+                StartPreProcessJobDto jobDto = builder.outlierDetectionEnabled(outlierDetectionEnabled)
+                        .outlierDeviationFactor(outlierDeviationFactor)
+                        .pointFilterEnabled(Boolean.TRUE.equals(needPointFilter))
+                        .build();
+if (pointFilterLowerBound != null) {
+                  jobDto.setPointFilterLowerBound(pointFilterLowerBound);
+                }
+                if (pointFilterUpperBound != null) {
+                  jobDto.setPointFilterUpperBound(pointFilterUpperBound);
+                }
                 plan.addIncludedFile(cf, jobDto);
 
                 restrictedZones.add(snappedBox);
+
+                UUID jobUuid = UUID.fromString(uniqueJobId);
+
+                TrackedJob trackedJob = new TrackedJob(
+                        jobUuid,
+                        JobType.PREPROCESSING,
+                        Map.of("comparisonId", comparisonId, "fileId", fileEntity.getId()),
+                        Instant.now(),
+                        Duration.ofMinutes(15)
+                );
+                jobTrackingService.registerJob(trackedJob);
+
             } else {
                 cf.setIncluded(false);
+                cf.setStatus(ComparisonFile.Status.COMPLETED);
                 plan.addExcludedFile(cf);
             }
             //TODO: Handle traceability in BE
@@ -348,18 +397,21 @@ public class ComparisonService implements IComparisonService {
         if (dto == null) return null;
         reportRepository.findTopByComparisonIdOrderByCreationDateDesc(dto.getId())
                 .ifPresent(report -> dto.setLatestReport("/reports/" + report.getId() + "/download"));
+
         List<Long> fileMetadataIds = comparisonFileRepository.getComparisonFilesByComparisonId(comparisonId);
         List<String> fileMetadataIdStrings = fileMetadataIds.stream()
                 .map(String::valueOf)
                 .toList();
-
         setComparisonFolders(comparisonId, dto);
 
-        dto.setFiles(
-                metadataService.getMetadataList(fileMetadataIdStrings).stream()
-                        .filter(f -> f.getFolderId() == null)
-                        .toList()
-        );
+        List<Long> comparisonFolderIds = comparisonFolderRepository.getComparisonFoldersByComparisonId(comparisonId);
+
+        List<FileMetadataDTO> files = metadataService.getMetadataList(fileMetadataIdStrings);
+        List<FileMetadataDTO> independentFilesInComparison = files.stream()
+                .filter(f -> !comparisonFolderIds.contains(f.getFolderId()))
+                .toList();
+
+        dto.setFiles(independentFilesInComparison);
 
         return dto;
     }
@@ -393,7 +445,8 @@ public class ComparisonService implements IComparisonService {
             throw new NotFoundException("Comparison with id: " + comparisonId + " not found!");
         }
 
-        chunkedComparisonsStorage.remove(dto.getId());
+        // Clear any existing cached result for this comparison and chunk size
+        chunkingCacheService.delete(dto.getId(), chunkingSize);
 
 
         // TODO Check bucket and object already exist for comparison, else worker throws error and stops
@@ -401,12 +454,12 @@ public class ComparisonService implements IComparisonService {
         String objectKey = dto.getResultObjectKey();
         StartChunkingJobDto chunkingJobDto = new StartChunkingJobDto(comparisonId, chunkingSize, new MinioObjectDto(bucketName, objectKey));
         workerStartService.startChunkingComparisonJob(chunkingJobDto);
-        log.info("Starting chunking comparison job for comparison with id: {}", comparisonId);
+        log.info("Starting chunking comparison job for comparison with id: {} and chunkSize: {}", comparisonId, chunkingSize);
     }
 
     @Override
     public void saveVisualizationComparison(Map<String, Object> result) {
-        log.info("Saving visualization comparison with result: {}", result);
+        log.info("Received visualization comparison notification");
         if (!result.containsKey("payload")) {
             log.warn("No comparison id or payload found in result of chunking worker");
             return;
@@ -421,11 +474,32 @@ public class ComparisonService implements IComparisonService {
             log.warn("Invalid comparisonId in result of chunking worker");
             return;
         }
+        Long comparisonId = ((Number) idObj).longValue();
+
+        // Extract chunkSize from payload
+        Object chunkSizeObj = payload.get("chunkSize");
+        int chunkSize = (chunkSizeObj instanceof Number) ? ((Number) chunkSizeObj).intValue() : 1;
+
+        // Check if result is already cached by worker (new flow)
+        Boolean cached = payload.get("cached") instanceof Boolean ? (Boolean) payload.get("cached") : false;
+
+        if (Boolean.TRUE.equals(cached)) {
+            // Worker wrote result directly to Redis - just notify SSE subscribers
+            log.info("Chunking result for comparison {} (chunkSize={}) already cached by worker, notifying subscribers", comparisonId, chunkSize);
+            Optional<Object> cachedResult = chunkingCacheService.get(comparisonId, chunkSize);
+            if (cachedResult.isPresent()) {
+                eventPublisher.publishEvent(new ChunkingResultReadyEvent(this, comparisonId, chunkSize, cachedResult.get()));
+            } else {
+                log.warn("Cached flag was true but no result found in Redis for comparisonId={}, chunkSize={}", comparisonId, chunkSize);
+            }
+            return;
+        }
+
+        // Fallback: full payload in message (legacy flow or Redis failure in worker)
         if (!payload.containsKey("chunked_cells")) {
             log.warn("No chunked cells found in result of chunking worker");
             return;
         }
-        Long comparisonId = ((Number) idObj).longValue();
 
         //TODO: Eventually fix to real dto / model
         Map<String, Object> visualizationResult = new HashMap<>();
@@ -434,34 +508,85 @@ public class ComparisonService implements IComparisonService {
         if (payload.containsKey("statistics")) {
             visualizationResult.put("statistics", payload.get("statistics"));
         }
-        if(payload.containsKey("group_mapping")) {
+        if (payload.containsKey("group_mapping")) {
             visualizationResult.put("group_mapping", payload.get("group_mapping"));
         }
         if(payload.containsKey("statistics_p")) {
             visualizationResult.put("statistics_p", payload.get("statistics_p"));
         }
         chunkedComparisonsStorage.put(comparisonId, visualizationResult);
+
+        // Save to Redis cache with chunkSize
+        chunkingCacheService.save(comparisonId, chunkSize, visualizationResult);
+
+        // Publish event for SSE subscribers
+        eventPublisher.publishEvent(new ChunkingResultReadyEvent(this, comparisonId, chunkSize, visualizationResult));
     }
 
     /**
-     * Returns the result once.
+     * Returns the result from Redis cache for the specified chunk size.
      */
-    public Optional<Object> pollVisualizationResults(Long comparisonId) {
-        Object result = chunkedComparisonsStorage.get(comparisonId);
-        return Optional.ofNullable(result);
+    public Optional<Object> pollVisualizationResults(Long comparisonId, int chunkSize) {
+        return chunkingCacheService.get(comparisonId, chunkSize);
     }
 
 
     @Override
     @Transactional
-    public void deleteComparisonById(Long id) {
+    public void deleteComparisonById(Long id) throws NotFoundException {
+        Comparison cp = comparisonRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Comparison with ID " + id + " not found"));
+
+        List<ComparisonFile> cfs = comparisonFileRepository.findAllByComparisonIdAndIncludedTrue(id);
+
+        // 1. Find all files and folders in this comparison and their global usage counts
+        List<FileUsageCount> fileUsageCounts = comparisonFileRepository.findFileUsageByComparisonId(id);
+        List<FolderUsageCount> folderUsageCounts = comparisonFolderRepository.findFolderUsageByComparisonId(id);
+
+        // 2. Identify files and folders that are ONLY in this comparison (count < 2)
+        List<Long> filesToRemove = fileUsageCounts.stream()
+                .filter(usage -> usage.getTotalCount() < 2)
+                .map(FileUsageCount::getFileId)
+                .toList();
+
+        List<Long> foldersToRemove = folderUsageCounts.stream()
+                .filter(usage -> usage.getTotalCount() < 2)
+                .map(FolderUsageCount::getFolderId)
+                .toList();
+
+
+        // 3. Delete pre-processing results from minio
+        for (ComparisonFile cf : cfs) {
+            deleteObjectFromMinio(cf.getBucket(), cf.getObjectKey());
+        }
+
+        // 4. Delete comparison result
+        deleteObjectFromMinio(cp.getResultBucket(), cp.getResultObjectKey());
+
+        // 5. Delete the comparison
         comparisonRepository.deleteById(id);
+        log.info("Successfully deleted comparison and related reports for id: {}", id);
+
+        // 6. Clean up the files and folders
+        fileRepository.deleteAllById(filesToRemove);
+        folderRepository.deleteAllById(foldersToRemove);
+    }
+
+    private void deleteObjectFromMinio(String bucket, String objectKey) {
+        try {
+            minioClient.removeObject(
+                    RemoveObjectArgs.builder()
+                            .bucket(bucket)
+                            .object(objectKey)
+                            .build()
+            );
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public void processPreprocessingResult(Map<String, Object> result) {
-        //TODO proper error handling
-
         log.info("Processing Preprocessing result...");
         log.info("Preprocessing result: {}", result);
         String status = (String) result.get("status");
@@ -469,10 +594,17 @@ public class ComparisonService implements IComparisonService {
         Map<String, Object> payload = (Map<String, Object>) result.get("payload");
 
         if (status == null || jobId == null || payload == null) {
-            //Todo exception?
             log.error("Invalid result message received, missing jobId, payload or status");
             return;
         }
+        UUID jobUuid;
+        try {
+            jobUuid = UUID.fromString(jobId);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid job id received, jobId: " + jobId);
+            return;
+        }
+        jobTrackingService.completeJob(jobUuid);
 
         Number comparisonIdNum = (Number) payload.get("comparisonId");
         if (comparisonIdNum == null) {
@@ -480,12 +612,6 @@ public class ComparisonService implements IComparisonService {
             return;
         }
         Long comparisonId = comparisonIdNum.longValue();
-        Number fileIdNum = (Number) payload.get("fileId");
-        if (fileIdNum == null) {
-            log.error("Missing fileId in preprocessing payload.");
-            return;
-        }
-        Long fileId = fileIdNum.longValue();
 
         Optional<Comparison> comparisonOpt = comparisonRepository.findComparisonsById(comparisonId);
         if (comparisonOpt.isEmpty()) {
@@ -494,31 +620,13 @@ public class ComparisonService implements IComparisonService {
         }
         Comparison comparison = comparisonOpt.get();
 
-        if (fileId == null) {
+        Number fileIdNum = (Number) payload.get("fileId");
+        if (fileIdNum == null) {
             log.error("Missing fileId in preprocessing payload.");
-            persistComparisonError(comparison, "Missing fileId in preprocessing payload.");
+            persistComparisonErrorPreprocessing(comparison, "Received invalid preprocessing results: missing fileId");
             return;
         }
-
-
-        if (!status.equalsIgnoreCase("success")) {
-            Object payloadMsg = ((Map<?, ?>) payload).get("msg");
-            if (payloadMsg instanceof String errorMessage) {
-                log.warn("Preprocessing job {} failed: {}", jobId, errorMessage);
-                persistComparisonError(comparison, errorMessage);
-                return;
-            }
-        }
-
-        Map<String, Object> resultObj = (Map<String, Object>) payload.get("result");
-        if (resultObj == null) {
-            log.error("Missing result object for file {}", fileId);
-            persistComparisonError(comparison, "Missing result object for file " + fileId);
-            return;
-        }
-
-        String bucket = (String) resultObj.get("bucket");
-        String objectKey = (String) resultObj.get("objectKey");
+        Long fileId = fileIdNum.longValue();
 
         Optional<ComparisonFile> cfOpt = comparisonFileRepository.findComparisonFiles(comparisonId, fileId);
         if (cfOpt.isEmpty()) {
@@ -527,22 +635,47 @@ public class ComparisonService implements IComparisonService {
                     comparisonId,
                     fileId
             );
-            log.error(errorMsg);
-            persistComparisonError(comparison, errorMsg);
+            persistComparisonErrorPreprocessing(comparison, errorMsg);
+            return;
+        }
+        ComparisonFile cf = cfOpt.get();
+
+        if (cf.getStatus().equals(ComparisonFile.Status.FAILED)) {
             return;
         }
 
-        ComparisonFile cf = cfOpt.get();
+        if (!status.equalsIgnoreCase("success")) {
+            Object payloadMsg = ((Map<?, ?>) payload).get("msg");
+            if (payloadMsg instanceof String errorMessage) {
+                log.warn("Preprocessing job {} failed: {}", jobId, errorMessage);
+                persistComparisonFileError(cf, errorMessage);
+                String comparisonErrorMsg = "Preprocessing failed for one file";
+                persistComparisonErrorPreprocessing(comparison, comparisonErrorMsg);
+                return;
+            }
+        }
+
+        Map<String, Object> resultObj = (Map<String, Object>) payload.get("result");
+        if (resultObj == null) {
+            log.error("Missing result object for file {}", fileId);
+            persistComparisonFileError(cf, "Received invalid preprocessing results: missing minio references");
+            String comparisonErrorMsg = "Received invalid preprocessing results: missing minio references";
+            persistComparisonErrorPreprocessing(comparison, comparisonErrorMsg);
+            return;
+        }
+
+        String bucket = (String) resultObj.get("bucket");
+        String objectKey = (String) resultObj.get("objectKey");
         cf.setBucket(bucket);
         cf.setObjectKey(objectKey);
+        cf.setErrorMsg(null);
+        cf.setStatus(ComparisonFile.Status.COMPLETED);
         comparisonFileRepository.save(cf);
-        checkIfPreprocessingDoneAndStartComparison(comparisonId, jobId);
-
+        checkIfPreprocessingDoneAndStartComparison(comparison, comparisonId, jobId);
     }
 
     @Override
     public void processComparisonResult(Map<String, Object> result) {
-        //TODO proper error handling
         log.info("Processing Comparison result...");
 
         String status = (String) result.get("status");
@@ -550,14 +683,27 @@ public class ComparisonService implements IComparisonService {
         Map<String, Object> payload = (Map<String, Object>) result.get("payload");
 
         if (status == null || jobId == null || payload == null) {
-            //Todo exception?
             log.error("Invalid result message received, missing jobId, payload or status");
             return;
         }
 
-        Integer comparisonId = (Integer) payload.get("comparisonId");
-        if (comparisonId == null) {
-            log.error("Missing comparisonId in comparison payload.");
+        UUID jobUuid;
+        try {
+            jobUuid = UUID.fromString(jobId);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid job id received, jobId: " + jobId);
+            return;
+        }
+        jobTrackingService.completeJob(jobUuid);
+
+        Object comparisonIdObj = payload.get("comparisonId");
+        Long comparisonId;
+        if (comparisonIdObj instanceof Number n) {
+            comparisonId = n.longValue();
+        } else if (comparisonIdObj instanceof String s) {
+            comparisonId = Long.parseLong(s);
+        } else {
+            log.error("Invalid comparisonId type: {}", comparisonIdObj);
             return;
         }
 
@@ -567,7 +713,9 @@ public class ComparisonService implements IComparisonService {
             return;
         }
         Comparison comparison = comparisonOpt.get();
-
+        if (comparison.getStatus().equals(Comparison.Status.FAILED)) {
+            return;
+        }
 
         if (!status.equalsIgnoreCase("success")) {
             Object payloadMsg = ((Map<?, ?>) payload).get("msg");
@@ -584,33 +732,50 @@ public class ComparisonService implements IComparisonService {
 
         if (bucket == null || objectKey == null) {
             log.error("Missing bucket or objectKey in payload.");
-            persistComparisonError(comparison, "Missing bucket or objectKey in payload.");
+            persistComparisonError(comparison, "Missing bucket or objectKey in comparison result payload.");
             return;
         }
 
         comparison.setStatus(Comparison.Status.COMPLETED);
+        comparison.setErrorMessage(null);
         comparison.setResultBucket(bucket);
         comparison.setResultObjectKey(objectKey);
         comparisonRepository.save(comparison);
     }
 
-    private void checkIfPreprocessingDoneAndStartComparison(Long comparisonId, String jobId) {
+    private void checkIfPreprocessingDoneAndStartComparison(Comparison comparison, Long comparisonId, String jobId) {
+        if (comparison.getStatus() == Comparison.Status.FAILED) {
+            log.info("Preprocessing of comparison with id {} failed. Comparison worker will not be started.", comparisonId);
+            return;
+        }
 
         boolean allReady = comparisonFileRepository.areAllIncludedFilesReady(comparisonId);
 
         if (allReady) {
+            comparison.setStatus(Comparison.Status.COMPARING);
+            comparisonRepository.save(comparison);
             List<ComparisonFile> comparisonFiles = comparisonFileRepository.findAllByComparisonIdAndIncludedTrue(comparisonId);
             log.info("Comparison {}: all preprocessing files contain bucket & objectKey. Starting comparison worker...", comparisonId);
             List<ComparisonWorkerInputFileDto> filesDto = comparisonFiles.stream()
                     .map(cf -> new ComparisonWorkerInputFileDto(cf.getBucket(), cf.getObjectKey(), cf.getGroupName()))
                     .toList();
 
+            UUID comparisonJobId = UUID.randomUUID();
             StartComparisonJobDto dto = new StartComparisonJobDto(
-                    jobId,
+                    comparisonJobId.toString(),
                     comparisonId.toString(),
                     filesDto
             );
 
+
+            TrackedJob trackedJob = new TrackedJob(
+                    comparisonJobId,
+                    JobType.COMPARISON,
+                    Map.of("comparisonId", comparisonId),
+                    Instant.now(),
+                    Duration.ofMinutes(15)
+            );
+            jobTrackingService.registerJob(trackedJob);
             workerStartService.startComparisonJob(dto);
         } else {
             log.info("Comparison {} is not ready yet. Waiting for other files.", comparisonId);
@@ -621,5 +786,20 @@ public class ComparisonService implements IComparisonService {
         comparison.setStatus(Comparison.Status.FAILED);
         comparison.setErrorMessage(errorMsg);
         comparisonRepository.save(comparison);
+    }
+
+    private void persistComparisonErrorPreprocessing(Comparison comparison, String errorMsg) {
+        if (comparison.getStatus() == Comparison.Status.FAILED) {
+            comparison.setErrorMessage("Preprocessing of multiple files failed");
+        }
+        comparison.setStatus(Comparison.Status.FAILED);
+        comparison.setErrorMessage(errorMsg);
+        comparisonRepository.save(comparison);
+    }
+
+    private void persistComparisonFileError(ComparisonFile comparisonFile, String errorMsg) {
+        comparisonFile.setStatus(ComparisonFile.Status.FAILED);
+        comparisonFile.setErrorMsg(errorMsg);
+        comparisonFileRepository.save(comparisonFile);
     }
 }

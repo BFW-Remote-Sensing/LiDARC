@@ -1,7 +1,7 @@
-import { HttpClient, HttpHeaders, HttpParams, HttpResponse } from "@angular/common/http";
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams, HttpResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { defaultComparisonPath, Globals } from "../globals/globals";
-import { Observable } from "rxjs";
+import { catchError, Observable, throwError } from "rxjs";
 import { ComparisonDTO, CreateComparison } from "../dto/comparison";
 import { ComparisonReport } from "../dto/comparisonReport";
 import { CreateReportDto } from '../dto/report';
@@ -65,6 +65,20 @@ export class ComparisonService {
       this.globals.backendUri + defaultComparisonPath,
       comparison,
       { headers }
+    ).pipe(
+      catchError((error: HttpErrorResponse) => {
+        console.error('Captured error:', error);
+
+        let errorMessage = 'An error occurred while creating the comparison.';
+
+        if (error.error && typeof error.error.message === 'string') {
+          errorMessage = error.error.message;
+        } else if (typeof error.error === 'string') {
+          errorMessage = error.error;
+        }
+
+        return throwError(() => new Error(errorMessage));
+      })
     );
   }
 
@@ -72,6 +86,20 @@ export class ComparisonService {
     return this.httpClient.delete<void>(
       this.globals.backendUri + defaultComparisonPath + `/${id}`,
       { headers }
+    ).pipe(
+      catchError((error: HttpErrorResponse) => {
+        console.error('Captured error:', error);
+
+        let errorMessage = 'An error occurred while deleting the comparison.';
+
+        if (error.error && typeof error.error.message === 'string') {
+          errorMessage = error.error.message;
+        } else if (typeof error.error === 'string') {
+          errorMessage = error.error;
+        }
+
+        return throwError(() => new Error(errorMessage));
+      })
     );
   }
 
@@ -94,15 +122,98 @@ export class ComparisonService {
 
   startChunkingResult(id: number, chunkSize: number): Observable<void> {
     const params = new HttpParams()
-      .set('chunkSize', String(chunkSize))
+      .set('chunkSize', String(chunkSize));
     return this.httpClient.post<void>(
       this.globals.backendUri + defaultComparisonPath + `/${id}/chunking`, null, { params }
     );
   }
 
-  pollChunkingResult(id: number): Observable<HttpResponse<any>> {
+  pollChunkingResult(id: number, chunkSize: number): Observable<HttpResponse<any>> {
+    const params = new HttpParams()
+      .set('chunkSize', String(chunkSize));
     return this.httpClient.get<any>(
-      this.globals.backendUri + defaultComparisonPath + `/${id}/chunking`, { observe: 'response' }
+      this.globals.backendUri + defaultComparisonPath + `/${id}/chunking`, { params, observe: 'response' }
     );
+  }
+
+  /**
+   * Creates an EventSource for SSE streaming of chunking results.
+   * Returns an Observable that emits the chunking result when received.
+   * Results are cached per chunkSize, so the same chunkSize must be used.
+   * Handles streaming of large results in chunks for memory efficiency.
+   */
+  streamChunkingResult(id: number, chunkSize: number): Observable<any> {
+    return new Observable(observer => {
+      const url = this.globals.backendUri + defaultComparisonPath + `/${id}/chunking/stream?chunkSize=${chunkSize}`;
+      const eventSource = new EventSource(url);
+
+      // Buffer for accumulating streamed chunks
+      let chunks: string[] = [];
+      let totalChunks = 0;
+      let isStreaming = false;
+
+      // Handle legacy single-event response (for backwards compatibility)
+      eventSource.addEventListener('chunking-result', (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          observer.next(data);
+          observer.complete();
+          eventSource.close();
+        } catch (e) {
+          observer.error(e);
+          eventSource.close();
+        }
+      });
+
+      // Handle streaming start event
+      eventSource.addEventListener('chunking-result-start', (event: MessageEvent) => {
+        try {
+          const metadata = JSON.parse(event.data);
+          totalChunks = metadata.totalChunks || 0;
+          chunks = new Array(totalChunks);
+          isStreaming = true;
+          console.log(`Starting to receive ${totalChunks} chunks, total size: ${metadata.totalSize} bytes`);
+        } catch (e) {
+          console.error('Error parsing streaming start event:', e);
+        }
+      });
+
+      // Handle streaming chunk events
+      eventSource.addEventListener('chunking-result-chunk', (event: MessageEvent) => {
+        if (isStreaming && event.lastEventId) {
+          const chunkIndex = parseInt(event.lastEventId, 10);
+          chunks[chunkIndex] = event.data;
+        }
+      });
+
+      // Handle streaming end event - reassemble and parse the complete JSON
+      eventSource.addEventListener('chunking-result-end', (event: MessageEvent) => {
+        try {
+          if (isStreaming) {
+            // Reassemble the complete JSON from chunks
+            const completeJson = chunks.join('');
+            const data = JSON.parse(completeJson);
+            observer.next(data);
+            observer.complete();
+            console.log('Successfully received and parsed streamed chunking result');
+          }
+          eventSource.close();
+        } catch (e) {
+          console.error('Error parsing reassembled streaming data:', e);
+          observer.error(e);
+          eventSource.close();
+        }
+      });
+
+      eventSource.onerror = (error) => {
+        observer.error(error);
+        eventSource.close();
+      };
+
+      // Cleanup on unsubscribe
+      return () => {
+        eventSource.close();
+      };
+    });
   }
 }

@@ -25,6 +25,12 @@ import { ComparableResponse } from '../../dto/comparableResponse';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatChipsModule } from '@angular/material/chips';
+import { CoordinateService } from '../../service/coordinate.service';
+import { getExtremeValue } from '../../helpers/extremeValue';
+import { FileMetadataDTO } from '../../dto/fileMetadata';
+import { StatusService } from '../../service/status.service';
+
+
 
 @Component({
   selector: 'app-comparable-items',
@@ -47,7 +53,7 @@ import { MatChipsModule } from '@angular/material/chips';
     MatChipsModule
   ],
   templateUrl: './comparable-items.html',
-  styleUrl: './comparable-items.scss',
+  styleUrls: ['./comparable-items.scss', '../stored-files/stored-files.scss'],
 })
 export class ComparableItems {
   displayedColumns: string[] = ['select', 'name', 'type', 'fileCount', 'status', 'captureYear', 'sizeBytes', 'uploadedAt', 'actions'];
@@ -60,8 +66,8 @@ export class ComparableItems {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
   private stopPolling$ = new Subject<void>();
-
-  private previousMap = new Map<number, string>();
+  private isPolling = false;
+  private previousMap = new Map<string, string>();
 
   constructor(
     public selectedItemService: SelectedItemService,
@@ -69,8 +75,12 @@ export class ComparableItems {
     private snackBar: MatSnackBar,
     private formatService: FormatService,
     private dialog: MatDialog,
-    private cdr: ChangeDetectorRef
-  ) { }
+    private cdr: ChangeDetectorRef,
+    private coordService: CoordinateService,
+    private statusService: StatusService,
+  ) {
+  }
+
 
   totalItems = 0;
   pageIndex = 0;
@@ -88,18 +98,24 @@ export class ComparableItems {
         debounceTime(400),
         distinctUntilChanged())
       .subscribe(filterValue => {
-        this.paginator.pageIndex = 0; // Reset to page 0 
+        this.paginator.pageIndex = 0; // Reset to page 0
         this.fetchAndProcessMetadata(this.pageIndex, this.pageSize); // Trigger reload
       });
     // First load
     this.fetchAndProcessMetadata(this.pageIndex, this.pageSize);
+  }
 
-    // Poll every 3 seconds
+  private startPolling(): void {
+    if (this.isPolling) {
+      return;
+    }
+
+    this.isPolling = true;
     interval(pollingIntervalMs)
       .pipe(
         takeUntil(this.stopPolling$),
         switchMap(() => this.metadataService.getAllMetadataGroupedByFolderPaged(this.pageIndex, this.pageSize, this.dataSource.filter)),
-        finalize(() => this.loading.set(false))
+        finalize(() => this.isPolling = false)
       )
       .subscribe({
         next: (comparableResponse: ComparableResponse) => {
@@ -109,6 +125,7 @@ export class ComparableItems {
         error: (error) => {
           console.error('Error refreshing metadata:', error);
           this.errorMessage.set('Failed to refresh metadata. Please try again later.');
+          this.isPolling = false;
         }
       });
   }
@@ -124,47 +141,54 @@ export class ComparableItems {
           this.processMetadata(comparableResponse.items);
         },
         error: (error) => {
-          console.error('Error fetching metadata:', error);
-          this.errorMessage.set('Failed to fetch metadata. Please try again later.');
+          console.error('Error fetching comparable items:', error);
+          this.errorMessage.set('Failed to fetch comparable items. Please try again later.');
         }
       });
   }
 
-  /**
-   * Processes metadata: maps formatted size, detects transitions,
-   * updates previousMap, and checks for stopPolling
-   */
-  //TODO: FIX THE STATUS MANAGEMENT IN THE CORRESPONDING ISSUE see #44
   private processMetadata(data: ComparableItemDTO[]): void {
-    // Map formatted size
-    const formattedComparableItems = this.formatService.formatComparableItems(data);
-    this.dataSource.data = formattedComparableItems;
+    // 1. Keep a reference to current data for comparison
+    const currentData = this.dataSource.data;
+    const formattedNewItems = this.formatService.formatComparableItems(data);
 
-    // Detect transitions and update previousMap
-    formattedComparableItems.forEach(item => {
-      const prev = this.previousMap.get(item.id);
+    this.dataSource.data = formattedNewItems.map(newItem => {
+      // Unique key using ID and Type as seen in your snackbar logic
+      const itemKey = newItem.id.toString() + newItem.type;
 
-      if (prev === 'PROCESSING' && item.status === 'PROCESSED') {
-        this.snackBar.open(
-          `File "${item.name}" preprocessed completed!`,
-          'OK', { duration: snackBarDurationMs }
-        );
-      } else if (prev === 'PROCESSING' && item.status === 'FAILED') {
-        this.snackBar.open(
-          `File "${item.name}" preprocessed failed!`,
-          'OK', { duration: snackBarDurationMs }
-        );
+      // 2. Find if the item already exists in the table
+      const existingItem = currentData.find(item =>
+        (item.id.toString() + item.type) === itemKey
+      );
+
+      // 3. If identical, reuse the existing reference to prevent re-rendering the row
+      if (existingItem && JSON.stringify(existingItem) === JSON.stringify(newItem)) {
+        return existingItem;
       }
 
-      this.previousMap.set(item.id, item.status);
+      // 4. Handle status transitions/snackbars for new or changed items
+      const prevStatus = this.previousMap.get(itemKey);
+      if (!prevStatus) {
+        this.previousMap.set(itemKey, newItem.status);
+      } else if (prevStatus !== newItem.status) {
+        this.snackBar.open(
+          this.statusService.getComparableSnackbarMessage(newItem.type, newItem.name, newItem.status),
+          'OK', { duration: snackBarDurationMs }
+        );
+        this.previousMap.set(itemKey, newItem.status);
+      }
+
+      return newItem;
     });
 
-    // Stop polling if no PROCESSING left
-    if (!data.some(d => d.status === 'PROCESSING')) {
+    const hasProcessingItems = data.some(d => d.status !== 'PROCESSED' && d.status !== 'FAILED');
+
+    if (hasProcessingItems) {
+      this.startPolling();
+    } else {
       this.stopPolling$.next();
     }
   }
-
 
   ngOnDestroy(): void {
     this.stopPolling$.next();   // clean up
@@ -188,28 +212,6 @@ export class ComparableItems {
   goToComparison() {
     console.log('Selected Comparable Items:', this.selectedItemService.items);
     this.router.navigate(['/comparison-setup']);
-  }
-
-  deleteSelectedFiles(): void {
-    const data: ConfirmationDialogData = {
-      title: 'Confirmation',
-      subtitle: 'Are you sure you want to delete the selected files?',
-      primaryButtonText: 'Delete',
-      secondaryButtonText: 'Cancel'
-    };
-
-    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
-      width: '400px',
-      data
-    });
-
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        alert('Delete functionality not yet implemented.');
-        this.selectedItemService.items.clear();
-        this.cdr.detectChanges(); // force Angular to update the view
-      }
-    });
   }
 
   applyFilter(event: Event) {

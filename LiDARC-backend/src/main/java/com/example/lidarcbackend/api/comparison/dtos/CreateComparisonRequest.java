@@ -34,6 +34,14 @@ public class CreateComparisonRequest {
     private List<Long> folderAFiles;
     private List<Long> folderBFiles;
 
+    private Integer pointFilterLowerBound;
+
+    private Integer pointFilterUpperBound;
+
+    private Boolean needPointFilter;
+
+    private Double outlierDeviationFactor;
+
     @NotNull
     @Valid
     private GridParameters grid;

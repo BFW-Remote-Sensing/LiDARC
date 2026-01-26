@@ -8,6 +8,7 @@ import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.exception.ValidationException;
 import com.example.lidarcbackend.model.DTO.CreateReportDto;
 import com.example.lidarcbackend.model.DTO.ReportInfoDto;
+import com.example.lidarcbackend.service.comparisons.ChunkingSseService;
 import com.example.lidarcbackend.service.comparisons.IComparisonService;
 import com.example.lidarcbackend.service.reports.IReportService;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -30,6 +31,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -42,14 +44,16 @@ import java.util.Optional;
 public class ComparisonController {
     private final IComparisonService comparisonService;
     private final IReportService reportService;
+    private final ChunkingSseService chunkingSseService;
     @Value("${app.upload.dir:uploads}")
     private String UPLOAD_DIRECTORY; //TODO: MAYBE CHANGE TO MINIO BUCKET IF WANTED
 
 
     @Autowired
-    public ComparisonController(IComparisonService comparisonService, IReportService reportService) {
+    public ComparisonController(IComparisonService comparisonService, IReportService reportService, ChunkingSseService chunkingSseService) {
         this.comparisonService = comparisonService;
         this.reportService = reportService;
+        this.chunkingSseService = chunkingSseService;
     }
 
     @GetMapping("/all")
@@ -99,10 +103,16 @@ public class ComparisonController {
     }
 
     @GetMapping("{id}/chunking")
-    public ResponseEntity<Object> getChunkingComparison(@PathVariable Long id) {
-        log.info("GET /api/v1/comparisons/{}/chunking", id);
-        Optional<Object> result = comparisonService.pollVisualizationResults(id);
+    public ResponseEntity<Object> getChunkingComparison(@PathVariable Long id, @RequestParam(defaultValue = "16") int chunkSize) {
+        log.info("GET /api/v1/comparisons/{}/chunking?chunkSize={}", id, chunkSize);
+        Optional<Object> result = comparisonService.pollVisualizationResults(id, chunkSize);
         return result.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.accepted().build());
+    }
+
+    @GetMapping(value = "{id}/chunking/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamChunkingComparison(@PathVariable Long id, @RequestParam(defaultValue = "16") int chunkSize) {
+        log.info("GET /api/v1/comparisons/{}/chunking/stream?chunkSize={} - SSE subscription", id, chunkSize);
+        return chunkingSseService.createEmitter(id, chunkSize);
     }
 
     @PostMapping
@@ -120,8 +130,12 @@ public class ComparisonController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteComparison(@PathVariable Long id) {
-        comparisonService.deleteComparisonById(id);
-        return ResponseEntity.noContent().build();
+        try {
+            comparisonService.deleteComparisonById(id);
+            return ResponseEntity.noContent().build();
+        } catch (NotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+        }
     }
 
     @GetMapping("/{id}/reports")

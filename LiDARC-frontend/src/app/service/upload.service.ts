@@ -1,10 +1,10 @@
-import {Injectable} from '@angular/core';
-import {HttpClient, HttpEvent} from '@angular/common/http';
-import {FileInfo} from '../dto/fileInfo';
-import {defaultBucketPath, defaultFolderPath, Globals, headers} from '../globals/globals';
-import {catchError, from, map, Observable, switchMap, throwError} from 'rxjs';
-import {CreateEmptyFolder} from '../dto/createEmptyFolder';
-import {UploadFile} from '../entity/UploadFile';
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpEvent } from '@angular/common/http';
+import { FileInfo } from '../dto/fileInfo';
+import { defaultBucketPath, defaultFolderPath, Globals, headers } from '../globals/globals';
+import { catchError, from, map, Observable, switchMap, throwError } from 'rxjs';
+import { CreateEmptyFolder } from '../dto/createEmptyFolder';
+import { UploadFile } from '../entity/UploadFile';
 
 @Injectable({
   providedIn: 'root',
@@ -27,7 +27,7 @@ export class UploadService {
     return this.httpClient.post<FileInfo>(
       this.globals.backendUri + defaultBucketPath + '/upload',
       payload,
-      {headers}
+      { headers }
     );
   }
 
@@ -40,7 +40,7 @@ export class UploadService {
     return this.httpClient.post<CreateEmptyFolder>(
       this.globals.backendUri + defaultFolderPath + '/empty',
       payload,
-      {headers}
+      { headers }
     );
   }
 
@@ -51,7 +51,10 @@ export class UploadService {
 
       reader.onload = () => {
         const parsed = new URL(url);
-        const proxiedUrl = `http://localhost:8081/minio-upload${parsed.pathname}${parsed.search}`;
+        let proxiedUrl = url;
+        if (parsed.hostname === 'minio') {
+          proxiedUrl = this.globals.toMinioProxyUrl(url);
+        }
 
         console.log('Uploading to presigned URL:', proxiedUrl);
 
@@ -84,7 +87,7 @@ export class UploadService {
     return this.httpClient.put<FileInfo>(
       this.globals.backendUri + defaultBucketPath + '/upload',
       payload,
-      {headers}
+      { headers }
     );
   }
 

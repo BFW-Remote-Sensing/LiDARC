@@ -39,22 +39,28 @@ CREATE TABLE IF NOT EXISTS coordinate_system (
     );
 
 CREATE TABLE IF NOT EXISTS comparisons (
-                                           id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-                                           name TEXT NOT NULL,
-                                           need_highest_vegetation BOOLEAN DEFAULT FALSE,
-                                           need_outlier_detection BOOLEAN DEFAULT FALSE,
-                                           need_statistics_over_scenery BOOLEAN DEFAULT FALSE,
-                                           need_most_differences BOOLEAN DEFAULT FALSE,
-                                           created_at TIMESTAMP,
-                                           status VARCHAR(32) NOT NULL DEFAULT 'PENDING' CHECK (status in ('PENDING', 'COMPLETED', 'FAILED')),
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    name TEXT NOT NULL,
+    need_highest_vegetation BOOLEAN DEFAULT FALSE,
+    need_outlier_detection BOOLEAN DEFAULT FALSE,
+    need_statistics_over_scenery BOOLEAN DEFAULT FALSE,
+    need_most_differences BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP,
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING' CHECK (status in ('PENDING', 'COMPLETED', 'FAILED')),
     error_message TEXT,
     grid_cell_width INTEGER,
     grid_cell_height INTEGER,
     grid_min_x DOUBLE PRECISION,
     grid_max_x DOUBLE PRECISION,
     grid_min_y DOUBLE PRECISION,
-    grid_max_y DOUBLE PRECISION
-    );
+    grid_max_y DOUBLE PRECISION,
+    point_filter_lower_bound INTEGER,
+    point_filter_upper_bound INTEGER,
+    need_point_filter BOOLEAN DEFAULT FALSE,
+    result_bucket TEXT,
+    result_object_key TEXT,
+    outlier_deviation_factor DOUBLE PRECISION
+);
 
 CREATE TABLE IF NOT EXISTS comparison_file (
                                                comparison_id BIGINT NOT NULL,
@@ -77,24 +83,7 @@ CREATE TABLE IF NOT EXISTS reports (
                                        comparison_id BIGINT NOT NULL,
                                        CONSTRAINT fk_comparison_id FOREIGN KEY(comparison_id) REFERENCES comparisons(id)
     );
-CREATE TABLE IF NOT EXISTS comparisons (
-                                           id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-                                           name TEXT NOT NULL,
-                                           need_highest_vegetation BOOLEAN DEFAULT FALSE,
-                                           need_outlier_detection BOOLEAN DEFAULT FALSE,
-                                           need_statistics_over_scenery BOOLEAN DEFAULT FALSE,
-                                           need_most_differences BOOLEAN DEFAULT FALSE,
-                                           created_at TIMESTAMP,
-                                           status VARCHAR(32) NOT NULL DEFAULT 'PENDING' CHECK (status in ('PENDING', 'COMPLETED', 'FAILED')),
-    result_report_url TEXT,
-    error_message TEXT,
-    grid_cell_width INTEGER,
-    grid_cell_height INTEGER,
-    grid_min_x DOUBLE PRECISION,
-    grid_max_x DOUBLE PRECISION,
-    grid_min_y DOUBLE PRECISION,
-    grid_max_y DOUBLE PRECISION
-    );
+
 
 CREATE TABLE IF NOT EXISTS comparison_file (
                                                comparison_id BIGINT NOT NULL,

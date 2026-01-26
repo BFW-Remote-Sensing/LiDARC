@@ -25,12 +25,12 @@ public interface IComparisonService {
 
     void saveVisualizationComparison(Map<String, Object> result);
 
-    Optional<Object> pollVisualizationResults(Long comparisonId);
+    Optional<Object> pollVisualizationResults(Long comparisonId, int chunkSize);
 
     void processPreprocessingResult(Map<String, Object> result);
 
     void processComparisonResult(Map<String, Object> result);
 
     @Transactional
-    void deleteComparisonById(Long id);
+    void deleteComparisonById(Long id) throws NotFoundException;
 }

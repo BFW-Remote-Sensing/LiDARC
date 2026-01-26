@@ -17,8 +17,8 @@ def __create_connection() -> pika.BlockingConnection:
         port=rabbitConfig.port,
         virtual_host=rabbitConfig.vhost,
         credentials=creds,
-        heartbeat=30,
-        blocked_connection_timeout=300,
+        heartbeat=600,
+        blocked_connection_timeout=600,
     )
     return pika.BlockingConnection(params)
 

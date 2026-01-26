@@ -1,7 +1,9 @@
-import { Injectable } from '@angular/core';
+import {Injectable} from '@angular/core';
 import proj4 from 'proj4';
+import * as L from 'leaflet';
 
-@Injectable({ providedIn: 'root' })
+
+@Injectable({providedIn: 'root'})
 export class CoordinateService {
   private readonly WGS84 = "EPSG:4326";
 
@@ -26,5 +28,43 @@ export class CoordinateService {
       console.error(`Projection failed for EPSG:${epsg}`, error);
       return [0, 0];
     }
+  }
+
+  fromLatLng(lat: number,
+             lng: number,
+             epsg: number = 31256): { x: number; y: number } {
+    try {
+      const [x, y] = proj4(
+        this.WGS84,
+        `EPSG:${epsg}`,
+        [lng, lat]
+      );
+
+      return {x, y};
+    } catch (error) {
+      console.error(`Inverse projection failed for EPSG:${epsg}`, error);
+      return {x: 0, y: 0};
+    }
+  }
+
+  getLatLngOverlap(aSW: [number, number],
+                   aNE: [number, number],
+                   bSW: [number, number],
+                   bNE: [number, number]): { sw: L.LatLng; ne: L.LatLng } | null {
+    const overlapSW = L.latLng(
+      Math.max(aSW[0], bSW[0]),
+      Math.max(aSW[1], bSW[1])
+    );
+
+    const overlapNE = L.latLng(
+      Math.min(aNE[0], bNE[0]),
+      Math.min(aNE[1], bNE[1])
+    );
+
+    if (overlapSW.lat >= overlapNE.lat ||
+      overlapSW.lng >= overlapNE.lng) {
+      return null;
+    }
+    return {sw: overlapSW, ne: overlapNE};
   }
 }

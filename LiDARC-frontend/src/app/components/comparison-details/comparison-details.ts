@@ -1,9 +1,9 @@
-import { Component, inject, Input, OnInit, signal, WritableSignal , ViewChild} from '@angular/core';
+import {Component, inject, Input, OnInit, signal, WritableSignal, ViewChild, computed} from '@angular/core';
 import { ComparisonService } from '../../service/comparison.service';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormatService } from '../../service/format.service';
 import { MetadataService } from '../../service/metadata.service';
-import { debounceTime, finalize, forkJoin, map, Subject, Subscription, switchMap, timer } from 'rxjs';
+import { debounceTime, finalize, forkJoin, interval, map, Subject, Subscription, switchMap, timer } from 'rxjs';
 import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
 import { ComparisonDTO } from '../../dto/comparison';
 import { ComparisonReport } from '../../dto/comparisonReport';
@@ -15,10 +15,11 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { TextCard } from '../text-card/text-card';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatTooltip } from '@angular/material/tooltip';
+import { MatCheckbox } from '@angular/material/checkbox';
 
 
 import * as echarts from 'echarts/core';
-import { EChartsCoreOption , ECElementEvent} from 'echarts/core';
+import { EChartsCoreOption, ECElementEvent } from 'echarts/core';
 import { NgxEchartsDirective, provideEchartsCore } from "ngx-echarts";
 import { BarChart, BoxplotChart, HeatmapChart, LineChart, ScatterChart } from 'echarts/charts';
 import {
@@ -40,7 +41,7 @@ import { ReportCreationDialogComponent } from '../report-creation-dialog-compone
 import { MatDialog } from '@angular/material/dialog';
 import { ChartData } from '../../dto/report';
 import { ECharts } from 'echarts';
-import { Globals } from '../../globals/globals';
+import { Globals, pollingIntervalMs, snackBarDurationMs } from '../../globals/globals';
 
 import {
   ChunkingResult,
@@ -48,12 +49,16 @@ import {
   VegetationStats,
   CellEntry
 } from '../../dto/chunking';
-import { filter, takeWhile } from 'rxjs/operators';
+import { filter, takeUntil, takeWhile } from 'rxjs/operators';
 import { HttpResponse } from '@angular/common/http';
 import { ChunkingSettings } from '../chunking-settings/chunking-settings';
 import { FormsModule } from '@angular/forms';
 import { FolderDTO } from '../../dto/folder';
 import {MatSlideToggleModule} from '@angular/material/slide-toggle';
+import { StatusService } from '../../service/status.service';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
+import { ReportSerivce } from '../../service/report.serivce';
 
 echarts.use([
   HeatmapChart,
@@ -92,33 +97,44 @@ echarts.use([
     MatButton,
     ChunkingSettings,
     FormsModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    MatCheckbox
   ],
   templateUrl: './comparison-details.html',
-  styleUrls: ['./comparison-details.scss', '../file-details/file-details.scss'],
+  styleUrls: ['./comparison-details.scss', '../file-details/file-details.scss', '../stored-files/stored-files.scss'],
   providers: [provideEchartsCore({ echarts })]
 })
 export class ComparisonDetails implements OnInit {
   @Input() comparisonId: number | null = null;
-  @Input() comparison: ComparisonDTO | null = null;
+  public comparison = signal<ComparisonDTO | null>(null);
   @Input() reports = signal<ComparisonReport[]>([]);
   @ViewChild(Heatmap) heatmapComponent!: Heatmap;
 
   public loading: WritableSignal<boolean> = signal(true);
   public errorMessage = signal<string | null>(null);
-  private chartInstances: { [key: string]: ECharts} = {};
+  private chartInstances: { [key: string]: ECharts } = {};
   private scatterInstance!: ECharts;
   reportsLimit: number = 3;
+  chunkingSize: number = 5;
   reportsLoading = signal<boolean>(false);
   hasMoreReports = signal<boolean>(true);
   showPercentiles = signal(false);
   percentilesAvailable = signal(false);
+  showOutlierDots = signal<boolean>(true);
+
+  private stopPolling$ = new Subject<void>();
+  private isPolling = false;
+  private previousStatus: string | null = null;
 
   constructor(
     private comparisonService: ComparisonService,
+    private reportService: ReportSerivce,
     private route: ActivatedRoute,
     private dialog: MatDialog,
-    public globals: Globals
+    public globals: Globals,
+    private statusService: StatusService,
+    private snackBar: MatSnackBar,
+    private router: Router
   ) {
     this.comparisonId = Number(this.route.snapshot.paramMap.get('id'));
   }
@@ -172,9 +188,11 @@ export class ComparisonDetails implements OnInit {
     }
 
   });
+
+  groupMapping = computed(() => this.vegetationStats().group_mapping);
   private pollingSubscription?: Subscription;
   private chunkSize$ = new Subject<number>();
-  chunkSize = 16;
+
 
 
   scatterOption!: EChartsCoreOption;
@@ -196,8 +214,8 @@ export class ComparisonDetails implements OnInit {
   }
 
   get comparedItems(): { id: number; name: string; type: 'file' | 'folder' }[] {
-    const files = this.comparison?.files.map(f => ({ id: f.id, name: f.originalFilename, type: 'file' as const })) ?? [];
-    const folders = [this.comparison?.folderA, this.comparison?.folderB]
+    const files = this.comparison()?.files.map(f => ({ id: f.id, name: f.originalFilename, type: 'file' as const })) ?? [];
+    const folders = [this.comparison()?.folderA, this.comparison()?.folderB]
       .filter(f => f != null)
       .map(f => ({ id: f.id, name: f.name, type: 'folder' as const }));
     return [...files, ...folders];
@@ -205,15 +223,69 @@ export class ComparisonDetails implements OnInit {
 
   ngOnInit(): void {
     if (this.comparisonId) {
-      this.loading.set(true);
-      forkJoin({
-        comparison: this.comparisonService.getComparisonById(+this.comparisonId),
-        reports: this.comparisonService.getComparisonReportsById(+this.comparisonId, this.reportsLimit)
-      })
-        .pipe(finalize(() => this.loading.set(false)))
-        .subscribe({
-          next: ({ comparison, reports }) => {
-            this.comparison = comparison;
+      this.fetchInitialComparison();
+    }
+  }
+
+  private fetchInitialComparison(): void {
+    this.loading.set(true);
+    this.comparisonService.getComparisonById(+this.comparisonId!)
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: (data) => this.handleComparisonUpdate(data),
+        error: (err) => {
+          console.error(err);
+          this.errorMessage.set('Failed to fetch comparison data.');
+        }
+      });
+  }
+
+  private handleComparisonUpdate(data: any): void {
+    // Check for status changes to trigger snackbars if desired
+    if (this.previousStatus && this.previousStatus !== data.status) {
+      this.snackBar.open(
+        this.statusService.getComparisonSnackbarMessage("Comparison", data.name, data.status),
+        'OK', { duration: snackBarDurationMs }
+      );
+    }
+    this.previousStatus = data.status;
+
+    // Update the signal
+    this.comparison.set(data);
+
+    if (data.status === 'COMPLETED') {
+      this.chunkingSize = this.computeInitialChunkingSize();
+      this.stopPolling();
+      this.fetchReports(); // Sequential call: only fetch reports when COMPLETED
+    } else if (data.status === 'FAILED') {
+      this.stopPolling();
+    } else {
+      this.startPolling();
+    }
+  }
+
+  private startPolling(): void {
+    if (this.isPolling) return;
+    this.isPolling = true;
+
+    interval(pollingIntervalMs)
+      .pipe(
+        takeUntil(this.stopPolling$),
+        switchMap(() => this.comparisonService.getComparisonById(+this.comparisonId!))
+      )
+      .subscribe({
+        next: (data) => this.handleComparisonUpdate(data),
+        error: (err) => {
+          console.error('Polling error:', err);
+          this.stopPolling();
+        }
+      });
+  }
+
+  private fetchReports(): void {
+    this.comparisonService.getComparisonReportsById(+this.comparisonId!, this.reportsLimit)
+      .subscribe({
+        next: (reports) => {
             this.reports.set(reports);
             this.checkIfMoreReportsExist(reports.length);
             if (this.comparison?.individualStatisticsPercentile) {
@@ -224,12 +296,106 @@ export class ComparisonDetails implements OnInit {
               this.showPercentiles.set(false);
             }
           },
-          error: (err) => {
-            console.error(err);
-            this.errorMessage.set('Failed to fetch comparison data.');
-          }
-        });
-    }
+          error: (err) => console.error('Failed to fetch reports:', err)
+      });
+  }
+
+  private stopPolling(): void {
+    this.stopPolling$.next();
+    this.isPolling = false;
+  }
+
+  onDeleteComparison(): void {
+    const data: ConfirmationDialogData = {
+      title: 'Confirmation',
+      subtitle: 'Are you sure you want to delete this comparison?',
+      objectName: this.comparison() ? this.comparison()!.name : '',
+      extensionMessage: this.reports().length > 0 ? `This comparison has ${this.reports().length} associated report(s) that will also be deleted.` : undefined,
+      primaryButtonText: 'Delete',
+      primaryButtonColor: 'warn',
+      secondaryButtonText: 'Cancel',
+      onConfirm: () => this.comparisonService.deleteComparisonById(this.comparisonId!),
+      successActionText: 'Comparison deletion'
+    };
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '400px',
+      data,
+      disableClose: true,
+      autoFocus: false
+    });
+
+    dialogRef.afterClosed().subscribe(success => {
+      if (success) {
+        this.router.navigate(['/comparisons']);
+      }
+    });
+  }
+
+  deleteReport(id: number, name: string): void {
+    const data: ConfirmationDialogData = {
+      title: 'Confirmation',
+      subtitle: 'Are you sure you want to delete this report?',
+      objectName: name,
+      primaryButtonText: 'Delete',
+      primaryButtonColor: 'warn',
+      secondaryButtonText: 'Cancel',
+      onConfirm: () => this.reportService.deleteReport(id),
+      successActionText: 'Report deletion'
+    };
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '400px',
+      data,
+      disableClose: true,
+      autoFocus: false
+    });
+
+    dialogRef.afterClosed().subscribe(success => {
+      if (success) {
+        this.reports.set(this.reports().filter(report => report.id !== id));
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.stopPolling();
+    this.stopPolling$.complete();
+  }
+
+  computeInitialChunkingSize(): number {
+    if (!this.comparison()?.grid) return 16;
+
+    const cellWidth = this.comparison()!.grid?.cellWidth ?? 10;
+    const cellHeight = this.comparison()!.grid?.cellHeight ?? 10;
+    const xRange = (this.comparison()!.grid?.xMax ?? 1000) - (this.comparison()!.grid?.xMin ?? 0);
+    const yRange = (this.comparison()!.grid?.yMax ?? 1000) - (this.comparison()!.grid?.yMin ?? 0);
+
+    console.log(this.comparison()!.grid?.xMax);
+    console.log(this.comparison()!.grid?.xMin);
+    console.log("xRange: " + xRange + ", yRange: " + yRange);
+
+
+    const cellsX = Math.ceil(xRange / cellWidth);
+    const cellsY = Math.ceil(yRange / cellHeight);
+    const totalCells = cellsX * cellsY;
+
+    // Ziel: ~100 × 100 = 10 000
+    const TARGET_CELLS = 10_000;
+
+    // Grober Faktor (wie stark wir zusammenfassen müssten)
+    const roughFactor = Math.sqrt(totalCells / TARGET_CELLS);
+
+    console.log("Initial chunking size calculation:" + roughFactor + " factor for " + totalCells + " total cells.");
+
+    // 🎯 Nur ca. 6 Rückgabewerte
+    if (totalCells <= 0) return 5;
+    if (roughFactor <= 1.2) return 1;
+    if (roughFactor <= 1.8) return 2;
+    if (roughFactor <= 2.5) return 4;
+    if (roughFactor <= 3.5) return 6;
+    if (roughFactor <= 5.0) return 8;
+    return 12;
   }
 
   private handleChunkingResult(result: ChunkingResult): void {
@@ -243,15 +409,20 @@ export class ComparisonDetails implements OnInit {
       ? result.statistics_p!
       : result.statistics;
 
+    const flattenedCells = this.flattenCells(result.chunked_cells);
+    console.log('[FLATTENED CELLS COUNT]', flattenedCells.length);
+    console.log('[SAMPLE CELLS]', flattenedCells.slice(0, 5));
+    console.log('[BACKEND STATISTICS]', result.statistics);
+    console.log('[DIFFERENCE METRICS FROM BACKEND]', result.statistics?.difference);
+
+
     this.vegetationStats.set({
-      cells: this.flattenCells(result.chunked_cells),
+      cells: flattenedCells,
       fileA_metrics: statsToUse.file_a,
       fileB_metrics: statsToUse.file_b,
       difference_metrics: statsToUse.difference,
       group_mapping: result.group_mapping,
     });
-    console.log('[FLATTENED CELLS COUNT]', this.vegetationStats().cells.length);
-
     this.buildAllCharts();
   }
 
@@ -342,11 +513,11 @@ export class ComparisonDetails implements OnInit {
       }
     }
     const chartsToExport = [
-      { key: 'scatter', name: 'Vegetation Height Scatter Plot', fileName: 'scatter_plot.png'},
-      { key: 'boxplot', name: 'Vegetation Height Box Plot', fileName: 'box_plot.png'},
-      { key: 'distribution', name: 'Vegetation Height Distribution', fileName: 'distribution.png'},
-      { key: 'distribution_diff', name: 'Vegetation Height Distribution Differences', fileName: 'distribution_diff.png'},
-      { key: 'histo_diff', name: 'Histogram Differences', fileName: 'histo_diff.png'}
+      { key: 'scatter', name: 'Vegetation Height Scatter Plot', fileName: 'scatter_plot.png' },
+      { key: 'boxplot', name: 'Vegetation Height Box Plot', fileName: 'box_plot.png' },
+      { key: 'distribution', name: 'Vegetation Height Distribution', fileName: 'distribution.png' },
+      { key: 'distribution_diff', name: 'Vegetation Height Distribution Differences', fileName: 'distribution_diff.png' },
+      { key: 'histo_diff', name: 'Histogram Differences', fileName: 'histo_diff.png' }
     ];
     chartsToExport.forEach(chart => {
       const instance = this.chartInstances[chart.key];
@@ -361,7 +532,7 @@ export class ComparisonDetails implements OnInit {
       width: '600px',
       height: 'auto',
       data: {
-        comparison: this.comparison,
+        comparison: this.comparison(),
         availableCharts: chartImages
       }
     });
@@ -390,7 +561,7 @@ export class ComparisonDetails implements OnInit {
       //TODO: Add some error handling?
       console.error(`Failed to export image for ${name}`, error);
     }
-    }
+  }
 
   private dataURItoBlob(dataURI: string): Blob {
     const byteString = atob(dataURI.split(',')[1]);
@@ -401,26 +572,6 @@ export class ComparisonDetails implements OnInit {
       ia[i] = byteString.charCodeAt(i);
     }
     return new Blob([ab], { type: mimeString });
-  }
-
-  private fetchReports(): void {
-    if (!this.comparisonId) return;
-
-    // Use the signal for loading state
-    this.reportsLoading.set(true);
-
-    this.comparisonService.getComparisonReportsById(+this.comparisonId, this.reportsLimit)
-      .pipe(finalize(() => this.reportsLoading.set(false)))
-      .subscribe({
-        next: (reports: ComparisonReport[]) => {
-          this.reports.set(reports);
-          this.checkIfMoreReportsExist(reports.length);
-        },
-        error: () => {
-          // Handle error silently or show toast
-          console.error('Could not refresh reports list');
-        }
-      });
   }
 
   private checkIfMoreReportsExist(countLoaded: number) {
@@ -500,8 +651,8 @@ export class ComparisonDetails implements OnInit {
 
     // Helper function: PDF of normal distribution
     const normalPDF = (x: number, mean: number, std: number) => {
-        const s = Math.max(std, 1e-6);
-        return (1/(s * Math.sqrt(2*Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / s, 2));
+      const s = Math.max(std, 1e-6);
+      return (1 / (s * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / s, 2));
     }
 
     // Define the range of x (min to max of both files)
@@ -517,7 +668,7 @@ export class ComparisonDetails implements OnInit {
 
     const steps = 200;
     const step = (maxX - minX) / steps;
-    const xValues = Array.from({length: steps+1}, (_,i) => minX + i * step);
+    const xValues = Array.from({ length: steps + 1 }, (_, i) => minX + i * step);
 
     // Compute y-values for both distributions
     const fileA_Y = xValues.map(x => normalPDF(x, fileA_metrics.mean_veg_height, fileA_metrics.std_veg_height));
@@ -572,12 +723,12 @@ export class ComparisonDetails implements OnInit {
     const mean = diff.mean;
     const std = Math.max(diff.std, 1e-6);
 
-        const normalPDF = (x: number) => (1 / (std * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / std, 2));
+    const normalPDF = (x: number) => (1 / (std * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / std, 2));
 
-        const minX = mean - 4 * std;
+    const minX = mean - 4 * std;
     const maxX = mean + 4 * std;
 
-        const steps = 200;
+    const steps = 200;
     const step = (maxX - minX) / steps;
     const xValues = Array.from({ length: steps + 1 }, (_, i) => minX + i * step);
 
@@ -644,10 +795,14 @@ export class ComparisonDetails implements OnInit {
     };
   }
 
+  onOutlierToggle(): void {
+    this.showOutlierDots.update((value) => !value);
+  }
+
   private buildDifferenceHistogramChart(): EChartsCoreOption {
     const histogram = this.vegetationStats().difference_metrics.histogram;
 
-        if (!histogram) {
+    if (!histogram) {
       console.warn('No hisogram data available')
       return {};
     }

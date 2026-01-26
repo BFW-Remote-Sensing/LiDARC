@@ -195,7 +195,7 @@ export class StatsScenery implements OnInit, AfterViewInit {
   private requestVisualizationData(chunkSize: number, comparisonId: number) {
     return this.comparisonService.startChunkingResult(comparisonId, chunkSize).pipe(
       tap(() => console.log("Starting chunking worker...")),
-      switchMap(() => this.pollVisualizationData(comparisonId)),
+      switchMap(() => this.pollVisualizationData(comparisonId, chunkSize)),
       catchError(err => {
         console.log("Error during start or polling:", err);
         return of(null)
@@ -204,9 +204,9 @@ export class StatsScenery implements OnInit, AfterViewInit {
     );
   }
 
-  private pollVisualizationData(comparisonId: number) {
+  private pollVisualizationData(comparisonId: number, chunkSize: number) {
     return timer(0, 1000).pipe(
-      switchMap(() => this.comparisonService.pollChunkingResult(comparisonId)),
+      switchMap(() => this.comparisonService.pollChunkingResult(comparisonId, chunkSize)),
       map((response: HttpResponse<any>) => {
         if (response.status === 202) return { status: 'PENDING', data: null };
         if (response.status === 200) return { status: 'COMPLETED', data: response.body };
