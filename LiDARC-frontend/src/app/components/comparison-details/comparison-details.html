@@ -334,58 +334,58 @@
             <mat-list-item>Avg. Points: {{ vegetationStats().fileA_metrics.mean_points_per_grid_cell }}</mat-list-item>
           </mat-list>
 
-          <mat-list>
-            <h4>B: {{vegetationStats().group_mapping.b}}</h4>
-            <mat-list-item>Mean: {{ vegetationStats().fileB_metrics.mean_veg_height }}</mat-list-item>
-            <mat-list-item>Median: {{ vegetationStats().fileB_metrics.median_veg_height }}</mat-list-item>
-            <mat-list-item>Std: {{ vegetationStats().fileB_metrics.std_veg_height }}</mat-list-item>
-            <mat-list-item>Min: {{ vegetationStats().fileB_metrics.min_veg_height }}</mat-list-item>
-            <mat-list-item>Max: {{ vegetationStats().fileB_metrics.max_veg_height }}</mat-list-item>
-            <mat-list-item>Avg. Points: {{ vegetationStats().fileB_metrics.mean_points_per_grid_cell }}</mat-list-item>
-          </mat-list>
-        </div>
+              <mat-list>
+                <h4>B: {{vegetationStats().group_mapping.b}}</h4>
+                <mat-list-item>Mean: {{ vegetationStats().fileB_metrics.mean_veg_height }}</mat-list-item>
+                <mat-list-item>Median: {{ vegetationStats().fileB_metrics.median_veg_height }}</mat-list-item>
+                <mat-list-item>Std: {{ vegetationStats().fileB_metrics.std_veg_height }}</mat-list-item>
+                <mat-list-item>Min: {{ vegetationStats().fileB_metrics.min_veg_height }}</mat-list-item>
+                <mat-list-item>Max: {{ vegetationStats().fileB_metrics.max_veg_height }}</mat-list-item>
+                <mat-list-item>Avg. Points: {{ vegetationStats().fileB_metrics.mean_points_per_grid_cell }}</mat-list-item>
+              </mat-list>
+            </div>
 
-        <div class="charts-grid">
-          <div echarts [options]="{}" [merge]="scatterOption" (chartInit)="onChartInit($event, 'scatter')"
-            class="chart"></div>
-          <div echarts [options]="{}" [merge]="boxplotOption" (chartInit)="onChartInit($event, 'boxplot')"
-            class="chart"></div>
-          <div echarts [options]="{}" [merge]="fileDistributionOption" (chartInit)="onChartInit($event, 'distribution')"
-            class="chart"></div>
-        </div>
-      </mat-card-content>
-    </mat-card>
+            <div class="charts-grid">
+              <div echarts [options]="{}" [merge]="scatterOption" (chartInit)="onChartInit($event, 'scatter')"
+                   class="chart"></div>
+              <div echarts [options]="{}" [merge]="boxplotOption" (chartInit)="onChartInit($event, 'boxplot')"
+                   class="chart"></div>
+              <div echarts [options]="{}" [merge]="fileDistributionOption" (chartInit)="onChartInit($event, 'distribution')"
+                   class="chart"></div>
+            </div>
+          </mat-card-content>
+        </mat-card>
 
-    <!-- ===== Difference Metrics Section ===== -->
-    <mat-card class="section-card">
-      <mat-card-title>Difference Metrics (B - A)</mat-card-title>
-      <mat-divider></mat-divider>
-      <mat-card-content>
-        <p>The difference metrics show how much the maximum vegetational height of File B differs from the one of File
-          A for each cell.</p>
+        <!-- ===== Difference Metrics Section ===== -->
+        <mat-card class="section-card">
+          <mat-card-title>Difference Metrics (B - A)</mat-card-title>
+          <mat-divider></mat-divider>
+          <mat-card-content>
+            <p>The difference metrics show how much the maximum vegetational height of File B differs from the one of File
+              A for each cell.</p>
 
-        <mat-list>
-          <mat-list-item>Mean: {{ vegetationStats().difference_metrics.mean }}</mat-list-item>
-          <mat-list-item>Median: {{ vegetationStats().difference_metrics.median }}</mat-list-item>
-          <mat-list-item>Std: {{ vegetationStats().difference_metrics.std }}</mat-list-item>
-          <mat-list-item>Most Negative: {{ vegetationStats().difference_metrics.most_negative }}</mat-list-item>
-          <mat-list-item>Least Negative: {{ vegetationStats().difference_metrics.least_negative }}</mat-list-item>
-          <mat-list-item>Smallest Positive: {{ vegetationStats().difference_metrics.smallest_positive }}
-          </mat-list-item>
-          <mat-list-item>Largest Positive: {{ vegetationStats().difference_metrics.largest_positive }}</mat-list-item>
-        </mat-list>
+            <mat-list>
+              <mat-list-item>Mean: {{ vegetationStats().difference_metrics.mean }}</mat-list-item>
+              <mat-list-item>Median: {{ vegetationStats().difference_metrics.median }}</mat-list-item>
+              <mat-list-item>Std: {{ vegetationStats().difference_metrics.std }}</mat-list-item>
+              <mat-list-item>Most Negative: {{ vegetationStats().difference_metrics.most_negative }}</mat-list-item>
+              <mat-list-item>Least Negative: {{ vegetationStats().difference_metrics.least_negative }}</mat-list-item>
+              <mat-list-item>Smallest Positive: {{ vegetationStats().difference_metrics.smallest_positive }}
+              </mat-list-item>
+              <mat-list-item>Largest Positive: {{ vegetationStats().difference_metrics.largest_positive }}</mat-list-item>
+            </mat-list>
 
-        <div class="charts-grid">
-          <div echarts [options]="{}" [merge]="diffDistributionOption"
-            (chartInit)="onChartInit($event, 'distribution_diff')" class="chart"></div>
-          <div echarts [options]="{}" [merge]="diffHistogramOption" (chartInit)="onChartInit($event, 'histo_diff')"
-            class="chart"></div>
-          <!-- TODO check if needed
-            <div echarts [options]="categoryBarChart" class="chart"></div>
-            -->
-        </div>
-      </mat-card-content>
-    </mat-card>
+            <div class="charts-grid">
+              <div echarts [options]="{}" [merge]="diffDistributionOption"
+                   (chartInit)="onChartInit($event, 'distribution_diff')" class="chart"></div>
+              <div echarts [options]="{}" [merge]="diffHistogramOption" (chartInit)="onChartInit($event, 'histo_diff')"
+                   class="chart"></div>
+              <!-- TODO check if needed
+                <div echarts [options]="categoryBarChart" class="chart"></div>
+                -->
+            </div>
+          </mat-card-content>
+        </mat-card>
 
     <mat-card class="section-card">
       <mat-card-title>
