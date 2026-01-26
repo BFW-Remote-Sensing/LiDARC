@@ -3,7 +3,7 @@ export interface UploadFile {
   id: string;
   file: File;
   hash: string;
-  status: 'idle' | 'uploading' | 'done' | 'error';
+  status: 'idle' | 'hashing' | 'uploading' | 'done' | 'error';
   progress: number;
   folderId?: number;
   folderName?: string;

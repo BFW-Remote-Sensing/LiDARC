@@ -34,6 +34,10 @@
           <th *matHeaderCellDef mat-header-cell>Status</th>
           <td *matCellDef="let f" mat-cell>
             @if (f.status == 'idle') {
+            } @else if (f.status == 'hashing') {
+              <span class="text-spinner">
+                <mat-spinner [diameter]="20" mode="indeterminate"></mat-spinner>
+              </span>
             } @else if (f.status == 'uploading') {
               <span class="text-spinner"
               ><mat-spinner [diameter]="20" [value]="f.progress" mode="determinate"></mat-spinner
