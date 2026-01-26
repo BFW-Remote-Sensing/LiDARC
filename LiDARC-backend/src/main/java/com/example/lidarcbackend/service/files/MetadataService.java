@@ -38,11 +38,6 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-
-
 @Service
 @Slf4j
 public class MetadataService implements IMetadataService {
@@ -59,15 +54,14 @@ public class MetadataService implements IMetadataService {
     private final IJobTrackingService jobTrackingService;
 
     public MetadataService(
-            FileRepository fileRepository,
-            CoordinateSystemRepository coordinateSystemRepository,
-            FolderRepository folderRepository,
-            IFolderService folderService,
-            ComparisonFileRepository comparisonFileRepository,
+        FileRepository fileRepository,
+        CoordinateSystemRepository coordinateSystemRepository,
+        FolderRepository folderRepository,
+        IFolderService folderService,
+        ComparisonFileRepository comparisonFileRepository,
             MinioClient minioClient,
-            MinioProperties minioProperties,
-            Validator validator,
-            MetadataMapper mapper,
+            MinioProperties minioProperties,Validator validator,
+        MetadataMapper mapper,
             IJobTrackingService jobTrackingService) {
         this.fileRepository = fileRepository;
         this.coordinateSystemRepository = coordinateSystemRepository;
@@ -85,15 +79,16 @@ public class MetadataService implements IMetadataService {
         return fileRepository.findById(Long.parseLong(metadataId)).map(mapper::toDto).orElse(null);
     }
 
+    //TODO: Why take String here?
     public List<FileMetadataDTO> getMetadataList(List<String> metadataIds) {
 
         List<Long> ids = metadataIds.stream()
-                .map(Long::parseLong)
-                .toList();
+            .map(Long::parseLong)
+            .toList();
 
         return fileRepository.findAllById(ids).stream()
-                .map(mapper::toDto)
-                .toList();
+            .map(mapper::toDto)
+            .toList();
     }
 
     public Boolean existsWithId(Long id) {
@@ -107,8 +102,8 @@ public class MetadataService implements IMetadataService {
             page = fileRepository.findPagedByFolderIsNullAndActiveTrue(pageable);
         } else {
             page = fileRepository.findPagedByFolderIsNullAndActiveTrueAndOriginalFilenameContainingIgnoreCase(
-                    search,
-                    pageable
+                search,
+                pageable
             );
         }
 
@@ -117,63 +112,63 @@ public class MetadataService implements IMetadataService {
 
     public List<FileMetadataDTO> getAllMetadataWithoutFolder() {
         return fileRepository.findAllByFolderIsNull(Sort.by(Sort.Direction.DESC, "uploadedAt")).stream()
-                .map(mapper::toDto)
-                .toList();
+            .map(mapper::toDto)
+            .toList();
     }
 
     public List<FolderFilesDTO> getMetadataGroupedByFolder() {
 
         List<File> entities =
-                fileRepository.findAllByFolderIsNotNull(
-                        Sort.by(Sort.Direction.DESC, "uploadedAt")
-                );
+            fileRepository.findAllByFolderIsNotNull(
+                Sort.by(Sort.Direction.DESC, "uploadedAt")
+            );
 
         Map<Folder, List<File>> grouped =
-                entities.stream()
-                        .collect(Collectors.groupingBy(File::getFolder));
+            entities.stream()
+                .collect(Collectors.groupingBy(File::getFolder));
 
         return grouped.entrySet().stream()
-                .sorted(Comparator.comparing(
-                        entry -> entry.getKey().getCreatedAt(),
-                        Comparator.reverseOrder()))
-                .map(entry -> new FolderFilesDTO(
-                        entry.getKey().getId(),
-                        entry.getKey().getName(),
-                        entry.getKey().getCreatedAt(),
-                        entry.getKey().getStatus(),
-                        entry.getKey().getActive(),
-                        entry.getValue().stream()
-                                .map(mapper::toDto)
-                                .toList()
-                ))
-                .toList();
+            .sorted(Comparator.comparing(
+                entry -> entry.getKey().getCreatedAt(),
+                Comparator.reverseOrder()))
+            .map(entry -> new FolderFilesDTO(
+                entry.getKey().getId(),
+                entry.getKey().getName(),
+                entry.getKey().getCreatedAt(),
+                entry.getKey().getStatus(),
+                entry.getKey().getActive(),entry.getValue().stream()
+                    .map(mapper::toDto)
+                    .toList()
+            ))
+            .toList();
     }
 
     public Page<ComparableItemDTO> getAllMetadataGroupedByFolderPaged(Pageable pageable, String search) {
         Page<ComparableProjection> page = fileRepository.findComparables(search != null && !search.isBlank() ? search : null, pageable);
 
         List<Long> folderIds =
-                page.stream()
-                        .map(ComparableProjection::getFolderId)
-                        .filter(Objects::nonNull)
-                        .toList();
+            page.stream()
+                .map(ComparableProjection::getFolderId)
+                .filter(Objects::nonNull)
+                .toList();
 
         List<Long> fileIds =
-                page.stream()
-                        .map(ComparableProjection::getFileId)
-                        .filter(Objects::nonNull)
-                        .toList();
+            page.stream()
+                .map(ComparableProjection::getFileId)
+                .filter(Objects::nonNull)
+                .toList();
 
         Map<Long, FolderFilesDTO> folders =
-                folderService.loadFoldersWithFiles(folderIds);
+            folderService.loadFoldersWithFiles(folderIds);
 
         Map<Long, FileMetadataDTO> files =
-                this.loadFiles(fileIds);
+            this.loadFiles(fileIds);
 
 
         return page.map(row -> {
-            if (row.getFolderId() != null)
+            if (row.getFolderId() != null) {
                 return folders.get(row.getFolderId());
+            }
             return files.get(row.getFileId());
         });
     }
@@ -231,10 +226,10 @@ public class MetadataService implements IMetadataService {
         }
 
         return fileRepository.findAllById(fileIds).stream()
-                .collect(Collectors.toMap(
-                        File::getId,
-                        mapper::toDto
-                ));
+            .collect(Collectors.toMap(
+                File::getId,
+                mapper::toDto
+            ));
     }
 
     @Override
@@ -323,9 +318,9 @@ public class MetadataService implements IMetadataService {
         checkFileAssignability(metadataIds);
 
         Folder folder = folderRepository.findById(folderId)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Folder not found with id: " + folderId
-                ));
+            .orElseThrow(() -> new EntityNotFoundException(
+                "Folder not found with id: " + folderId
+            ));
 
         fileRepository.updateFolderForMetadata(metadataIds, folder);
     }
@@ -350,21 +345,20 @@ public class MetadataService implements IMetadataService {
     }
 
     private File parseMetadata(Map<String, Object> metadata, File file) {
-        try {
-            String csString = (String) metadata.get("coordinate_system");
-            CoordinateSystem cs = null;
-            if (csString != null && !csString.isEmpty()) {
-                String[] parts = csString.split(":");
-                if (parts.length == 2) {
-                    String authority = parts[0].toUpperCase();
-                    String code = parts[1];
-                    cs = coordinateSystemRepository.findByAuthorityAndCode(authority, code)
-                            .orElseGet(() -> {
-                                CoordinateSystem newCs = new CoordinateSystem();
-                                newCs.setAuthority(authority);
-                                newCs.setCode(code);
-                                return coordinateSystemRepository.save(newCs);
-                            });
+        try {String csString = (String) metadata.get("coordinate_system");
+        CoordinateSystem cs = null;
+        if (csString != null && !csString.isEmpty()) {
+            String[] parts = csString.split(":");
+            if (parts.length == 2) {
+                String authority = parts[0].toUpperCase();
+                String code = parts[1];
+                cs = coordinateSystemRepository.findByAuthorityAndCode(authority, code)
+                    .orElseGet(() -> {
+                        CoordinateSystem newCs = new CoordinateSystem();
+                        newCs.setAuthority(authority);
+                        newCs.setCode(code);
+                        return coordinateSystemRepository.save(newCs);
+                    });
 
                 }
             }
@@ -374,7 +368,7 @@ public class MetadataService implements IMetadataService {
             file.setSystemIdentifier((String) metadata.get("system_identifier"));
 
             //numeric
-            if(metadata.get("capture_year") != null) {
+            if (metadata.get("capture_year") != null) {
                 short captureYear = castToShort(metadata.get("capture_year"));
                 if (captureYear > 1990) {
                     file.setCaptureYear(captureYear);
@@ -419,8 +413,12 @@ public class MetadataService implements IMetadataService {
     }
 
     private Double castToDouble(Object obj) {
-        if (obj == null) return null;
-        if (obj instanceof Number) return ((Number) obj).doubleValue();
+        if (obj == null) {
+            return null;
+        }
+        if (obj instanceof Number) {
+            return ((Number) obj).doubleValue();
+        }
         try {
             return Double.parseDouble(obj.toString());
         } catch (NumberFormatException e) {
@@ -429,8 +427,12 @@ public class MetadataService implements IMetadataService {
     }
 
     private Short castToShort(Object obj) {
-        if (obj == null) return null;
-        if (obj instanceof Number) return ((Number) obj).shortValue();
+        if (obj == null) {
+            return null;
+        }
+        if (obj instanceof Number) {
+            return ((Number) obj).shortValue();
+        }
         try {
             return Short.parseShort(obj.toString());
         } catch (NumberFormatException e) {
@@ -439,8 +441,12 @@ public class MetadataService implements IMetadataService {
     }
 
     private Long castToLong(Object obj) {
-        if (obj == null) return null;
-        if (obj instanceof Number) return ((Number) obj).longValue();
+        if (obj == null) {
+            return null;
+        }
+        if (obj instanceof Number) {
+            return ((Number) obj).longValue();
+        }
         try {
             return Long.parseLong(obj.toString());
         } catch (NumberFormatException e) {
@@ -449,8 +455,12 @@ public class MetadataService implements IMetadataService {
     }
 
     private LocalDate castToLocalDate(Object obj) {
-        if (obj == null) return null;
-        if (obj instanceof LocalDate) return (LocalDate) obj;
+        if (obj == null) {
+            return null;
+        }
+        if (obj instanceof LocalDate) {
+            return (LocalDate) obj;
+        }
         try {
             return LocalDate.parse(obj.toString());
         } catch (Exception e) {

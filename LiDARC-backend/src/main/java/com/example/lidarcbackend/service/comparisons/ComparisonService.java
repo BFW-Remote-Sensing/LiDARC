@@ -421,7 +421,7 @@ public class ComparisonService implements IComparisonService {
         if (cfIds == null || cfIds.isEmpty()) {
             return;
         }
-
+        //TODO: How do we know that (0) is the Folder A? Especially after processing?
         Folder folderA = findFolderOrThrow(cfIds.get(0));
         dto.setFolderA(new FolderDTO(folderA.getId(), folderA.getName()));
 
