@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, OnInit, signal, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, OnInit, signal, ViewChild } from '@angular/core';
 import { Globals } from '../../globals/globals';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { ComparisonReport } from '../../dto/comparisonReport';
@@ -58,7 +58,9 @@ export class Reports implements OnInit, AfterViewInit {
 
   constructor(private reportService: ReportSerivce,
     private dialog: MatDialog,
-    public globals: Globals,) {
+    public globals: Globals,
+    private cdr: ChangeDetectorRef
+  ) {
   }
 
   ngOnInit(): void {
@@ -135,7 +137,7 @@ export class Reports implements OnInit, AfterViewInit {
     dialogRef.afterClosed().subscribe(success => {
       if (success) {
         this.dataSource.data = this.dataSource.data.filter(report => report.id !== id);
-        //this.cdr.detectChanges(); // force Angular to update the view
+        this.cdr.detectChanges();
       }
     });
   }
