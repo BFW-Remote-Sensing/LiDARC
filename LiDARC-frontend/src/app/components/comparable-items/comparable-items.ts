@@ -1,33 +1,34 @@
-import {CommonModule} from '@angular/common';
-import {ChangeDetectorRef, Component, inject, signal, ViewChild, WritableSignal} from '@angular/core';
-import {FormsModule} from '@angular/forms';
-import {MatButtonModule} from '@angular/material/button';
-import {MatCheckbox} from '@angular/material/checkbox';
-import {MatIconModule} from '@angular/material/icon';
-import {MatPaginator, MatPaginatorModule, PageEvent} from '@angular/material/paginator';
-import {MatProgressSpinner} from '@angular/material/progress-spinner';
-import {MatSelectModule} from '@angular/material/select';
-import {MatTableDataSource, MatTableModule} from '@angular/material/table';
-import {MatTooltipModule} from '@angular/material/tooltip';
-import {Router, RouterModule} from '@angular/router';
-import {FormatBytesPipe} from '../../pipes/formatBytesPipe';
-import {TextCard} from '../text-card/text-card';
-import {MatDialog} from '@angular/material/dialog';
-import {MatSnackBar} from '@angular/material/snack-bar';
-import {debounceTime, distinctUntilChanged, finalize, interval, Subject, switchMap, takeUntil} from 'rxjs';
-import {FormatService} from '../../service/format.service';
-import {MetadataService} from '../../service/metadata.service';
-import {SelectedItemService} from '../../service/selectedItem.service';
-import {pollingIntervalMs, snackBarDurationMs} from '../../globals/globals';
-import {ConfirmationDialogData, ConfirmationDialogComponent} from '../confirmation-dialog/confirmation-dialog';
-import {ComparableItemDTO, ComparableListItem} from '../../dto/comparableItem';
-import {ComparableResponse} from '../../dto/comparableResponse';
-import {MatInputModule} from '@angular/material/input';
-import {MatFormFieldModule} from '@angular/material/form-field';
-import {MatChipsModule} from '@angular/material/chips';
-import {CoordinateService} from '../../service/coordinate.service';
-import {getExtremeValue} from '../../helpers/extremeValue';
-import {FileMetadataDTO} from '../../dto/fileMetadata';
+import { CommonModule } from '@angular/common';
+import { ChangeDetectorRef, Component, inject, signal, ViewChild, WritableSignal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCheckbox } from '@angular/material/checkbox';
+import { MatIconModule } from '@angular/material/icon';
+import { MatPaginator, MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
+import { MatTableDataSource, MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router, RouterModule } from '@angular/router';
+import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
+import { TextCard } from '../text-card/text-card';
+import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { debounceTime, distinctUntilChanged, finalize, interval, Subject, switchMap, takeUntil } from 'rxjs';
+import { FormatService } from '../../service/format.service';
+import { MetadataService } from '../../service/metadata.service';
+import { SelectedItemService } from '../../service/selectedItem.service';
+import { pollingIntervalMs, snackBarDurationMs } from '../../globals/globals';
+import { ConfirmationDialogData, ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog';
+import { ComparableItemDTO, ComparableListItem } from '../../dto/comparableItem';
+import { ComparableResponse } from '../../dto/comparableResponse';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatChipsModule } from '@angular/material/chips';
+import { CoordinateService } from '../../service/coordinate.service';
+import { getExtremeValue } from '../../helpers/extremeValue';
+import { FileMetadataDTO } from '../../dto/fileMetadata';
+import { StatusService } from '../../service/status.service';
 
 
 
@@ -172,7 +173,7 @@ export class ComparableItems {
       } else if (prevStatus !== newItem.status) {
         this.snackBar.open(
           this.statusService.getComparableSnackbarMessage(newItem.type, newItem.name, newItem.status),
-          'OK', {duration: snackBarDurationMs}
+          'OK', { duration: snackBarDurationMs }
         );
         this.previousMap.set(itemKey, newItem.status);
       }
