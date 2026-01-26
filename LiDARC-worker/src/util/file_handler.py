@@ -14,12 +14,7 @@ from requests.adapters import HTTPAdapter, Retry
 BUCKET_NAME = os.environ.get("BUCKET_NAME", "basebucket")
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:9000/")
 
-# Redis file cache configuration from environment variables
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-FILE_CACHE_MAX_COUNT = int(os.getenv("FILE_CACHE_MAX_COUNT", "10"))
-FILE_CACHE_MAX_SIZE_MB = int(os.getenv("FILE_CACHE_MAX_SIZE_MB", "20"))
-FILE_CACHE_TTL_SECONDS = int(os.getenv("FILE_CACHE_TTL_SECONDS", "30"))
+# Redis file cache prefix
 FILE_CACHE_KEY_PREFIX = "file:cache:"
 
 
@@ -32,9 +27,11 @@ class FileRedisCache:
     def _get_client(self) -> redis.Redis:
         """Get or create Redis client with lazy initialization."""
         if self._client is None:
+            host = os.getenv("REDIS_HOST", "localhost")
+            port = int(os.getenv("REDIS_PORT", "6379"))
             self._client = redis.Redis(
-                host=REDIS_HOST,
-                port=REDIS_PORT,
+                host=host,
+                port=port,
                 decode_responses=False,  # We need binary for file data
                 socket_connect_timeout=5,
                 socket_timeout=10
@@ -60,7 +57,8 @@ class FileRedisCache:
         try:
             client = self._get_client()
             keys = client.keys(f"{FILE_CACHE_KEY_PREFIX}*")
-            if len(keys) >= FILE_CACHE_MAX_COUNT:
+            max_count = int(os.getenv("FILE_CACHE_MAX_COUNT", "10"))
+            if len(keys) >= max_count:
                 # Find the key with the lowest TTL (closest to expiring)
                 oldest_key = None
                 lowest_ttl = float('inf')
@@ -99,6 +97,27 @@ class FileRedisCache:
             logging.warning(f"Failed to get file from Redis cache: {e}")
             return None
 
+    def delete(self, bucket: str, object_key: str) -> bool:
+        """
+        Delete file from Redis cache.
+
+        Args:
+            bucket: The bucket name
+            object_key: The object key
+
+        Returns:
+            True if delete was successful, False otherwise
+        """
+        key = self._get_cache_key(bucket, object_key)
+        try:
+            client = self._get_client()
+            client.delete(key)
+            logging.debug(f"Deleted file from cache: {bucket}/{object_key}")
+            return True
+        except redis.RedisError as e:
+            logging.warning(f"Failed to delete file from Redis cache: {e}")
+            return False
+
     def set(self, bucket: str, object_key: str, content: bytes) -> bool:
         """
         Cache file content in Redis if it's under the size limit.
@@ -112,9 +131,10 @@ class FileRedisCache:
             True if caching was successful, False otherwise
         """
         # Check size limit
+        max_size_mb = int(os.getenv("FILE_CACHE_MAX_SIZE_MB", "20"))
         size_mb = len(content) / (1024 * 1024)
-        if size_mb > FILE_CACHE_MAX_SIZE_MB:
-            logging.debug(f"File {bucket}/{object_key} too large to cache ({size_mb:.2f}MB > {FILE_CACHE_MAX_SIZE_MB}MB)")
+        if size_mb > max_size_mb:
+            logging.debug(f"File {bucket}/{object_key} too large to cache ({size_mb:.2f}MB > {max_size_mb}MB)")
             return False
 
         key = self._get_cache_key(bucket, object_key)
@@ -123,8 +143,9 @@ class FileRedisCache:
             self._evict_oldest_if_needed()
 
             client = self._get_client()
-            client.setex(key, FILE_CACHE_TTL_SECONDS, content)
-            logging.info(f"Cached file {bucket}/{object_key} ({size_mb:.2f}MB) with TTL={FILE_CACHE_TTL_SECONDS}s")
+            ttl_seconds = int(os.getenv("FILE_CACHE_TTL_SECONDS", "30"))
+            client.setex(key, ttl_seconds, content)
+            logging.info(f"Cached file {bucket}/{object_key} ({size_mb:.2f}MB) with TTL={ttl_seconds}s")
             return True
         except redis.RedisError as e:
             logging.warning(f"Failed to cache file in Redis: {e}")
@@ -324,6 +345,8 @@ def fetch_file(file, dest_dir: str = ".") -> str:
     file_cache = get_file_cache()
     cached_content = file_cache.get(bucket_name, object_key)
     if cached_content is not None:
+        # Evict after 1 use
+        file_cache.delete(bucket_name, object_key)
         with open(local_filename, 'wb') as f:
             f.write(cached_content)
         return local_filename

@@ -8,12 +8,7 @@ from typing import Any, Optional
 
 import redis
 
-# Redis configuration from environment variables
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-REDIS_TTL_MINUTES = int(os.getenv("REDIS_CHUNKING_TTL_MINUTES", "2"))
-
-# Cache key prefix (must match backend)
+# Redis cache key prefix (must match backend)
 CACHE_KEY_PREFIX = "chunking:result:"
 
 
@@ -26,14 +21,21 @@ class RedisCache:
     def _get_client(self) -> redis.Redis:
         """Get or create Redis client with lazy initialization."""
         if self._client is None:
+            host = os.getenv("REDIS_HOST", "localhost")
+            port = int(os.getenv("REDIS_PORT", "6379"))
             self._client = redis.Redis(
-                host=REDIS_HOST,
-                port=REDIS_PORT,
+                host=host,
+                port=port,
                 decode_responses=True,
                 socket_connect_timeout=5,
                 socket_timeout=10
             )
         return self._client
+
+    def _get_ttl(self) -> int:
+        """Get TTL in seconds from environment variable."""
+        ttl_minutes = int(os.getenv("REDIS_CHUNKING_TTL_MINUTES", "2"))
+        return ttl_minutes * 60
 
     def save(self, comparison_id: int, chunk_size: int, result: Any) -> bool:
         """
@@ -54,9 +56,9 @@ class RedisCache:
             # Serialize result to JSON
             json_result = json.dumps(result)
             # Set with expiration (TTL in seconds)
-            ttl_seconds = REDIS_TTL_MINUTES * 60
+            ttl_seconds = self._get_ttl()
             client.setex(key, ttl_seconds, json_result)
-            logging.info(f"Saved chunking result to Redis for comparisonId={comparison_id}, chunkSize={chunk_size}, TTL={REDIS_TTL_MINUTES}min")
+            logging.info(f"Saved chunking result to Redis for comparisonId={comparison_id}, chunkSize={chunk_size}, TTL={ttl_seconds/60}min")
             return True
         except redis.RedisError as e:
             logging.error(f"Failed to save chunking result to Redis for comparisonId={comparison_id}, chunkSize={chunk_size}: {e}")
