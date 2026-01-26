@@ -12,7 +12,7 @@ deploy_prod:
     SKAFFOLD_DEFAULT_REPO: registry.reset.inso-w.at/$CI_PROJECT_PATH
     KUBECONFIG: /tmp/kubeconfig
   rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_BRANCH == "11-us6-redis-caching-integration"'
   before_script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login registry.reset.inso-w.at -u $CI_REGISTRY_USER --password-stdin
     - cp /etc/gitlab-runner/kubeconfig /tmp/kubeconfig
