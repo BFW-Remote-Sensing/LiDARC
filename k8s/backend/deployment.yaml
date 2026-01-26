@@ -17,8 +17,16 @@ spec:
     spec:
       initContainers:
         - name: wait-for-postgres
-          image: busybox:1.36
-          command: [ 'sh', '-c', "until nc -zv postgres 5432; do echo waiting for postgres; sleep 2; done;" ]
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h postgres -p 5432 -U admin; 
+              do echo "Waiting for postgres..."; sleep 2; done;
+          env:
+            - name: POSTGRES_USER
+              value: "admin"
       imagePullSecrets:
         - name: regcred
       enableServiceLinks: false
