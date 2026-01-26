@@ -3,7 +3,9 @@ import logging
 import os
 from io import BytesIO
 from urllib.parse import urlparse
+from typing import Optional
 
+import redis
 import requests
 from minio import Minio
 from minio.error import S3Error
@@ -11,6 +13,157 @@ from requests.adapters import HTTPAdapter, Retry
 
 BUCKET_NAME = os.environ.get("BUCKET_NAME", "basebucket")
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:9000/")
+
+# Redis file cache prefix
+FILE_CACHE_KEY_PREFIX = "file:cache:"
+
+
+class FileRedisCache:
+    """Redis cache for caching small files fetched from MinIO."""
+
+    def __init__(self):
+        self._client: Optional[redis.Redis] = None
+
+    def _get_client(self) -> redis.Redis:
+        """Get or create Redis client with lazy initialization."""
+        if self._client is None:
+            host = os.getenv("REDIS_HOST", "localhost")
+            port = int(os.getenv("REDIS_PORT", "6379"))
+            self._client = redis.Redis(
+                host=host,
+                port=port,
+                decode_responses=False,  # We need binary for file data
+                socket_connect_timeout=5,
+                socket_timeout=10
+            )
+        return self._client
+
+    def _get_cache_key(self, bucket: str, object_key: str) -> str:
+        """Generate cache key for a file."""
+        return f"{FILE_CACHE_KEY_PREFIX}{bucket}:{object_key}"
+
+    def _get_current_cache_count(self) -> int:
+        """Get the current number of cached files."""
+        try:
+            client = self._get_client()
+            keys = client.keys(f"{FILE_CACHE_KEY_PREFIX}*")
+            return len(keys)
+        except redis.RedisError as e:
+            logging.warning(f"Failed to get cache count from Redis: {e}")
+            return 0
+
+    def _evict_oldest_if_needed(self):
+        """Evict oldest cache entries if we're at max capacity."""
+        try:
+            client = self._get_client()
+            keys = client.keys(f"{FILE_CACHE_KEY_PREFIX}*")
+            max_count = int(os.getenv("FILE_CACHE_MAX_COUNT", "10"))
+            if len(keys) >= max_count:
+                # Find the key with the lowest TTL (closest to expiring)
+                oldest_key = None
+                lowest_ttl = float('inf')
+                for key in keys:
+                    ttl = client.ttl(key)
+                    if ttl < lowest_ttl:
+                        lowest_ttl = ttl
+                        oldest_key = key
+                if oldest_key:
+                    client.delete(oldest_key)
+                    logging.debug(f"Evicted oldest cache entry: {oldest_key}")
+        except redis.RedisError as e:
+            logging.warning(f"Failed to evict oldest cache entry: {e}")
+
+    def get(self, bucket: str, object_key: str) -> Optional[bytes]:
+        """
+        Get file content from Redis cache.
+
+        Args:
+            bucket: The bucket name
+            object_key: The object key
+
+        Returns:
+            The cached file content as bytes or None if not found
+        """
+        key = self._get_cache_key(bucket, object_key)
+        try:
+            client = self._get_client()
+            data = client.get(key)
+            if data:
+                logging.info(f"Cache hit for {bucket}/{object_key}")
+                return data
+            logging.debug(f"Cache miss for {bucket}/{object_key}")
+            return None
+        except redis.RedisError as e:
+            logging.warning(f"Failed to get file from Redis cache: {e}")
+            return None
+
+    def delete(self, bucket: str, object_key: str) -> bool:
+        """
+        Delete file from Redis cache.
+
+        Args:
+            bucket: The bucket name
+            object_key: The object key
+
+        Returns:
+            True if delete was successful, False otherwise
+        """
+        key = self._get_cache_key(bucket, object_key)
+        try:
+            client = self._get_client()
+            client.delete(key)
+            logging.debug(f"Deleted file from cache: {bucket}/{object_key}")
+            return True
+        except redis.RedisError as e:
+            logging.warning(f"Failed to delete file from Redis cache: {e}")
+            return False
+
+    def set(self, bucket: str, object_key: str, content: bytes) -> bool:
+        """
+        Cache file content in Redis if it's under the size limit.
+
+        Args:
+            bucket: The bucket name
+            object_key: The object key
+            content: The file content as bytes
+
+        Returns:
+            True if caching was successful, False otherwise
+        """
+        # Check size limit
+        max_size_mb = int(os.getenv("FILE_CACHE_MAX_SIZE_MB", "20"))
+        size_mb = len(content) / (1024 * 1024)
+        if size_mb > max_size_mb:
+            logging.debug(f"File {bucket}/{object_key} too large to cache ({size_mb:.2f}MB > {max_size_mb}MB)")
+            return False
+
+        key = self._get_cache_key(bucket, object_key)
+        try:
+            # Evict oldest if at capacity
+            self._evict_oldest_if_needed()
+
+            client = self._get_client()
+            ttl_seconds = int(os.getenv("FILE_CACHE_TTL_SECONDS", "30"))
+            client.setex(key, ttl_seconds, content)
+            logging.info(f"Cached file {bucket}/{object_key} ({size_mb:.2f}MB) with TTL={ttl_seconds}s")
+            return True
+        except redis.RedisError as e:
+            logging.warning(f"Failed to cache file in Redis: {e}")
+            return False
+
+
+# Singleton instance for file cache
+_file_cache_instance: Optional[FileRedisCache] = None
+
+
+def get_file_cache() -> FileRedisCache:
+    """Get the singleton file cache instance."""
+    global _file_cache_instance
+    if _file_cache_instance is None:
+        _file_cache_instance = FileRedisCache()
+    return _file_cache_instance
+
+
 
 
 def minio_client():
@@ -47,6 +200,14 @@ def upload_file(source_file):
     )
     logging.info(f"Uploaded {source_file} to {BUCKET_NAME} as {destination_file}")
 
+    # Cache the file after upload
+    try:
+        with open(source_file, 'rb') as f:
+            content = f.read()
+        get_file_cache().set(BUCKET_NAME, destination_file, content)
+    except Exception as cache_err:
+        logging.warning(f"Failed to cache file after upload: {cache_err}")
+
 
 def upload_file_by_type(destination_file, data):
     ext = os.path.splitext(destination_file)[1].lower()
@@ -74,6 +235,14 @@ def upload_csv(destination_file, data_buf, length):
                       length=length,
                       content_type="application/csv")
 
+    # Cache the file after upload
+    try:
+        data_buf.seek(0)
+        content = data_buf.read()
+        get_file_cache().set(BUCKET_NAME, destination_file, content)
+        data_buf.seek(0) # Reset buffer for any subsequent use
+    except Exception as cache_err:
+        logging.warning(f"Failed to cache csv after upload: {cache_err}")
     return {
         "bucket": BUCKET_NAME,
         "objectKey": destination_file,
@@ -101,6 +270,13 @@ def upload_json(destination_file, json_obj):
         length=len(json_bytes),
         content_type="application/json"
     )
+
+    # Cache the file after upload
+    try:
+        get_file_cache().set(BUCKET_NAME, destination_file, json_bytes)
+    except Exception as cache_err:
+        logging.warning(f"Failed to cache json after upload: {cache_err}")
+
     return {
         "bucket": BUCKET_NAME,
         "objectKey": destination_file
@@ -119,6 +295,13 @@ def upload_df_as_json(destination_file, df):
         length=len(json_bytes),
         content_type="application/json"
     )
+
+    # Cache the file after upload
+    try:
+        get_file_cache().set(BUCKET_NAME, destination_file, json_bytes)
+    except Exception as cache_err:
+        logging.warning(f"Failed to cache dataframe json after upload: {cache_err}")
+
     return BASE_URL + destination_file
 
 
@@ -157,6 +340,18 @@ def fetch_file(file, dest_dir: str = ".") -> str:
     if not bucket_name or not object_key:
         raise ValueError("File object must contain 'bucket' and 'objectKey'")
     local_filename = os.path.join(dest_dir, os.path.basename(object_key))
+
+    # Try to get from Redis cache first
+    file_cache = get_file_cache()
+    cached_content = file_cache.get(bucket_name, object_key)
+    if cached_content is not None:
+        # Evict after 1 use
+        file_cache.delete(bucket_name, object_key)
+        with open(local_filename, 'wb') as f:
+            f.write(cached_content)
+        return local_filename
+
+    # Fetch from MinIO
     client = minio_client()
     try:
         client.fget_object(
@@ -164,6 +359,15 @@ def fetch_file(file, dest_dir: str = ".") -> str:
             object_name=object_key,
             file_path=local_filename
         )
+
+        # Cache the file if it's small enough
+        try:
+            with open(local_filename, 'rb') as f:
+                content = f.read()
+            file_cache.set(bucket_name, object_key, content)
+        except Exception as cache_err:
+            logging.warning(f"Failed to cache file after download: {cache_err}")
+
         return local_filename
     except Exception as e:
         if os.path.exists(local_filename):

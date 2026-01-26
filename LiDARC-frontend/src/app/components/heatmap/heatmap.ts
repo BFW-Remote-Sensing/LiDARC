@@ -63,6 +63,9 @@ export class Heatmap implements AfterViewInit, OnChanges {
     if (this.mode === 'D') return 'd';
     return 'abd';
   }
+  private readonly GROUP_AB = 'group-ab';
+  private readonly GROUP_ABD = 'group-abd';
+
   private readonly COLOR_Schemes: Record<SchemeKey, { label: string; color: string[] }> = {
     greens: {
       label: 'Greens',
@@ -78,9 +81,8 @@ export class Heatmap implements AfterViewInit, OnChanges {
     }
   };
 
+  @Input() groupMapping!: {a: string, b: string};
 
-  private readonly GROUP_AB = 'group-ab';
-  private readonly GROUP_ABD = 'group-abd';
 
   //private resizeObserver?: ResizeObserver;
 
@@ -145,8 +147,8 @@ export class Heatmap implements AfterViewInit, OnChanges {
     this.differenceInstance = echarts.init(this.diffElement?.nativeElement);
 
 
-    this.optionsLeft = this.createHeatmapOptionsWithoutDataset( "SetA", true);
-    this.optionsRight = this.createHeatmapOptionsWithoutDataset( "SetB", false);this.differenceOptions = this.createDeltaHeatmapOptions("Delta_z", true);
+    this.optionsLeft = this.createHeatmapOptionsWithoutDataset( this.groupMapping?.a ?? "SetA", true);
+    this.optionsRight = this.createHeatmapOptionsWithoutDataset( this.groupMapping?.b ?? "SetB", false);this.differenceOptions = this.createDeltaHeatmapOptions("Delta_z", true);
 
     this.chartInstance1.setOption(this.optionsLeft);
     this.chartInstance2.setOption(this.optionsRight);
@@ -370,6 +372,8 @@ export class Heatmap implements AfterViewInit, OnChanges {
       console.warn("Received invalid heatmap data:", matrix);
       return;
     }
+    this.groupMapping.a = this.data?.group_mapping.a ?? "SetA";
+    this.groupMapping.b = this.data?.group_mapping.b ?? "SetB";
 
     this.rows = matrix.length;
     this.cols = Math.max(...matrix.map(row => row.length));
@@ -492,6 +496,18 @@ export class Heatmap implements AfterViewInit, OnChanges {
       };
     };
 
+    const titleUpdateA ={
+      title: {
+        top: 0,
+        text: this.groupMapping?.a
+      }
+    }
+    const titleUpdateB ={
+      title: {
+        top: 0,
+        text: this.groupMapping?.b
+      }
+    }
 
     const seriesTemplate = {
       type: 'custom',
@@ -532,6 +548,7 @@ export class Heatmap implements AfterViewInit, OnChanges {
       return tooltip;
     };
     this.chartInstance1.setOption({
+      ...titleUpdateA,
       ...axisUpdate,
       tooltip: {
         trigger: "item",
@@ -548,6 +565,7 @@ export class Heatmap implements AfterViewInit, OnChanges {
 
     // Set options for right chart
     this.chartInstance2.setOption({
+      ...titleUpdateB,
       ...axisUpdate,
       tooltip: {
         trigger: "item",

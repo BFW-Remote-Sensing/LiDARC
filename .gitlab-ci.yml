@@ -12,7 +12,7 @@ deploy_prod:
     SKAFFOLD_DEFAULT_REPO: registry.reset.inso-w.at/$CI_PROJECT_PATH
     KUBECONFIG: /tmp/kubeconfig
   rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_BRANCH == "dev"'
   before_script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login registry.reset.inso-w.at -u $CI_REGISTRY_USER --password-stdin
     - cp /etc/gitlab-runner/kubeconfig /tmp/kubeconfig
@@ -37,6 +37,8 @@ preprocess_worker_test:
   stage: test
   image: registry.reset.inso-w.at/pub/docker/python:3.13-slim
   services:
+    - name: registry.reset.inso-w.at/pub/docker/redis:8
+      alias: redis
     - name: registry.reset.inso-w.at/pub/docker/chainguard/minio:latest
       alias: minio
       command: [ "server", "--console-address", ":9001", "/data/minio/" ]
@@ -46,6 +48,8 @@ preprocess_worker_test:
         RABBITMQ_DEFAULT_USER: test_user
         RABBITMQ_DEFAULT_PASS: test_password
   variables:
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
     MINIO_ACCESS_KEY: minioadmin
     MINIO_SECRET_KEY: minioadmin
     MINIO_ENDPOINT: minio:9000

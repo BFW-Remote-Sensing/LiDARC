@@ -1,27 +1,27 @@
-import {Component, inject, Input, OnInit, signal, WritableSignal, ViewChild} from '@angular/core';
-import {ComparisonService} from '../../service/comparison.service';
-import {ActivatedRoute, Router, RouterModule} from '@angular/router';
-import {FormatService} from '../../service/format.service';
-import {MetadataService} from '../../service/metadata.service';
-import {debounceTime, finalize, forkJoin, interval, map, Subject, Subscription, switchMap, timer} from 'rxjs';
-import {FormatBytesPipe} from '../../pipes/formatBytesPipe';
-import {ComparisonDTO} from '../../dto/comparison';
-import {ComparisonReport} from '../../dto/comparisonReport';
-import {CommonModule} from '@angular/common';
-import {MatExpansionModule} from '@angular/material/expansion';
-import {MatIcon} from '@angular/material/icon';
-import {MatListModule} from '@angular/material/list';
-import {MatProgressSpinner} from '@angular/material/progress-spinner';
-import {TextCard} from '../text-card/text-card';
-import {MatButton, MatIconButton} from '@angular/material/button';
-import {MatTooltip} from '@angular/material/tooltip';
-import {MatCheckbox} from '@angular/material/checkbox';
+import {Component, inject, Input, OnInit, signal, WritableSignal, ViewChild, computed} from '@angular/core';
+import { ComparisonService } from '../../service/comparison.service';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { FormatService } from '../../service/format.service';
+import { MetadataService } from '../../service/metadata.service';
+import { debounceTime, finalize, forkJoin, interval, map, Subject, Subscription, switchMap, timer } from 'rxjs';
+import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
+import { ComparisonDTO } from '../../dto/comparison';
+import { ComparisonReport } from '../../dto/comparisonReport';
+import { CommonModule } from '@angular/common';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatIcon } from '@angular/material/icon';
+import { MatListModule } from '@angular/material/list';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { TextCard } from '../text-card/text-card';
+import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatTooltip } from '@angular/material/tooltip';
+import { MatCheckbox } from '@angular/material/checkbox';
 
 
 import * as echarts from 'echarts/core';
-import {EChartsCoreOption} from 'echarts/core';
-import {NgxEchartsDirective, provideEchartsCore} from "ngx-echarts";
-import {BarChart, BoxplotChart, HeatmapChart, LineChart, ScatterChart} from 'echarts/charts';
+import { EChartsCoreOption, ECElementEvent } from 'echarts/core';
+import { NgxEchartsDirective, provideEchartsCore } from "ngx-echarts";
+import { BarChart, BoxplotChart, HeatmapChart, LineChart, ScatterChart } from 'echarts/charts';
 import {
   GraphicComponent,
   GridComponent,
@@ -185,8 +185,11 @@ export class ComparisonDetails implements OnInit {
     }
 
   });
+
+  groupMapping = computed(() => this.vegetationStats().group_mapping);
   private pollingSubscription?: Subscription;
   private chunkSize$ = new Subject<number>();
+
 
 
   scatterOption!: EChartsCoreOption;
@@ -253,6 +256,7 @@ export class ComparisonDetails implements OnInit {
     this.comparison.set(data);
 
     if (data.status === 'COMPLETED') {
+      this.chunkingSize = this.computeInitialChunkingSize();
       this.stopPolling();
       this.fetchReports(); // Sequential call: only fetch reports when COMPLETED
     } else if (data.status === 'FAILED') {
@@ -284,11 +288,10 @@ export class ComparisonDetails implements OnInit {
     this.comparisonService.getComparisonReportsById(+this.comparisonId!, this.reportsLimit)
       .subscribe({
         next: (reports) => {
-          this.chunkingSize = this.computeInitialChunkingSize();
-          this.reports.set(reports);
-          this.checkIfMoreReportsExist(reports.length);
-        },
-        error: (err) => console.error('Failed to fetch reports:', err)
+            this.reports.set(reports);
+            this.checkIfMoreReportsExist(reports.length);
+          },
+          error: (err) => console.error('Failed to fetch reports:', err)
       });
   }
 
@@ -356,7 +359,7 @@ export class ComparisonDetails implements OnInit {
   }
 
   computeInitialChunkingSize(): number {
-    if (!this.comparison) return 16;
+    if (!this.comparison()?.grid) return 16;
 
     const cellWidth = this.comparison()!.grid?.cellWidth ?? 10;
     const cellHeight = this.comparison()!.grid?.cellHeight ?? 10;
@@ -366,19 +369,28 @@ export class ComparisonDetails implements OnInit {
     console.log(this.comparison()!.grid?.xMax);
     console.log(this.comparison()!.grid?.xMin);
     console.log("xRange: " + xRange + ", yRange: " + yRange);
+
+
     const cellsX = Math.ceil(xRange / cellWidth);
     const cellsY = Math.ceil(yRange / cellHeight);
     const totalCells = cellsX * cellsY;
 
-    console.log("initial chunking size calculation:" + totalCells);
-    console.log("comparison size calculation:" + cellsX + "x" + cellsY + " cells");
+    // Ziel: ~100 × 100 = 10 000
+    const TARGET_CELLS = 10_000;
 
-    if (totalCells <= 10000) return 1;
-    if (totalCells <= 40000) return 2;
-    if (totalCells <= 60000) return 3;
-    if (totalCells <= 100000) return 5
-    if (totalCells <= 200000) return 8;
-    return 15;
+    // Grober Faktor (wie stark wir zusammenfassen müssten)
+    const roughFactor = Math.sqrt(totalCells / TARGET_CELLS);
+
+    console.log("Initial chunking size calculation:" + roughFactor + " factor for " + totalCells + " total cells.");
+
+    // 🎯 Nur ca. 6 Rückgabewerte
+    if (totalCells <= 0) return 5;
+    if (roughFactor <= 1.2) return 1;
+    if (roughFactor <= 1.8) return 2;
+    if (roughFactor <= 2.5) return 4;
+    if (roughFactor <= 3.5) return 6;
+    if (roughFactor <= 5.0) return 8;
+    return 12;
   }
 
   private handleChunkingResult(result: ChunkingResult): void {
@@ -394,6 +406,7 @@ export class ComparisonDetails implements OnInit {
     console.log('[BACKEND STATISTICS]', result.statistics);
     console.log('[DIFFERENCE METRICS FROM BACKEND]', result.statistics?.difference);
 
+
     this.vegetationStats.set({
       cells: flattenedCells,
       fileA_metrics: result.statistics.file_a,
@@ -401,7 +414,6 @@ export class ComparisonDetails implements OnInit {
       difference_metrics: result.statistics.difference,
       group_mapping: result.group_mapping,
     });
-
     this.buildAllCharts();
   }
 
@@ -773,32 +785,32 @@ export class ComparisonDetails implements OnInit {
           type: 'line',
           smooth: true,
           data: xValues.map((x, i) => [x, yValues[i]]),
-          lineStyle: {width: 2, color: 'green'},
+          lineStyle: { width: 2, color: 'green' },
           showSymbol: false
         },
         {
           name: 'Mean',
           type: 'line',
           data: [[mean, 0], [mean, maxY]],
-          lineStyle: {type: 'dashed', width: 2},
+          lineStyle: { type: 'dashed', width: 2 },
           showSymbol: false,
-          tooltip: {show: false}
+          tooltip: { show: false }
         },
         {
           name: '+2σ',
           type: 'line',
           data: [[mean + 2 * std, 0], [mean + 2 * std, maxY]],
-          lineStyle: {type: 'dashed'},
+          lineStyle: { type: 'dashed' },
           showSymbol: false,
-          tooltip: {show: false}
+          tooltip: { show: false }
         },
         {
           name: '-2σ',
           type: 'line',
           data: [[mean - 2 * std, 0], [mean - 2 * std, maxY]],
-          lineStyle: {type: 'dashed'},
+          lineStyle: { type: 'dashed' },
           showSymbol: false,
-          tooltip: {show: false}
+          tooltip: { show: false }
         }
       ]
     };
@@ -842,7 +854,7 @@ export class ComparisonDetails implements OnInit {
         type: 'category',
         name: 'Difference B - A',
         data: binLabels,
-        axisLabel: {rotate: 45}
+        axisLabel: { rotate: 45 }
       },
       yAxis: {
         type: 'value',
@@ -853,7 +865,7 @@ export class ComparisonDetails implements OnInit {
           name: 'Count',
           type: 'bar',
           data: counts,
-          itemStyle: {color: 'steelblue'},
+          itemStyle: { color: 'steelblue' },
           barGap: 0,
           barCategoryGap: '0%'
         }
@@ -924,7 +936,7 @@ export class ComparisonDetails implements OnInit {
           name: 'Boxplot',
           type: 'boxplot',
           data: data,
-          itemStyle: {color: 'lightblue'}
+          itemStyle: { color: 'lightblue' }
         }
       ]
     };

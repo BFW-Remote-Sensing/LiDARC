@@ -7,6 +7,8 @@ import pytest
 from minio import Minio
 from testcontainers.minio import MinioContainer
 from testcontainers.rabbitmq import RabbitMqContainer
+from testcontainers.redis import RedisContainer
+import redis
 
 import metadata.metadata_worker as metadata
 import preprocess.preprocess_worker as preprocess
@@ -101,6 +103,39 @@ def rabbitmq_ch(request):
         ch = connection.channel()
         rabbit_test_declarations(ch)
         yield ch
+
+
+@pytest.fixture(scope="module", autouse=True)
+def redis_client(request):
+    running_in_ci = running_in_ci_mode()
+    if running_in_ci:
+        host = os.getenv("REDIS_HOST", "redis")
+        port = int(os.getenv("REDIS_PORT", "6379"))
+        client = redis.Redis(host=host, port=port, decode_responses=True)
+        yield client
+    else:
+        redis_container = RedisContainer("redis:latest")
+        redis_container.start()
+
+        def teardown():
+            redis_container.stop()
+
+        request.addfinalizer(teardown)
+
+        host = redis_container.get_container_host_ip()
+        port = redis_container.get_exposed_port(6379)
+        os.environ["REDIS_HOST"] = host
+        os.environ["REDIS_PORT"] = str(port)
+
+        client = redis_container.get_client(decode_responses=True)
+        yield client
+
+
+@pytest.fixture(autouse=True)
+def flush_redis(redis_client):
+    """Flush redis before each test to ensure isolation."""
+    redis_client.flushall()
+    yield
 
 
 @pytest.fixture
