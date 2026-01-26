@@ -23,6 +23,10 @@ spec:
           image: backend:latest
           imagePullPolicy: IfNotPresent
           env:
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
             - name: POSTGRES_HOST
               value: "postgres"
             - name: POSTGRES_PASSWORD
