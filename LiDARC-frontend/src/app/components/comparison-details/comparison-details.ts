@@ -1,21 +1,21 @@
-import { Component, inject, Input, OnInit, signal, WritableSignal, ViewChild } from '@angular/core';
-import { ComparisonService } from '../../service/comparison.service';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { FormatService } from '../../service/format.service';
-import { MetadataService } from '../../service/metadata.service';
-import { debounceTime, finalize, forkJoin, interval, map, Subject, Subscription, switchMap, timer } from 'rxjs';
-import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
-import { ComparisonDTO } from '../../dto/comparison';
-import { ComparisonReport } from '../../dto/comparisonReport';
-import { CommonModule } from '@angular/common';
-import { MatExpansionModule } from '@angular/material/expansion';
-import { MatIcon } from '@angular/material/icon';
-import { MatListModule } from '@angular/material/list';
-import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import { TextCard } from '../text-card/text-card';
-import { MatButton, MatIconButton } from '@angular/material/button';
-import { MatTooltip } from '@angular/material/tooltip';
-import { MatCheckbox } from '@angular/material/checkbox';
+import {Component, inject, Input, OnInit, signal, WritableSignal, ViewChild} from '@angular/core';
+import {ComparisonService} from '../../service/comparison.service';
+import {ActivatedRoute, Router, RouterModule} from '@angular/router';
+import {FormatService} from '../../service/format.service';
+import {MetadataService} from '../../service/metadata.service';
+import {debounceTime, finalize, forkJoin, interval, map, Subject, Subscription, switchMap, timer} from 'rxjs';
+import {FormatBytesPipe} from '../../pipes/formatBytesPipe';
+import {ComparisonDTO} from '../../dto/comparison';
+import {ComparisonReport} from '../../dto/comparisonReport';
+import {CommonModule} from '@angular/common';
+import {MatExpansionModule} from '@angular/material/expansion';
+import {MatIcon} from '@angular/material/icon';
+import {MatListModule} from '@angular/material/list';
+import {MatProgressSpinner} from '@angular/material/progress-spinner';
+import {TextCard} from '../text-card/text-card';
+import {MatButton, MatIconButton} from '@angular/material/button';
+import {MatTooltip} from '@angular/material/tooltip';
+import {MatCheckbox} from '@angular/material/checkbox';
 
 
 import * as echarts from 'echarts/core';
@@ -41,7 +41,7 @@ import {ReportCreationDialogComponent} from '../report-creation-dialog-component
 import {MatDialog} from '@angular/material/dialog';
 import {ChartData, ReportType} from '../../dto/report';
 import {ECharts} from 'echarts';
-import {Globals, pollingIntervalMs, snackBarDurationMs } from '../../globals/globals';
+import {Globals, pollingIntervalMs, snackBarDurationMs} from '../../globals/globals';
 
 import {
   ChunkingResult,
@@ -49,15 +49,15 @@ import {
   VegetationStats,
   CellEntry
 } from '../../dto/chunking';
-import { filter, takeUntil, takeWhile } from 'rxjs/operators';
-import { HttpResponse } from '@angular/common/http';
-import { ChunkingSettings } from '../chunking-settings/chunking-settings';
-import { FormsModule } from '@angular/forms';
-import { FolderDTO } from '../../dto/folder';
-import { StatusService } from '../../service/status.service';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
-import { ReportSerivce } from '../../service/report.serivce';
+import {filter, takeUntil, takeWhile} from 'rxjs/operators';
+import {HttpResponse} from '@angular/common/http';
+import {ChunkingSettings} from '../chunking-settings/chunking-settings';
+import {FormsModule} from '@angular/forms';
+import {FolderDTO} from '../../dto/folder';
+import {StatusService} from '../../service/status.service';
+import {MatSnackBar} from '@angular/material/snack-bar';
+import {ConfirmationDialogComponent, ConfirmationDialogData} from '../confirmation-dialog/confirmation-dialog';
+import {ReportService} from '../../service/report.service';
 
 //====HARDCODED VIS===//
 echarts.use([
@@ -125,7 +125,7 @@ export class ComparisonDetails implements OnInit {
 
   constructor(
     private comparisonService: ComparisonService,
-    private reportService: ReportSerivce,
+    private reportService: ReportService,
     private route: ActivatedRoute,
     private dialog: MatDialog,
     public globals: Globals,
@@ -209,7 +209,11 @@ export class ComparisonDetails implements OnInit {
   }
 
   get comparedItems(): { id: number; name: string; type: 'file' | 'folder' }[] {
-    const files = this.comparison()?.files.map(f => ({id: f.id, name: f.originalFilename, type: 'file' as const})) ?? [];
+    const files = this.comparison()?.files.map(f => ({
+      id: f.id,
+      name: f.originalFilename,
+      type: 'file' as const
+    })) ?? [];
     const folders = [this.comparison()?.folderA, this.comparison()?.folderB]
       .filter(f => f != null)
       .map(f => ({id: f.id, name: f.name, type: 'folder' as const}));
@@ -240,7 +244,7 @@ export class ComparisonDetails implements OnInit {
     if (this.previousStatus && this.previousStatus !== data.status) {
       this.snackBar.open(
         this.statusService.getComparisonSnackbarMessage("Comparison", data.name, data.status),
-        'OK', { duration: snackBarDurationMs }
+        'OK', {duration: snackBarDurationMs}
       );
     }
     this.previousStatus = data.status;
@@ -280,7 +284,8 @@ export class ComparisonDetails implements OnInit {
     this.comparisonService.getComparisonReportsById(+this.comparisonId!, this.reportsLimit)
       .subscribe({
         next: (reports) => {
-          this.chunkingSize = this.computeInitialChunkingSize(); this.reports.set(reports);
+          this.chunkingSize = this.computeInitialChunkingSize();
+          this.reports.set(reports);
           this.checkIfMoreReportsExist(reports.length);
         },
         error: (err) => console.error('Failed to fetch reports:', err)
@@ -672,7 +677,7 @@ export class ComparisonDetails implements OnInit {
 
     const steps = 200;
     const step = (maxX - minX) / steps;
-    const xValues = Array.from({ length: steps + 1 }, (_, i) => minX + i * step);
+    const xValues = Array.from({length: steps + 1}, (_, i) => minX + i * step);
 
     // Compute y-values for both distributions
     const fileA_Y = xValues.map(x => normalPDF(x, fileA_metrics.mean_veg_height, fileA_metrics.std_veg_height));
