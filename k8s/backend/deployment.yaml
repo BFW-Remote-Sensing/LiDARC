@@ -15,6 +15,10 @@ spec:
       labels:
         app: backend
     spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command: [ 'sh', '-c', "until nc -zv postgres 5432; do echo waiting for postgres; sleep 2; done;" ]
       imagePullSecrets:
         - name: regcred
       enableServiceLinks: false
