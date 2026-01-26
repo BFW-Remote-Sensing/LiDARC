@@ -11,13 +11,13 @@ import { FormatService } from '../../service/format.service';
 import { pollingIntervalMs, snackBarDurationMs } from '../../globals/globals';
 import { TextCard } from '../text-card/text-card';
 import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
-import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
 import { MatDialog } from '@angular/material/dialog';
 import { MetadataResponse } from '../../dto/metadataResponse';
 import { CreateFolderDialog } from '../create-folder-dialog/create-folder-dialog';
 import { AssignFolderDialog } from '../assign-folder-dialog/assign-folder-dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { StatusService } from '../../service/status.service';
 
 @Component({
   selector: 'app-stored-files',
@@ -57,6 +57,7 @@ export class StoredFiles {
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
+  private isPolling = false;
   private stopPolling$ = new Subject<void>();
 
   private previousMap = new Map<number, string>();
@@ -65,8 +66,8 @@ export class StoredFiles {
     private router: Router,
     private snackBar: MatSnackBar,
     private formatService: FormatService,
+    private statusService: StatusService,
     private dialog: MatDialog,
-    private cdr: ChangeDetectorRef
   ) { }
 
   totalItems = 0;
@@ -77,6 +78,33 @@ export class StoredFiles {
     this.pageIndex = event.pageIndex;
     this.pageSize = event.pageSize;
     this.fetchAndProcessMetadata(this.pageIndex, this.pageSize);
+  }
+
+  private startPolling(): void {
+    if (this.isPolling) {
+      return;
+    }
+
+    this.isPolling = true;
+    interval(pollingIntervalMs)
+      .pipe(
+        takeUntil(this.stopPolling$),
+        switchMap(() => this.metadataService.getPagedMetadataWithoutFolder(
+          this.pageIndex, this.pageSize, 'uploadedAt', false, this.dataSource.filter
+        )),
+        finalize(() => this.isPolling = false)
+      )
+      .subscribe({
+        next: (metadataResponse: MetadataResponse) => {
+          this.totalItems = metadataResponse.totalItems;
+          this.processMetadata(metadataResponse.items);
+        },
+        error: (error) => {
+          console.error('Error refreshing metadata:', error);
+          this.errorMessage.set('Failed to refresh metadata. Please try again later.');
+          this.isPolling = false;
+        }
+      });
   }
 
   ngOnInit(): void {
@@ -90,24 +118,6 @@ export class StoredFiles {
       });
     // First load
     this.fetchAndProcessMetadata(this.pageIndex, this.pageSize);
-
-    // Poll every 3 seconds
-    interval(pollingIntervalMs)
-      .pipe(
-        takeUntil(this.stopPolling$),
-        switchMap(() => this.metadataService.getPagedMetadataWithoutFolder(this.pageIndex, this.pageSize, 'uploadedAt', false, this.dataSource.filter)),
-        finalize(() => this.loading.set(false))
-      )
-      .subscribe({
-        next: (metadataResponse: MetadataResponse) => {
-          this.totalItems = metadataResponse.totalItems;
-          this.processMetadata(metadataResponse.items);
-        },
-        error: (error) => {
-          console.error('Error refreshing metadata:', error);
-          this.errorMessage.set('Failed to refresh metadata. Please try again later.');
-        }
-      });
   }
 
   fetchAndProcessMetadata(pageIndex: number, pageSize: number): void {
@@ -133,35 +143,37 @@ export class StoredFiles {
    * Processes metadata: maps formatted size, detects transitions,
    * updates previousMap, and checks for stopPolling
    */
-  //TODO: FIX THE STATUS MANAGEMENT IN THE CORRESPONDING ISSUE see #44
-  private processMetadata(data: FileMetadataDTO[]): void {
-    // Map formatted size
-    this.dataSource.data = data.map(item => this.formatService.formatMetadata(item));
-    // Detect transitions and update previousMap
-    data.forEach(item => {
-      const prev = this.previousMap.get(item.id);
+  private processMetadata(newData: FileMetadataDTO[]): void {
+    const currentData = this.dataSource.data;
 
-      if (prev === 'PROCESSING' && item.status === 'PROCESSED') {
+    this.dataSource.data = newData.map(newItem => {
+      const formattedItem = this.formatService.formatMetadata(newItem);
+
+      const existingItem = currentData.find(item => item.id === formattedItem.id);
+
+      if (existingItem && JSON.stringify(existingItem) === JSON.stringify(formattedItem)) {
+        return existingItem;
+      }
+
+      const prevStatus = this.previousMap.get(formattedItem.id);
+      if (prevStatus && prevStatus !== formattedItem.status) {
         this.snackBar.open(
-          `File "${item.filename}" preprocessed completed!`,
-          'OK', { duration: snackBarDurationMs }
-        );
-      } else if (prev === 'PROCESSING' && item.status === 'FAILED') {
-        this.snackBar.open(
-          `File "${item.filename}" preprocessed failed!`,
+          this.statusService.getComparableSnackbarMessage("File", formattedItem.originalFilename, formattedItem.status),
           'OK', { duration: snackBarDurationMs }
         );
       }
+      this.previousMap.set(formattedItem.id, formattedItem.status);
 
-      this.previousMap.set(item.id, item.status);
+      return formattedItem;
     });
 
-    // Stop polling if no PROCESSING left
-    if (!data.some(d => d.status === 'PROCESSING')) {
+    const hasProcessingFiles = this.dataSource.data.some(d => d.status !== 'PROCESSED' && d.status !== 'FAILED');
+    if (hasProcessingFiles) {
+      this.startPolling();
+    } else {
       this.stopPolling$.next();
     }
   }
-
 
   ngOnDestroy(): void {
     this.stopPolling$.next();   // clean up
@@ -175,7 +187,9 @@ export class StoredFiles {
     }
 
     for (const row of this.dataSource.data) {
-      this.selectedFileIds.add(row.id);
+      if (row.status === 'PROCESSED') {
+        this.selectedFileIds.add(row.id);
+      }
     }
   }
 
@@ -256,28 +270,6 @@ export class StoredFiles {
       if (result) {
         this.selectedFileIds.clear();
         this.router.navigate([`/folders/${result.id}`]);
-      }
-    });
-  }
-
-  deleteSelectedFiles(): void {
-    const data: ConfirmationDialogData = {
-      title: 'Confirmation',
-      subtitle: 'Are you sure you want to delete the selected files?',
-      primaryButtonText: 'Delete',
-      secondaryButtonText: 'Cancel'
-    };
-
-    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
-      width: '400px',
-      data
-    });
-
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        alert('Delete functionality not yet implemented.');
-        this.selectedFileIds.clear();
-        this.cdr.detectChanges(); // force Angular to update the view
       }
     });
   }

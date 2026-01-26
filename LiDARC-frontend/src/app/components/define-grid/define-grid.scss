@@ -26,9 +26,9 @@ mat-dialog-actions {
   }
 }
 
-.input-field-full {
-  width: 100%;
-  margin-bottom: 10px;
+.input-field {
+    width: 100%;
+    margin-bottom: 24px;
 }
 
 .error-message {
@@ -83,25 +83,4 @@ mat-dialog-actions {
   transform: none !important;
   perspective: none !important;
   transform-style: flat !important;
-}
-
-/* Existing styles below... */
-.metadata-display {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-mat-dialog-actions {
-  padding: 0 24px 20px;
-}
-
-.input-field-full {
-  width: 100%;
-}
-
-.error-message {
-  color: red;
-  font-weight: bold;
 }

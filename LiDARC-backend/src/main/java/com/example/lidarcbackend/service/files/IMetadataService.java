@@ -3,6 +3,7 @@ package com.example.lidarcbackend.service.files;
 import com.example.lidarcbackend.api.metadata.dtos.ComparableItemDTO;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import com.example.lidarcbackend.api.metadata.dtos.FolderFilesDTO;
+import com.example.lidarcbackend.exception.NotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,7 +26,7 @@ public interface IMetadataService {
     List<FileMetadataDTO> getMetadataList(List<String> metadataIds);
 
     @Transactional
-    void deleteMetadataById(Long id);
+    void deleteMetadataById(Long id) throws NotFoundException;
 
     /**
      * Processes a metadata worker result message

@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS folders (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name TEXT NOT NULL,
     status VARCHAR(32) NOT NULL DEFAULT 'UPLOADED' CHECK (status in ('UPLOADING', 'UPLOADED', 'PROCESSING', 'PROCESSED', 'FAILED')),
-    created_at TIMESTAMP
+    created_at TIMESTAMP,
+    active BOOLEAN DEFAULT TRUE
 );
 
 CREATE TABLE IF NOT EXISTS files (
@@ -29,10 +30,12 @@ CREATE TABLE IF NOT EXISTS files (
     capture_software VARCHAR(128),
     point_count BIGINT,
     file_creation_date DATE,
-    status VARCHAR(32) NOT NULL DEFAULT 'UPLOADED' CHECK (status in ('UPLOADED', 'PROCESSING', 'PROCESSED', 'FAILED')),
+    status VARCHAR(32) NOT NULL DEFAULT 'UPLOADED' CHECK (status in ('UPLOADING', 'UPLOADED', 'PROCESSING', 'PROCESSED', 'FAILED')),
+    error_msg TEXT,
     uploaded BOOLEAN DEFAULT FALSE,
     uploaded_at TIMESTAMP,
     folder_id INTEGER,
+    active BOOLEAN DEFAULT TRUE,
     CONSTRAINT fk_folder_id FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL
 );
 
@@ -61,7 +64,7 @@ CREATE TABLE IF NOT EXISTS comparisons (
     need_statistics_over_scenery BOOLEAN DEFAULT FALSE,
     need_most_differences BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP,
-    status VARCHAR(32) NOT NULL DEFAULT 'PENDING' CHECK (status in ('PENDING', 'COMPLETED', 'FAILED')),
+    status VARCHAR(32) NOT NULL DEFAULT 'PREPROCESSING' CHECK (status in ('PREPROCESSING', 'COMPARING', 'COMPLETED', 'FAILED')),
     error_message TEXT,
     grid_cell_width INTEGER,
     grid_cell_height INTEGER,
@@ -84,6 +87,8 @@ CREATE TABLE IF NOT EXISTS comparison_file (
     object_key TEXT,
     included BOOLEAN DEFAULT FALSE,
     group_name TEXT,
+    status VARCHAR(32) NOT NULL DEFAULT 'PREPROCESSING' CHECK (status in ('PREPROCESSING', 'COMPLETED', 'FAILED')),
+    error_msg TEXT,
     CONSTRAINT pk_comparison_file PRIMARY KEY (comparison_id, file_id),
     CONSTRAINT fk_comparison_id FOREIGN KEY (comparison_id) REFERENCES comparisons(id) ON DELETE CASCADE,
     CONSTRAINT fk_file_id FOREIGN KEY (file_id) REFERENCES files(id)
@@ -103,7 +108,7 @@ CREATE TABLE IF NOT EXISTS reports (
    title TEXT,
    creation_date TIMESTAMP,
    comparison_id INTEGER NOT NULL,
-   CONSTRAINT fk_comparison_id FOREIGN KEY(comparison_id) REFERENCES comparisons(id)
+   CONSTRAINT fk_comparison_id FOREIGN KEY(comparison_id) REFERENCES comparisons(id) ON DELETE CASCADE
 );
 
 ALTER TABLE files 

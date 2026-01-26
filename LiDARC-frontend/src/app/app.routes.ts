@@ -35,10 +35,6 @@ export const routes: Routes = [
     loadComponent: () => import('./components/comparison-setup/comparison-setup').then(m => m.ComparisonSetup)
   },
   {
-    path: 'heatmap',
-    loadComponent: () => import('./components/heatmap/heatmap').then(m => m.Heatmap)
-  },
-  {
     path: 'reports',
     loadComponent: () => import('./components/reports/reports').then(m => m.Reports)
   },

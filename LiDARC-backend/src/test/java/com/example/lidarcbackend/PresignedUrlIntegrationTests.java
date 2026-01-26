@@ -5,6 +5,7 @@ import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import com.example.lidarcbackend.model.DTO.Mapper.impl.UrlMapperImpl;
 import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.model.entity.Url;
+import com.example.lidarcbackend.service.IJobTrackingService;
 import com.example.lidarcbackend.service.files.PresignedUrlService;
 import com.example.lidarcbackend.service.files.WorkerStartService;
 import io.minio.GetPresignedObjectUrlArgs;
@@ -43,6 +44,7 @@ public class PresignedUrlIntegrationTests extends AbstractIntegrationTests {
   private UrlMapperImpl urlMapper;
   private PresignedUrlService presignedUrlService;
   private WorkerStartService workerStartService;
+  private IJobTrackingService  jobTrackingService;
 
   @BeforeEach
   void setUpService() {
@@ -61,7 +63,9 @@ public class PresignedUrlIntegrationTests extends AbstractIntegrationTests {
         fileRepository,
         folderRepository,
         workerStartService,
-        urlMapper
+        urlMapper,
+        jobTrackingService
+
     );
   }
 
@@ -86,7 +90,7 @@ public class PresignedUrlIntegrationTests extends AbstractIntegrationTests {
     // arrange
     String fileName = "already.txt";
     File f = new File();
-    f.setStatus("UPLOADED");
+    f.setStatus(File.FileStatus.UPLOADED);
     f.setFilename(fileName);
     f.setUploaded(true);
     fileRepository.save(f);
@@ -105,7 +109,7 @@ public class PresignedUrlIntegrationTests extends AbstractIntegrationTests {
     File f = new File();
     f.setFilename(fileName);
     f.setUploaded(true);
-    f.setStatus("UPLOADED");
+    f.setStatus(File.FileStatus.UPLOADED);
     fileRepository.save(f);
 
     when(minioClient.getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class))).thenReturn("http://get-url");

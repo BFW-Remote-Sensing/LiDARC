@@ -39,7 +39,7 @@ public class Comparison {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
-    private Status status = Status.PENDING;
+    private Status status = Status.PREPROCESSING;
 
     // @Column(name = "result_report_url")
     // private String resultReportUrl;
@@ -87,7 +87,8 @@ public class Comparison {
     private Double outlierDeviationFactor;
 
     public enum Status {
-        PENDING,
+        PREPROCESSING,
+        COMPARING,
         COMPLETED,
         FAILED
     }

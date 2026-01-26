@@ -19,6 +19,7 @@ import { TextCard } from '../text-card/text-card';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { ComparisonResponse } from '../../dto/comparisonResponse';
+import { StatusService } from '../../service/status.service';
 
 @Component({
   selector: 'app-comparisons',
@@ -48,11 +49,12 @@ export class Comparisons {
   public loading: WritableSignal<boolean> = signal(true);
   public errorMessage = signal<string | null>(null);
   private searchSubject = new Subject<string>();
-
+  private isPolling = false;
   private stopPolling$ = new Subject<void>();
   private previousMap = new Map<number, string>(); // id → status
 
   constructor(private snackBar: MatSnackBar,
+    private statusService: StatusService,
     public globals: Globals) { }
 
   totalItems = 0;
@@ -78,22 +80,31 @@ export class Comparisons {
       });
     // First load
     this.fetchAndProcessComparisons(this.pageIndex, this.pageSize);
+  }
 
-    // Poll every 3 seconds
+  private startPolling(): void {
+    if (this.isPolling) {
+      return;
+    }
+
+    this.isPolling = true;
     interval(pollingIntervalMs)
       .pipe(
         takeUntil(this.stopPolling$),
-        switchMap(() => this.comparisonService.getPagedComparisons(this.pageIndex, this.pageSize, 'createdAt', false, this.dataSource.filter)),
-        finalize(() => this.loading.set(false))
+        switchMap(() => this.comparisonService.getPagedComparisons(
+          this.pageIndex, this.pageSize, 'createdAt', false, this.dataSource.filter
+        )),
+        finalize(() => this.isPolling = false)
       )
       .subscribe({
-        next: (response: ComparisonResponse) => {
-          this.totalItems = response.totalItems;
-          this.processComparisons(response.items);
+        next: (comparisonResponse: ComparisonResponse) => {
+          this.totalItems = comparisonResponse.totalItems;
+          this.processComparisons(comparisonResponse.items);
         },
         error: (error) => {
-          console.error('Error fetching comparisons:', error);
-          this.errorMessage.set('Failed to fetch comparisons. Please try again later.');
+          console.error('Error refreshing comparisons:', error);
+          this.errorMessage.set('Failed to refresh comparisons. Please try again later.');
+          this.isPolling = false;
         }
       });
   }
@@ -120,30 +131,36 @@ export class Comparisons {
    * - Show snack bar notifications
    * - Stop polling when no PENDING comparisons remain
    */
-  private processComparisons(data: ComparisonDTO[]): void {
-    this.dataSource.data = data;
+  private processComparisons(newData: ComparisonDTO[]): void {
+    const currentData = this.dataSource.data;
 
-    // Detect transitions and update previousMap
-    data.forEach(item => {
-      const prev = this.previousMap.get(item.id);
+    this.dataSource.data = newData.map(newItem => {
+      const existingItem = currentData.find(item => item.id === newItem.id);
 
-      if (prev === 'PENDING' && item.status === 'COMPLETED') {
+      if (existingItem && JSON.stringify(existingItem) === JSON.stringify(newItem)) {
+        return existingItem;
+      }
+
+      const prevStatus = this.previousMap.get(newItem.id);
+      if (prevStatus && prevStatus !== newItem.status) {
         this.snackBar.open(
-          `Comparison "${item.name}" completed!`,
-          'OK', { duration: snackBarDurationMs }
-        );
-      } else if (prev === 'PENDING' && item.status === 'FAILED') {
-        this.snackBar.open(
-          `Comparison "${item.name}" failed!`,
+          this.statusService.getComparisonSnackbarMessage("Comparison", newItem.name, newItem.status),
           'OK', { duration: snackBarDurationMs }
         );
       }
 
-      this.previousMap.set(item.id, item.status);
+      this.previousMap.set(newItem.id, newItem.status);
+
+      return newItem;
     });
 
-    // Stop polling if no PENDING left
-    if (!data.some(d => d.status === 'PENDING')) {
+    const hasProcessingComparisons = this.dataSource.data.some(
+      d => d.status !== 'COMPLETED' && d.status !== 'FAILED'
+    );
+
+    if (hasProcessingComparisons) {
+      this.startPolling();
+    } else {
       this.stopPolling$.next();
     }
   }

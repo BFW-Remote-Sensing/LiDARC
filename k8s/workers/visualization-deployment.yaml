@@ -22,6 +22,10 @@ spec:
           image: visualization-chunking:latest
           imagePullPolicy: IfNotPresent
           env:
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
             - name: RABBITMQ_HOST
               value: "rabbitmq"
             - name: RABBITMQ_DEFAULT_USER

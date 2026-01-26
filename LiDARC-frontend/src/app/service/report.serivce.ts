@@ -1,8 +1,8 @@
-import {HttpClient, HttpHeaders, HttpParams} from "@angular/common/http";
-import {Injectable} from "@angular/core";
-import {Globals} from "../globals/globals";
-import {Observable} from 'rxjs';
-import {ComparisonReport} from '../dto/comparisonReport';
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from "@angular/common/http";
+import { Injectable } from "@angular/core";
+import { Globals } from "../globals/globals";
+import { catchError, Observable, throwError } from 'rxjs';
+import { ComparisonReport } from '../dto/comparisonReport';
 
 export interface Page<T> {
   content: T[];
@@ -46,7 +46,28 @@ export class ReportSerivce {
 
     return this.httpClient.get<Page<ComparisonReport>>(
       this.globals.backendUri + '/reports',
-      {params}
+      { params }
+    );
+  }
+
+  deleteReport(reportId: number): Observable<void> {
+    return this.httpClient.delete<void>(
+      this.globals.backendUri + `/reports/${reportId}`,
+      { headers }
+    ).pipe(
+      catchError((error: HttpErrorResponse) => {
+        console.error('Captured error:', error);
+
+        let errorMessage = 'An error occurred while deleting the report.';
+
+        if (error.error && typeof error.error.message === 'string') {
+          errorMessage = error.error.message;
+        } else if (typeof error.error === 'string') {
+          errorMessage = error.error;
+        }
+
+        return throwError(() => new Error(errorMessage));
+      })
     );
   }
 }

@@ -1,7 +1,7 @@
-import { HttpClient, HttpHeaders, HttpParams, HttpResponse } from "@angular/common/http";
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams, HttpResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { defaultComparisonPath, Globals } from "../globals/globals";
-import { Observable } from "rxjs";
+import { catchError, Observable, throwError } from "rxjs";
 import { ComparisonDTO, CreateComparison } from "../dto/comparison";
 import { ComparisonReport } from "../dto/comparisonReport";
 import { CreateReportDto } from '../dto/report';
@@ -65,6 +65,20 @@ export class ComparisonService {
       this.globals.backendUri + defaultComparisonPath,
       comparison,
       { headers }
+    ).pipe(
+      catchError((error: HttpErrorResponse) => {
+        console.error('Captured error:', error);
+
+        let errorMessage = 'An error occurred while creating the comparison.';
+
+        if (error.error && typeof error.error.message === 'string') {
+          errorMessage = error.error.message;
+        } else if (typeof error.error === 'string') {
+          errorMessage = error.error;
+        }
+
+        return throwError(() => new Error(errorMessage));
+      })
     );
   }
 
@@ -72,6 +86,20 @@ export class ComparisonService {
     return this.httpClient.delete<void>(
       this.globals.backendUri + defaultComparisonPath + `/${id}`,
       { headers }
+    ).pipe(
+      catchError((error: HttpErrorResponse) => {
+        console.error('Captured error:', error);
+
+        let errorMessage = 'An error occurred while deleting the comparison.';
+
+        if (error.error && typeof error.error.message === 'string') {
+          errorMessage = error.error.message;
+        } else if (typeof error.error === 'string') {
+          errorMessage = error.error;
+        }
+
+        return throwError(() => new Error(errorMessage));
+      })
     );
   }
 

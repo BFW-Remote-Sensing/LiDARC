@@ -114,6 +114,17 @@ public class ReportController {
         }
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteReport(@PathVariable Long id) {
+        try {
+            reportService.deleteReport(id);
+            return ResponseEntity.noContent().build();
+        } catch (NotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+            //return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
     /**
      * Logs client-side errors with status, message, and exception details.
      *

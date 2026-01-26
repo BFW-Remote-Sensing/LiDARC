@@ -1,24 +1,26 @@
-import {AfterViewInit, Component, OnInit, signal, ViewChild} from '@angular/core';
-import {Globals} from '../../globals/globals';
-import {MatTableDataSource, MatTableModule} from '@angular/material/table';
-import {ComparisonReport} from '../../dto/comparisonReport';
-import {MatPaginator, MatPaginatorModule} from '@angular/material/paginator';
-import {MatSortModule} from '@angular/material/sort';
-import {catchError, debounceTime, distinctUntilChanged, map, merge, of, startWith, Subject, switchMap} from 'rxjs';
-import {ReportSerivce} from '../../service/report.serivce';
-import {FormsModule} from '@angular/forms';
-import {MatSelectModule} from '@angular/material/select';
-import {MatIconModule} from '@angular/material/icon';
-import {MatButtonModule} from '@angular/material/button';
-import {RouterModule} from '@angular/router';
-import {CommonModule} from '@angular/common';
-import {MatTooltipModule} from '@angular/material/tooltip';
-import {MatCardModule} from '@angular/material/card';
-import {MatProgressSpinner} from '@angular/material/progress-spinner';
-import {TextCard} from '../text-card/text-card';
-import {MatFormFieldModule} from '@angular/material/form-field';
-import {MatInputModule} from '@angular/material/input';
-import {PdfThumbnail} from '../pdf-thumbnail/pdf-thumbnail';
+import { AfterViewInit, ChangeDetectorRef, Component, OnInit, signal, ViewChild } from '@angular/core';
+import { Globals } from '../../globals/globals';
+import { MatTableDataSource, MatTableModule } from '@angular/material/table';
+import { ComparisonReport } from '../../dto/comparisonReport';
+import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
+import { MatSortModule } from '@angular/material/sort';
+import { catchError, debounceTime, distinctUntilChanged, map, merge, of, startWith, Subject, switchMap } from 'rxjs';
+import { ReportSerivce } from '../../service/report.serivce';
+import { FormsModule } from '@angular/forms';
+import { MatSelectModule } from '@angular/material/select';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { RouterModule } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatCardModule } from '@angular/material/card';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { TextCard } from '../text-card/text-card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { PdfThumbnail } from '../pdf-thumbnail/pdf-thumbnail';
+import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
+import { MatDialog } from '@angular/material/dialog';
 
 @Component({
   selector: 'app-reports',
@@ -55,7 +57,10 @@ export class Reports implements OnInit, AfterViewInit {
   private defaultSortDirection = 'desc';
 
   constructor(private reportService: ReportSerivce,
-              public globals: Globals,) {
+    private dialog: MatDialog,
+    public globals: Globals,
+    private cdr: ChangeDetectorRef
+  ) {
   }
 
   ngOnInit(): void {
@@ -108,5 +113,32 @@ export class Reports implements OnInit, AfterViewInit {
     const url = `${this.globals.backendUri}/reports/${reportId}/view`;
 
     window.open(url, '_blank');
+  }
+
+  deleteReport(id: number, name: string): void {
+    const data: ConfirmationDialogData = {
+      title: 'Confirmation',
+      subtitle: 'Are you sure you want to delete this report?',
+      objectName: name,
+      primaryButtonText: 'Delete',
+      primaryButtonColor: 'warn',
+      secondaryButtonText: 'Cancel',
+      onConfirm: () => this.reportService.deleteReport(id),
+      successActionText: 'Report deletion'
+    };
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '400px',
+      data,
+      disableClose: true,
+      autoFocus: false
+    });
+
+    dialogRef.afterClosed().subscribe(success => {
+      if (success) {
+        this.dataSource.data = this.dataSource.data.filter(report => report.id !== id);
+        this.cdr.detectChanges();
+      }
+    });
   }
 }

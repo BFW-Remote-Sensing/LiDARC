@@ -1,7 +1,7 @@
-import { HttpClient, HttpParams } from "@angular/common/http";
+import { HttpClient, HttpErrorResponse, HttpParams } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { defaultMetadataPath, Globals, headers } from "../globals/globals";
-import { Observable, Subject } from "rxjs";
+import { catchError, Observable, Subject, throwError } from "rxjs";
 import { FileMetadataDTO } from "../dto/fileMetadata";
 import { MetadataResponse } from "../dto/metadataResponse";
 import { FolderFilesDTO } from "../dto/folderFiles";
@@ -69,6 +69,20 @@ export class MetadataService {
         return this.httpClient.delete<void>(
             this.globals.backendUri + defaultMetadataPath + `/${id}`,
             { headers }
+        ).pipe(
+            catchError((error: HttpErrorResponse) => {
+                console.error('Captured error:', error);
+
+                let errorMessage = 'An error occurred while deleting the metadata.';
+
+                if (error.error && typeof error.error.message === 'string') {
+                    errorMessage = error.error.message;
+                } else if (typeof error.error === 'string') {
+                    errorMessage = error.error;
+                }
+
+                return throwError(() => new Error(errorMessage));
+            })
         );
     }
 
