@@ -22,17 +22,10 @@ public class Comparison {
     @Column(name = "name")
     private String name;
 
-    @Column(name = "need_highest_vegetation")
-    private Boolean needHighestVegetation;
 
     @Column(name = "need_outlier_detection")
     private Boolean needOutlierDetection;
 
-    @Column(name = "need_statistics_over_scenery")
-    private Boolean needStatisticsOverScenery;
-
-    @Column(name = "need_most_differences")
-    private Boolean needMostDifferences;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

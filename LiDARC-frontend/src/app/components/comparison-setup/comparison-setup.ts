@@ -71,10 +71,7 @@ import {finalize, Observable } from 'rxjs';import {MatSnackBar, MatSnackBarModul
 export class ComparisonSetup {
   @Input() comparison: CreateComparison = {
     name: '',
-    needHighestVegetation: false,
     needOutlierDetection: false,
-    needStatisticsOverScenery: false,
-    needMostDifferences: false,
     folderAFiles: [],
     folderBFiles: [],
     grid: null,
@@ -141,14 +138,7 @@ export class ComparisonSetup {
 
   startComparisonDisabled(): boolean {
     return this.comparison.name.trim() === '' ||
-      this.comparison.grid === null ||
-      (
-        this.comparison.needHighestVegetation === false &&
-        this.comparison.needOutlierDetection === false &&
-        this.comparison.needStatisticsOverScenery === false &&
-        this.comparison.needPointFilter === false &&
-        this.comparison.needMostDifferences === false
-      );
+      this.comparison.grid === null;
   }
 
   ngOnInit(): void {

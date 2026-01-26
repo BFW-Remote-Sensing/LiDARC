@@ -70,21 +70,6 @@
           <mat-icon matListItemIcon>bar_chart_4_bars</mat-icon>
           <div matListItemTitle class="mat-list-item-row">
             <span>
-              Highest Vegetation
-            </span>
-            <span>
-              <mat-icon [color]="comparison()!.needHighestVegetation ? 'primary' : 'warn'">
-                {{ comparison()!.needHighestVegetation ? 'check_circle' : 'cancel' }}
-              </mat-icon>
-            </span>
-          </div>
-        </mat-list-item>
-        <mat-divider></mat-divider>
-
-        <mat-list-item role="listitem">
-          <mat-icon matListItemIcon>bar_chart_4_bars</mat-icon>
-          <div matListItemTitle class="mat-list-item-row">
-            <span>
               Outlier Detection
             </span>
             <span>
@@ -96,34 +81,6 @@
         </mat-list-item>
         <mat-divider></mat-divider>
 
-        <mat-list-item role="listitem">
-          <mat-icon matListItemIcon>bar_chart_4_bars</mat-icon>
-          <div matListItemTitle class="mat-list-item-row">
-            <span>
-              Statistics Over Scenery
-            </span>
-            <span>
-              <mat-icon [color]="comparison()!.needStatisticsOverScenery ? 'primary' : 'warn'">
-                {{ comparison()!.needStatisticsOverScenery ? 'check_circle' : 'cancel' }}
-              </mat-icon>
-            </span>
-          </div>
-        </mat-list-item>
-        <mat-divider></mat-divider>
-
-        <mat-list-item role="listitem">
-          <mat-icon matListItemIcon>bar_chart_4_bars</mat-icon>
-          <div matListItemTitle class="mat-list-item-row">
-            <span>
-              Most Differences
-            </span>
-            <span>
-              <mat-icon [color]="comparison()!.needMostDifferences ? 'primary' : 'warn'">
-                {{ comparison()!.needMostDifferences ? 'check_circle' : 'cancel' }}
-              </mat-icon>
-            </span>
-          </div>
-        </mat-list-item>
       </mat-list>
       <h2 style="margin-top: 20px;">
         <mat-icon>folder</mat-icon>
@@ -215,6 +172,7 @@
         </h4>
       </div>
 
+      @if (comparison()!.needPointFilter) {
       <h2 style="margin-top: 20px;">
         <mat-icon>filter_alt</mat-icon>
         Point Filter Settings
@@ -241,6 +199,7 @@
         Points filtered to {{ (comparison()!.pointFilterLowerBound ?? 0).toFixed(2) }}th-{{ (comparison()!.pointFilterUpperBound ?? 100).toFixed(2) }}th
         percentile based on vegetation height
       </div>
+      }
       }
 
       <h2 style="margin-top: 10px;">

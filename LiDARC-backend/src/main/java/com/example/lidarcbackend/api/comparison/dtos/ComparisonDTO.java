@@ -15,13 +15,7 @@ public class ComparisonDTO {
 
     private String name;
 
-    private Boolean needHighestVegetation;
-
     private Boolean needOutlierDetection;
-
-    private Boolean needStatisticsOverScenery;
-
-    private Boolean needMostDifferences;
 
     private LocalDateTime createdAt;
 
