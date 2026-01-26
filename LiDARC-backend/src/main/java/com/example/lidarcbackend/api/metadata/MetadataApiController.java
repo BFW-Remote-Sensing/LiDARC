@@ -144,7 +144,7 @@ class MetadataApiController {
      * @return empty response with appropriate status
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteMetadata(
+    public ResponseEntity<?> deleteMetadata(
             @Parameter(
                     description = "Metadata ID to delete",
                     required = true,
@@ -157,11 +157,9 @@ class MetadataApiController {
             metadataService.deleteMetadataById(id);
             return ResponseEntity.noContent().build();
         } catch (NotFoundException e) {
-            //throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         } catch (BadRequestException e) {
-            //throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 

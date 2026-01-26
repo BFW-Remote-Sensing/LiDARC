@@ -1,5 +1,6 @@
 package com.example.lidarcbackend.api.folder;
 
+import com.example.lidarcbackend.exception.BadRequestException;
 import com.example.lidarcbackend.exception.NotFoundException;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -67,12 +68,14 @@ public class FolderController {
   }
 
   @DeleteMapping("/{id}")
-  public ResponseEntity<Void> deleteFolder(@PathVariable Long id) {
-    try {
-      folderService.deleteFolder(id);
-      return ResponseEntity.noContent().build();
-    } catch (NotFoundException e) {
-      return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-    }
+  public ResponseEntity<?> deleteFolder(@PathVariable Long id) {
+      try {
+          folderService.deleteFolder(id);
+          return ResponseEntity.noContent().build();
+      } catch (NotFoundException e) {
+          return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+      } catch (BadRequestException e) {
+          return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+      }
   }
 }
