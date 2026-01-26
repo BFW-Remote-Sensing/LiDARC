@@ -14,6 +14,9 @@ import lombok.Getter;
 import lombok.Setter;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
+
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
@@ -39,6 +42,14 @@ public class Folder {
 
   @OneToMany(mappedBy = "folder", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<File> files;
+
+  @ColumnDefault("true")
+  @Column(name = "active")
+  private Boolean active;
+
+  public boolean isFinalized() {
+     return Objects.equals(this.status, "FAILED") || Objects.equals(this.status, "PROCESSED");
+  }
 
   public Folder() {
 

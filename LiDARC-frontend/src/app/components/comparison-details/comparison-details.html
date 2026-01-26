@@ -6,13 +6,14 @@
 <app-text-card type="info" message="No file found."></app-text-card>
 } @else if (errorMessage()) {
 <app-text-card type="error" message="{{ errorMessage() }}"></app-text-card>
-} @else if (comparison) {
+} @else if (comparison()) {
 <div class="file-details-container">
 
   <header class="metadata-header mat-elevation-z2">
     <mat-icon class="header-icon">description</mat-icon>
-    <h1>Comparison Details: {{ comparison.name }}</h1>
-    <button mat-raised-button color="primary" (click)="createReport()" style="width: 180px;">
+    <h1>Comparison Details: {{ comparison()!.name }}</h1>
+    <button mat-raised-button color="primary" (click)="createReport()" style="width: 180px;"
+      [disabled]="comparison()!.status !== 'COMPLETED'">
       Create Report
     </button>
   </header>
@@ -33,9 +34,21 @@
             <span>
               Status
             </span>
-            <span>
-              {{ comparison.status | titlecase }}
-            </span>
+            <div class="status-column">
+              <span [ngClass]="{
+        'status-ready': comparison()!.status === 'COMPLETED',
+        'status-error': comparison()!.status === 'FAILED',
+        'status-default': ['PREPROCESSING', 'COMPARING'].includes(comparison()!.status)
+    }">{{ comparison()!.status | titlecase }}</span>
+              @if (['PREPROCESSING', 'COMPARING'].includes(comparison()!.status)) {
+              <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+              }
+              @else if (comparison()!.status === 'FAILED') {
+              <mat-icon [matTooltip]="comparison()!.errorMessage" matTooltipPosition="above">
+                error
+              </mat-icon>
+              }
+            </div>
           </div>
         </mat-list-item>
         <mat-divider></mat-divider>
@@ -47,7 +60,7 @@
               Created At
             </span>
             <span>
-              {{ comparison.createdAt ? (comparison.createdAt | date:'medium') : 'N/A' }}
+              {{ comparison()?.createdAt ? (comparison()!.createdAt | date: 'MMM d, y, HH:mm') : 'N/A' }}
             </span>
           </div>
         </mat-list-item>
@@ -60,8 +73,8 @@
               Highest Vegetation
             </span>
             <span>
-              <mat-icon [color]="comparison.needHighestVegetation ? 'primary' : 'warn'">
-                {{ comparison.needHighestVegetation ? 'check_circle' : 'cancel' }}
+              <mat-icon [color]="comparison()!.needHighestVegetation ? 'primary' : 'warn'">
+                {{ comparison()!.needHighestVegetation ? 'check_circle' : 'cancel' }}
               </mat-icon>
             </span>
           </div>
@@ -75,8 +88,8 @@
               Outlier Detection
             </span>
             <span>
-              <mat-icon [color]="comparison.needOutlierDetection ? 'primary' : 'warn'">
-                {{ comparison.needOutlierDetection ? 'check_circle' : 'cancel' }}
+              <mat-icon [color]="comparison()!.needOutlierDetection ? 'primary' : 'warn'">
+                {{ comparison()!.needOutlierDetection ? 'check_circle' : 'cancel' }}
               </mat-icon>
             </span>
           </div>
@@ -90,8 +103,8 @@
               Statistics Over Scenery
             </span>
             <span>
-              <mat-icon [color]="comparison.needStatisticsOverScenery ? 'primary' : 'warn'">
-                {{ comparison.needStatisticsOverScenery ? 'check_circle' : 'cancel' }}
+              <mat-icon [color]="comparison()!.needStatisticsOverScenery ? 'primary' : 'warn'">
+                {{ comparison()!.needStatisticsOverScenery ? 'check_circle' : 'cancel' }}
               </mat-icon>
             </span>
           </div>
@@ -105,8 +118,8 @@
               Most Differences
             </span>
             <span>
-              <mat-icon [color]="comparison.needMostDifferences ? 'primary' : 'warn'">
-                {{ comparison.needMostDifferences ? 'check_circle' : 'cancel' }}
+              <mat-icon [color]="comparison()!.needMostDifferences ? 'primary' : 'warn'">
+                {{ comparison()!.needMostDifferences ? 'check_circle' : 'cancel' }}
               </mat-icon>
             </span>
           </div>
@@ -140,46 +153,6 @@
         <mat-divider></mat-divider>
         }
         }
-
-        <!-- @if (comparison.folderA) {
-        <mat-list-item role="listitem">
-          <mat-icon matListItemIcon>insert_drive_file</mat-icon>
-
-          <div matListItemTitle class="mat-list-item-row">
-            <span class="file-name">
-              {{ comparison.folderA.name | titlecase }}
-            </span>
-
-            <span>
-              <a [routerLink]="['/folders', comparison.folderA.id]">
-                <button mat-icon-button matTooltip="View Details" matTooltipPosition="right">
-                  <mat-icon>visibility</mat-icon>
-                </button>
-              </a>
-            </span>
-          </div>
-        </mat-list-item>
-        }
-
-        @if (comparison.folderB) {
-        <mat-list-item role="listitem">
-          <mat-icon matListItemIcon>insert_drive_file</mat-icon>
-
-          <div matListItemTitle class="mat-list-item-row">
-            <span class="file-name">
-              {{ comparison.folderB.name | titlecase }}
-            </span>
-
-            <span>
-              <a [routerLink]="['/folders', comparison.folderB.id]">
-                <button mat-icon-button matTooltip="View Details" matTooltipPosition="right">
-                  <mat-icon>visibility</mat-icon>
-                </button>
-              </a>
-            </span>
-          </div>
-        </mat-list-item>
-        } -->
       </mat-list>
 
     </section>
@@ -196,7 +169,7 @@
         <h4>
           Cell Width:
           <span class="coordinate">
-            {{ comparison.grid?.cellWidth != null ? (comparison.grid?.cellWidth | number:'1.2-6') : 'N/A' }}
+            {{ comparison()!.grid?.cellWidth != null ? (comparison()!.grid?.cellWidth | number:'1.2-6') : 'N/A' }}
             m
           </span>
         </h4>
@@ -204,7 +177,7 @@
           Cell Height:
           <span class="coordinate">
             {{
-            comparison.grid?.cellHeight != null ? (comparison.grid?.cellHeight | number:'1.2-6') : 'N/A'
+            comparison()!.grid?.cellHeight != null ? (comparison()!.grid?.cellHeight | number:'1.2-6') : 'N/A'
             }} m
           </span>
         </h4>
@@ -214,14 +187,14 @@
         <h4>
           X<sub style="font-size: 0.6em;">min</sub>:
           <span class="coordinate">
-            {{ comparison.grid?.xMin != null ? (comparison.grid?.xMin | number:'1.2-6') : 'N/A' }}
+            {{ comparison()!.grid?.xMin != null ? (comparison()!.grid?.xMin | number:'1.2-6') : 'N/A' }}
           </span>
         </h4>
         <mat-icon>east</mat-icon>
         <h4>
           X<sub style="font-size: 0.6em;">max</sub>:
           <span class="coordinate">
-            {{ comparison.grid?.xMax != null ? (comparison.grid?.xMax | number:'1.2-6') : 'N/A' }}
+            {{ comparison()!.grid?.xMax != null ? (comparison()!.grid?.xMax | number:'1.2-6') : 'N/A' }}
           </span>
         </h4>
       </div>
@@ -230,14 +203,14 @@
         <h4>
           Y<sub style="font-size: 0.6em;">min</sub>:
           <span class="coordinate">
-            {{ comparison.grid?.yMin != null ? (comparison.grid?.yMin | number:'1.2-6') : 'N/A' }}
+            {{ comparison()!.grid?.yMin != null ? (comparison()!.grid?.yMin | number:'1.2-6') : 'N/A' }}
           </span>
         </h4>
         <mat-icon>east</mat-icon>
         <h4>
           Y<sub style="font-size: 0.6em;">max</sub>:
           <span class="coordinate">
-            {{ comparison.grid?.yMax != null ? (comparison.grid?.yMax | number:'1.2-6') : 'N/A' }}
+            {{ comparison()!.grid?.yMax != null ? (comparison()!.grid?.yMax | number:'1.2-6') : 'N/A' }}
           </span>
         </h4>
       </div>
@@ -250,22 +223,22 @@
         <h4>
           Lower Bound:
           <span class="coordinate">
-            {{ comparison.pointFilterLowerBound != null ? comparison.pointFilterLowerBound : 0 }}%
+            {{ comparison()!.pointFilterLowerBound != null ? comparison()!.pointFilterLowerBound : 0 }}%
           </span>
         </h4>
         <mat-icon>east</mat-icon>
         <h4>
           Upper Bound:
           <span class="coordinate">
-            {{ comparison.pointFilterUpperBound != null ? comparison.pointFilterUpperBound : 100 }}%
+            {{ comparison()!.pointFilterUpperBound != null ? comparison()!.pointFilterUpperBound : 100 }}%
           </span>
         </h4>
       </div>
-      @if (comparison.pointFilterLowerBound != null && comparison.pointFilterLowerBound !== 0 ||
-      comparison.pointFilterUpperBound != null && comparison.pointFilterUpperBound !== 100) {
+      @if (comparison()!.pointFilterLowerBound != null && comparison()!.pointFilterLowerBound !== 0 ||
+      comparison()!.pointFilterUpperBound != null && comparison()!.pointFilterUpperBound !== 100) {
       <div style="padding: 8px 0; font-size: 0.9em; color: #666;">
         <mat-icon style="font-size: 16px; vertical-align: middle; margin-right: 4px;">info</mat-icon>
-        Points filtered to {{ comparison.pointFilterLowerBound ?? 0 }}th-{{ comparison.pointFilterUpperBound ?? 100 }}th
+        Points filtered to {{ comparison()!.pointFilterLowerBound ?? 0 }}th-{{ comparison()!.pointFilterUpperBound ?? 100 }}th
         percentile based on vegetation height
       </div>
       }
@@ -292,9 +265,13 @@
             </a>
             <span matListItemMeta>
               <a mat-icon-button [href]="this.globals.backendUri + '/reports/' + report.id + '/download'"
-                target="_blank" download class="download-btn" matTooltip="Download Report">
+                target="_blank" download class="action-button" matTooltip="Download Report">
                 <mat-icon>download</mat-icon>
               </a>
+              <button mat-icon-button color="warn" (click)="deleteReport(report.id, report.title)"
+                matTooltip="Delete Report" class="action-button">
+                <mat-icon>delete</mat-icon>
+              </button>
             </span>
           </mat-list-item>
           @if (!last) {
@@ -327,16 +304,18 @@
     </section>
   </div>
 </div>
-
 <!-- ===== HARDCODED COMPARISON VISUALIZATION ===== -->
+@if (comparison()!.status !== 'FAILED') {
 <div class="file-details-container">
   <mat-divider style="margin: 40px 0;"></mat-divider>
   <h2>
     <mat-icon>analytics</mat-icon>
     Comparison Results
   </h2>
+  @if (comparison()!.status === 'COMPLETED') {
+
   <app-chunking-settings [groupSizeInput]="chunkingSize" (visualizationData)="onChunkingSliderChange($event)"
-    [comparisonId]="comparisonId"></app-chunking-settings>
+                         [comparisonId]="comparisonId"></app-chunking-settings>
   <div class="comparison-container">
 
     <!-- ===== File Metrics Section ===== -->
@@ -412,9 +391,9 @@
       <mat-card-title>
         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
           <span>Heatmaps of Vegetational Heights</span>
-          @if (comparison.needOutlierDetection) {
+          @if (comparison()!.needOutlierDetection) {
           <div style="display: flex; align-items: center; gap: 20px; font-size: 0.8em; font-weight: normal;">
-            <span>Std Dev Factor: <strong>{{ comparison.outlierDeviationFactor }}</strong></span>
+            <span>Std Dev Factor: <strong>{{ comparison()!.outlierDeviationFactor }}</strong></span>
             <div style="display: flex; align-items: center; gap: 8px;">
               <mat-checkbox [checked]="showOutlierDots()" (change)="onOutlierToggle()" color="primary">
                 Show Outliers
@@ -440,9 +419,19 @@
 
 
   </div>
-
-
+  } @else if (['PREPROCESSING', 'COMPARING'].includes(comparison()!.status)) {
+  <div class="flex-center" style="margin-top: 50px;">
+    <mat-spinner></mat-spinner>
+  </div>
+  }
 </div>
-
-
+}
+@if (comparison()!.status === 'FAILED' || comparison()!.status === 'COMPLETED') {
+<div class="delete-button-container comparison-delete-button">
+  <button matButton="filled" color="warn" (click)="onDeleteComparison()">
+    <mat-icon>delete</mat-icon>
+    Delete Comparison
+  </button>
+</div>
+}
 }

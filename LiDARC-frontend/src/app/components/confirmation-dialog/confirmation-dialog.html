@@ -1,8 +1,37 @@
-<h2 mat-dialog-title>{{ data.title }}</h2>
-<mat-dialog-content>{{ data.subtitle }}</mat-dialog-content>
+<h2 mat-dialog-title>{{ isSuccess() ? 'Success!' : data.title }}</h2>
+
+<mat-dialog-content>
+    <ng-container *ngIf="!isSuccess()">
+        <p *ngIf="data.subtitle">{{ data.subtitle }}</p>
+        <p *ngIf="data.objectName"><strong>{{ data.objectName }}</strong></p>
+        <p *ngIf="data.extensionMessage">{{ data.extensionMessage }}</p>
+        <div *ngIf="errorMessage()" style="color: #f44336; margin-top: 10px; font-size: 14px;">
+            {{ errorMessage() }}
+        </div>
+    </ng-container>
+
+    <div *ngIf="isSuccess()" style="display: flex; align-items: center; gap: 12px; padding: 8px 0;">
+        <mat-icon color="primary" style="font-size: 24px; height: 32px; width: 32px;">check_circle</mat-icon>
+        <span style="font-size: 16px;">
+            {{ data.successActionText || 'The action' }} is successfully completed.
+        </span>
+    </div>
+</mat-dialog-content>
+
 <mat-dialog-actions align="end">
-    <button mat-button (click)="onCancel()">{{ data.secondaryButtonText || 'Cancel' }}</button>
-    <button mat-raised-button color="primary" (click)="onConfirm()">
-        {{ data.primaryButtonText || 'Confirm' }}
+    <ng-container *ngIf="!isSuccess()">
+        <button mat-button (click)="onCancel()" [disabled]="loading()">
+            {{ data.secondaryButtonText || 'Cancel' }}
+        </button>
+
+        <button mat-raised-button [color]="data.primaryButtonColor || 'primary'" (click)="onConfirm()"
+            [disabled]="loading()">
+            <span *ngIf="!loading()">{{ data.primaryButtonText || 'Confirm' }}</span>
+            <mat-spinner *ngIf="loading()" diameter="20" style="display: inline-block;"></mat-spinner>
+        </button>
+    </ng-container>
+
+    <button *ngIf="isSuccess()" mat-raised-button color="primary" (click)="onCloseSuccess()">
+        OK
     </button>
 </mat-dialog-actions>

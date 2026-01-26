@@ -32,5 +32,5 @@ public interface IComparisonService {
     void processComparisonResult(Map<String, Object> result);
 
     @Transactional
-    void deleteComparisonById(Long id);
+    void deleteComparisonById(Long id) throws NotFoundException;
 }

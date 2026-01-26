@@ -734,7 +734,8 @@ export class Heatmap implements AfterViewInit, OnChanges {
     textGap: -5,              // Abstand Text ↔ Farbskala
     inRange: {
       color: this.COLOR_Schemes[this.selectedColorScheme].color //does not change dynamically, has to be set manually
-    }
+    },
+    dimension: 4
   }
   private BASE_DeltaVirtualMap = {
       type: 'continuous',

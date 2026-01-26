@@ -19,4 +19,6 @@ public interface IReportService {
     List<ReportInfoDto> getReportsOfComparsion(Long comparisonId, Integer limit) throws NotFoundException;
 
     Page<ReportInfoDto> getAllReports(Pageable pageable, String search);
+
+    void deleteReport(Long reportId) throws NotFoundException;
 }
