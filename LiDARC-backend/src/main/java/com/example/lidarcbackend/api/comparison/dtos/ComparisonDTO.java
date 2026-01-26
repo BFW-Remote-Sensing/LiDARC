@@ -23,6 +23,8 @@ public class ComparisonDTO {
 
     private Boolean needMostDifferences;
 
+    private Double individualStatisticsPercentile;
+
     private LocalDateTime createdAt;
 
     private String status;

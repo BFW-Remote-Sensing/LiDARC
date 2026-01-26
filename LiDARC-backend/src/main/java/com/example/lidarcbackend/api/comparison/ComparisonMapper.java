@@ -19,6 +19,7 @@ public class ComparisonMapper {
         dto.setNeedOutlierDetection(entity.getNeedOutlierDetection());
         dto.setNeedStatisticsOverScenery(entity.getNeedStatisticsOverScenery());
         dto.setNeedMostDifferences(entity.getNeedMostDifferences());
+        dto.setIndividualStatisticsPercentile(entity.getIndividualStatisticsPercentile());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setStatus(entity.getStatus().toString());
         dto.setErrorMessage(entity.getErrorMessage());
@@ -50,6 +51,7 @@ public class ComparisonMapper {
         newComparison.setNeedOutlierDetection(request.getNeedOutlierDetection());
         newComparison.setNeedStatisticsOverScenery(request.getNeedStatisticsOverScenery());
         newComparison.setNeedMostDifferences(request.getNeedMostDifferences());
+        newComparison.setIndividualStatisticsPercentile(request.getIndividualStatisticsPercentile());
         newComparison.setStatus(Comparison.Status.PREPROCESSING);
         newComparison.setCreatedAt(java.time.LocalDateTime.now());
         newComparison.setGridCellHeight(request.getGrid().getCellHeight());

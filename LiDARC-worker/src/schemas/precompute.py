@@ -50,6 +50,11 @@ schema = {
             "type": "integer",
             "minimum": 1
         },
+        "individualPercentile" : {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 99.99
+        },
         "pointFilterLowerBound": {
             "type": ["integer", "null"],
             "minimum": 0,

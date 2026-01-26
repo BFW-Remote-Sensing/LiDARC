@@ -107,10 +107,21 @@ export class Heatmap implements AfterViewInit, OnChanges {
   cols: number = 100;
   groupSize: number = 5;
   @Input() comparisonId: number | null = null;
-
   cellsMatrix: string[][] = [];
   chunkedMatrix: string[][] = [];
   private groupSizeChange$ = new Subject<number>();
+  private _showPercentiles = false;
+  @Input()
+  set showPercentiles(val:boolean) {
+    this._showPercentiles = val;
+    if (this.data?.chunked_cells) {
+      this.updateHeatmaps(this.data.chunked_cells);
+    }
+  }
+  get showPercentiles() {
+    return this._showPercentiles;
+  }
+
 
   @Input() data?: ChunkingResult; //fetch result from parent component
   @Input() showOutliers: boolean = true;
@@ -396,8 +407,18 @@ export class Heatmap implements AfterViewInit, OnChanges {
         const x1 = Number(cell.x1);
         const y0 = Number(cell.y0);
         const y1 = Number(cell.y1);
-        const valA = cell.veg_height_max_a ?? 0;
-        const valB = cell.veg_height_max_b ?? 0;
+        let valA = cell.veg_height_max_a ?? 0;
+        let valB = cell.veg_height_max_b ?? 0;
+
+        if (this.showPercentiles) {
+          const pKey = Object.keys(cell).find(
+            k => k.startsWith('veg_height_p') && k.endsWith('_a')
+          )?.replace('_a', '');
+          if (pKey) {
+            valA = cell[`${pKey}_a`] ?? valA;
+            valB = cell[`${pKey}_b`] ?? valB;
+          }
+        }
         const outA = cell.out_a ?? 0;
         const outB = cell.out_b ?? 0;
         const delta_z = cell.delta_z ?? 0;

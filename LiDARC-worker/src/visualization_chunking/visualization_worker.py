@@ -81,6 +81,9 @@ def process_req(ch, method, properties, body):
     cells = comparison_result["cells"]
     statistics = comparison_result["statistics"]
     group_mapping = comparison_result["group_mapping"]
+    statistics_p = None
+    if "statistics_p" in comparison_result:
+        statistics_p = comparison_result["statistics_p"]
 
 
 
@@ -101,7 +104,7 @@ def process_req(ch, method, properties, body):
         cells_matrix = chunking_func(cells_matrix, chunking_size)
         debug_print_matrix(cells_matrix)
 
-    message = build_response_message(comparison_id, cells_matrix, statistics, chunking_size, group_mapping)
+    message = build_response_message(comparison_id, cells_matrix, statistics, chunking_size, group_mapping, statistics_p)
 
     # Write result directly to Redis cache (keyed by comparison_id and chunk_size)
     redis_cache = get_redis_cache()
@@ -127,14 +130,17 @@ def process_req(ch, method, properties, body):
                                                                  job_id="",
                                                                  payload=message))
 
-def build_response_message(comparison_id, chunked_matrix, statistics, chunking_size, group_mapping):
-    return {
+def build_response_message(comparison_id, chunked_matrix, statistics, chunking_size, group_mapping, statistics_p = None):
+    response = {
         "comparisonId": comparison_id,
         "chunkingSize": chunking_size,
         "chunked_cells": chunked_matrix,
         "statistics": statistics,
         "group_mapping": group_mapping
     }
+    if statistics_p is not None:
+        response["statistics_p"] = statistics_p
+    return response
 
 
 
@@ -340,7 +346,11 @@ def chunking_func(cells_matrix: Matrix, chunk_size: int) -> List[Cell]:
 
             sum_a = 0.0
             sum_b = 0.0
+            sum_p_a = 0.0
+            sum_p_b = 0.0
             count = 0
+            has_percentile = False
+            p_key=None
             sum_out_a = 0
             sum_out_b = 0
             sum_out_c7_a = 0
@@ -364,6 +374,19 @@ def chunking_func(cells_matrix: Matrix, chunk_size: int) -> List[Cell]:
                     # aggregate
                     sum_a += float(cell["veg_height_max_a"])
                     sum_b += float(cell["veg_height_max_b"])
+                    # veg_height is always filled per you
+
+
+                    if not has_percentile:
+                        for k in cell.keys():
+                            if k.startswith("veg_height_p") and k.endswith("_a"):
+                                p_key = k[:-2]
+                                has_percentile = True
+                                break
+                    if has_percentile:
+                        sum_p_a += float(cell[f"{p_key}_a"])
+                        sum_p_b += float(cell[f"{p_key}_b"])
+
                     count += 1
 
                     # Aggregate outlier counts
@@ -406,6 +429,12 @@ def chunking_func(cells_matrix: Matrix, chunk_size: int) -> List[Cell]:
                 "out_c7_a": sum_out_c7_a,
                 "out_c7_b": sum_out_c7_b,
             }
+
+            if has_percentile:
+                reduced_cell[f"{p_key}_a"] = sum_p_a / count
+                reduced_cell[f"{p_key}_b"] = sum_p_b / count
+                reduced_cell[f"{p_key}_diff"] = (sum_p_b - sum_p_a) / count
+
             reduced_row.append(reduced_cell)
 
         reduced.append(reduced_row)

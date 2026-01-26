@@ -54,12 +54,12 @@ import {HttpResponse} from '@angular/common/http';
 import {ChunkingSettings} from '../chunking-settings/chunking-settings';
 import {FormsModule} from '@angular/forms';
 import {FolderDTO} from '../../dto/folder';
+import {MatSlideToggleModule} from '@angular/material/slide-toggle';
 import {StatusService} from '../../service/status.service';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {ConfirmationDialogComponent, ConfirmationDialogData} from '../confirmation-dialog/confirmation-dialog';
 import {ReportService} from '../../service/report.service';
 
-//====HARDCODED VIS===//
 echarts.use([
   HeatmapChart,
   ScatterChart,
@@ -96,6 +96,7 @@ echarts.use([
     MatButton,
     ChunkingSettings,
     FormsModule,
+    MatSlideToggleModule,
     MatCheckbox,
     Heatmap
   ],
@@ -117,6 +118,8 @@ export class ComparisonDetails implements OnInit {
   chunkingSize: number = 5;
   reportsLoading = signal<boolean>(false);
   hasMoreReports = signal<boolean>(true);
+  showPercentiles = signal(false);
+  percentilesAvailable = signal(false);
   showOutlierDots = signal<boolean>(true);
 
   private stopPolling$ = new Subject<void>();
@@ -290,6 +293,13 @@ export class ComparisonDetails implements OnInit {
         next: (reports) => {
             this.reports.set(reports);
             this.checkIfMoreReportsExist(reports.length);
+            if (this.comparison()!.individualStatisticsPercentile) {
+              this.percentilesAvailable.set(true);
+              this.showPercentiles.set(false);
+            } else {
+              this.percentilesAvailable.set(false);
+              this.showPercentiles.set(false);
+            }
           },
           error: (err) => console.error('Failed to fetch reports:', err)
       });
@@ -399,6 +409,10 @@ export class ComparisonDetails implements OnInit {
       console.warn('Chunking result incomplete, skipping chart update.', result);
       return;
     }
+    const usePercentiles = this.showPercentiles() && result.statistics_p;
+    const statsToUse = (this.showPercentiles() && result.statistics_p)
+      ? result.statistics_p!
+      : result.statistics;
 
     const flattenedCells = this.flattenCells(result.chunked_cells);
     console.log('[FLATTENED CELLS COUNT]', flattenedCells.length);
@@ -409,9 +423,9 @@ export class ComparisonDetails implements OnInit {
 
     this.vegetationStats.set({
       cells: flattenedCells,
-      fileA_metrics: result.statistics.file_a,
-      fileB_metrics: result.statistics.file_b,
-      difference_metrics: result.statistics.difference,
+      fileA_metrics: statsToUse.file_a,
+      fileB_metrics: statsToUse.file_b,
+      difference_metrics: statsToUse.difference,
       group_mapping: result.group_mapping,
     });
     this.buildAllCharts();
@@ -434,20 +448,41 @@ export class ComparisonDetails implements OnInit {
 
   }
 
-  private flattenCells(matrix: any[][]): CellEntry[] {
+  toggleStatisticsView(): void {
+    if (!this.percentilesAvailable()) return;
+    this.showPercentiles.set(!this.showPercentiles());
+    this.handleChunkingResult(this.sharedChunkingResult!);
+  }
+
+  private flattenCells(matrix: ChunkedCell[][]): CellEntry[] {
     if (!Array.isArray(matrix)) return [];
 
     const cells: CellEntry[] = [];
+    const usePercentiles = this.showPercentiles();
 
     for (const row of matrix) {
       if (!Array.isArray(row)) continue;
+
       for (const cell of row) {
         if (!cell) continue;
-        cells.push({
-          A: cell.veg_height_max_a ?? 0,
-          B: cell.veg_height_max_b ?? 0,
-          delta_z: cell.delta_z ?? 0
-        });
+
+        let A = cell.veg_height_max_a;
+        let B = cell.veg_height_max_b;
+        let delta = cell.delta_z;
+
+        if (usePercentiles) {
+          const pKey = Object.keys(cell).find(
+            k => k.startsWith('veg_height_p') && k.endsWith('_a')
+          )?.replace('_a', '');
+
+          if (pKey) {
+            A = cell[`${pKey}_a`];
+            B = cell[`${pKey}_b`];
+            delta = cell[`${pKey}_diff`];
+          }
+        }
+
+        cells.push({ A, B, delta_z: delta });
       }
     }
 
