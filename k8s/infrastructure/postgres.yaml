@@ -42,6 +42,17 @@ spec:
             - name: shared-data
               mountPath: /var/lib/postgresql/data
               subPath: postgres
+          livenessProbe:
+            exec:
+              command: [ "pg_isready", "-U", "admin", "-d", "postgres" ]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command: [ "pg_isready", "-U", "admin", "-d", "postgres" ]
+            initialDelaySeconds: 5
+            periodSeconds: 5
       volumes:
         - name: shared-data
           persistentVolumeClaim:
