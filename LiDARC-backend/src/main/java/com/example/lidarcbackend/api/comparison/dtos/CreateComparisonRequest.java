@@ -14,13 +14,9 @@ public class CreateComparisonRequest {
     @NotBlank
     private String name;
 
-    private Boolean needHighestVegetation;
 
     private Boolean needOutlierDetection;
 
-    private Boolean needStatisticsOverScenery;
-
-    private Boolean needMostDifferences;
 
     private Double individualStatisticsPercentile;
 
@@ -34,9 +30,9 @@ public class CreateComparisonRequest {
     private List<Long> folderAFiles;
     private List<Long> folderBFiles;
 
-    private Integer pointFilterLowerBound;
+    private Double pointFilterLowerBound;
 
-    private Integer pointFilterUpperBound;
+    private Double pointFilterUpperBound;
 
     private Boolean needPointFilter;
 

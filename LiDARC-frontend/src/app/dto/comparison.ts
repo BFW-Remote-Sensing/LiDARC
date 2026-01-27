@@ -3,10 +3,7 @@ import {FolderDTO} from "./folder";
 
 export type CreateComparison = {
     name: string;
-    needHighestVegetation: boolean;
     needOutlierDetection: boolean;
-    needStatisticsOverScenery: boolean;
-    needMostDifferences: boolean;
     individualStatisticsPercentile: number | null;
     folderAId?: number;
     folderBId?: number;

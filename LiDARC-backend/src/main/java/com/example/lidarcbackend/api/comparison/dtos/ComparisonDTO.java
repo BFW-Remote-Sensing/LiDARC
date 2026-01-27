@@ -15,13 +15,7 @@ public class ComparisonDTO {
 
     private String name;
 
-    private Boolean needHighestVegetation;
-
     private Boolean needOutlierDetection;
-
-    private Boolean needStatisticsOverScenery;
-
-    private Boolean needMostDifferences;
 
     private Double individualStatisticsPercentile;
 
@@ -45,9 +39,9 @@ public class ComparisonDTO {
 
     private FolderDTO folderB;
 
-    private Integer pointFilterLowerBound;
+    private Double pointFilterLowerBound;
 
-    private Integer pointFilterUpperBound;
+    private Double pointFilterUpperBound;
 
     private Boolean needPointFilter;
 

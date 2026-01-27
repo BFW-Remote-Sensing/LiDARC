@@ -15,10 +15,7 @@ public class ComparisonMapper {
         ComparisonDTO dto = new ComparisonDTO();
         dto.setId(entity.getId());
         dto.setName(entity.getName());
-        dto.setNeedHighestVegetation(entity.getNeedHighestVegetation());
         dto.setNeedOutlierDetection(entity.getNeedOutlierDetection());
-        dto.setNeedStatisticsOverScenery(entity.getNeedStatisticsOverScenery());
-        dto.setNeedMostDifferences(entity.getNeedMostDifferences());
         dto.setIndividualStatisticsPercentile(entity.getIndividualStatisticsPercentile());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setStatus(entity.getStatus().toString());
@@ -47,10 +44,7 @@ public class ComparisonMapper {
         }
         Comparison newComparison = new Comparison();
         newComparison.setName(request.getName());
-        newComparison.setNeedHighestVegetation(request.getNeedHighestVegetation());
         newComparison.setNeedOutlierDetection(request.getNeedOutlierDetection());
-        newComparison.setNeedStatisticsOverScenery(request.getNeedStatisticsOverScenery());
-        newComparison.setNeedMostDifferences(request.getNeedMostDifferences());
         newComparison.setIndividualStatisticsPercentile(request.getIndividualStatisticsPercentile());
         newComparison.setStatus(Comparison.Status.PREPROCESSING);
         newComparison.setCreatedAt(java.time.LocalDateTime.now());

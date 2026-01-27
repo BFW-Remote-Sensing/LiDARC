@@ -49,14 +49,7 @@
       <td mat-cell *matCellDef="let element">{{ element.files.length }}</td>
     </ng-container>
 
-    <!-- Highest Vegetation -->
-    <ng-container matColumnDef="highestVegetation">
-      <th mat-header-cell *matHeaderCellDef>H/V</th>
-      <td mat-cell *matCellDef="let element">
-        <mat-icon color="primary" *ngIf="element.needHighestVegetation">check</mat-icon>
-        <mat-icon color="warn" *ngIf="!element.needHighestVegetation">close</mat-icon>
-      </td>
-    </ng-container>
+
 
     <!-- Outlier Detection -->
     <ng-container matColumnDef="outlierDetection">
@@ -67,23 +60,6 @@
       </td>
     </ng-container>
 
-    <!-- Statistics Over Scenery -->
-    <ng-container matColumnDef="statisticsOverScenery">
-      <th mat-header-cell *matHeaderCellDef>SoS</th>
-      <td mat-cell *matCellDef="let element">
-        <mat-icon color="primary" *ngIf="element.needStatisticsOverScenery">check</mat-icon>
-        <mat-icon color="warn" *ngIf="!element.needStatisticsOverScenery">close</mat-icon>
-      </td>
-    </ng-container>
-
-    <!-- Density Check -->
-    <ng-container matColumnDef="mostDifferences">
-      <th mat-header-cell *matHeaderCellDef>M/D</th>
-      <td mat-cell *matCellDef="let element">
-        <mat-icon color="primary" *ngIf="element.needMostDifferences">check</mat-icon>
-        <mat-icon color="warn" *ngIf="!element.needMostDifferences">close</mat-icon>
-      </td>
-    </ng-container>
 
     <!-- Individual Statistics Percentile -->
         <ng-container matColumnDef="individualStatisticsPercentile">

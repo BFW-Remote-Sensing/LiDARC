@@ -1,4 +1,14 @@
-import {AfterViewInit, Component, ElementRef, Input, OnInit, OnChanges,SimpleChanges, ViewChild} from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  Input,
+  OnInit,
+  OnChanges,
+  SimpleChanges,
+  ViewChild,
+  booleanAttribute, Signal, signal, Output, EventEmitter, WritableSignal
+} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {provideEchartsCore} from 'ngx-echarts';
 import {EChartsCoreOption} from 'echarts/core';
@@ -26,6 +36,8 @@ import {MatIcon} from '@angular/material/icon';
 import {MatButton} from '@angular/material/button';
 import {MatButtonToggle, MatButtonToggleGroup} from '@angular/material/button-toggle';
 import {ComparisonDTO} from '../../dto/comparison';
+import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
+import {MatTooltip} from '@angular/material/tooltip';
 
 
 echarts.use([TitleComponent, DataZoomComponent, LegacyGridContainLabel, TooltipComponent, VisualMapComponent, BarChart, GridComponent, CanvasRenderer, HeatmapChart, CustomChart]);
@@ -38,7 +50,7 @@ type SchemeKey = "greens" | "browns" | "deltas";
   selector: 'app-heatmap',
   standalone: true,
   imports: [CommonModule,
-    FormsModule, MatButtonToggleGroup, MatButtonToggle, MatIcon, MatButton, MatMenu, MatMenuTrigger, MatMenuItem],
+    FormsModule, MatButtonToggleGroup, MatButtonToggle, MatIcon, MatButton, MatMenu, MatMenuTrigger, MatMenuItem, MatCheckbox, MatTooltip],
   templateUrl: './heatmap.html',
   styleUrl: './heatmap.scss',
   providers: [
@@ -80,15 +92,26 @@ export class Heatmap implements AfterViewInit, OnChanges {
       color: ['#2166ac', '#67a9cf','#f7f7f7','#ef8a62','#b2182b']
     }
   };
+  selectedColorScheme: SchemeKey = "greens"; //default color scheme
+
 
   @Input() groupMapping!: {a: string, b: string};
+  @Input({transform: booleanAttribute}) needOutlierDetection: boolean = false;
+  @Input() outlierDeviationFactor: number | undefined;
+  @Input() comparisonId: number | null = null;
 
+  @Input() data?: ChunkingResult; //fetch result from parent component
 
-  //private resizeObserver?: ResizeObserver;
+  @Input() showOutliers = true;
+  @Output() showOutliersChange = new EventEmitter<boolean>();
+
+  // onOutlierToggle(e: MatCheckboxChange) {
+  //   this.showOutliersChange.emit(e.checked);
+  // }
 
   showVisualMap = true;
   showZoom = true;
-  selectedColorScheme: SchemeKey = "greens"; //default color scheme
+  heatmapsStackedLayout = false;
 
   optionsLeft!: EChartsCoreOption;
   optionsRight!: EChartsCoreOption;
@@ -106,9 +129,10 @@ export class Heatmap implements AfterViewInit, OnChanges {
   rows: number = 100;
   cols: number = 100;
   groupSize: number = 5;
-  @Input() comparisonId: number | null = null;
   cellsMatrix: string[][] = [];
   chunkedMatrix: string[][] = [];
+
+
   private groupSizeChange$ = new Subject<number>();
   private _showPercentiles = false;
   @Input()
@@ -123,8 +147,7 @@ export class Heatmap implements AfterViewInit, OnChanges {
   }
 
 
-  @Input() data?: ChunkingResult; //fetch result from parent component
-  @Input() showOutliers: boolean = true;
+
 
   constructor() {
   }
@@ -159,7 +182,8 @@ export class Heatmap implements AfterViewInit, OnChanges {
 
 
     this.optionsLeft = this.createHeatmapOptionsWithoutDataset( this.groupMapping?.a ?? "SetA", true);
-    this.optionsRight = this.createHeatmapOptionsWithoutDataset( this.groupMapping?.b ?? "SetB", false);this.differenceOptions = this.createDeltaHeatmapOptions("Delta_z", true);
+    this.optionsRight = this.createHeatmapOptionsWithoutDataset( this.groupMapping?.b ?? "SetB", true);
+    this.differenceOptions = this.createDeltaHeatmapOptions("Delta_z", true);
 
     this.chartInstance1.setOption(this.optionsLeft);
     this.chartInstance2.setOption(this.optionsRight);
@@ -231,7 +255,7 @@ export class Heatmap implements AfterViewInit, OnChanges {
     const opt2 = {
       visualMap: [{
         ...this.BASE_VisualMap,
-        show: false, //we never want to show the legend for chart2
+        show: this.showVisualMap, //we never want to show the legend for chart2
         inRange: { color: colors }
       }]
     };
@@ -328,7 +352,7 @@ export class Heatmap implements AfterViewInit, OnChanges {
 
     if (this.showAB) {
       this.updateVisualMap(this.chartInstance1, this.showVisualMap, false);
-      //this.updateVisualMap(this.chartInstance2, this.showVisualMap, false);
+      this.updateVisualMap(this.chartInstance2, this.showVisualMap, false);
     }
     if (this.showD) {
       this.updateVisualMap(this.differenceInstance, this.showVisualMap, true);
@@ -338,9 +362,6 @@ export class Heatmap implements AfterViewInit, OnChanges {
   private applyZoomVisibility(): void {
     const show = this.showZoom;
 
-    // {type: 'slider', xAxisIndex: 0, bottom: 0, filterMode: 'none'},
-    // {type: 'slider', yAxisIndex: 0, orient: 'vertical', right: 0, filterMode: 'none'},
-
     const opt = {
       dataZoom: [
         { // x slider
@@ -349,7 +370,6 @@ export class Heatmap implements AfterViewInit, OnChanges {
           bottom: 0,
           filterMode: 'none',
           show,
-          //height: show ? 20 : 0
         },
         { // y slider
           type: 'slider',
@@ -358,7 +378,6 @@ export class Heatmap implements AfterViewInit, OnChanges {
           right: 0,
           filterMode: 'none',
           show,
-          //width: show ? 20 : 0
         }
       ]
     };
@@ -366,6 +385,10 @@ export class Heatmap implements AfterViewInit, OnChanges {
     this.chartInstance1?.setOption(opt, {replaceMerge: ['dataZoom'] as any});
     this.chartInstance2?.setOption(opt, {replaceMerge: ['dataZoom'] as any});
     this.differenceInstance?.setOption(opt, {replaceMerge: ['dataZoom'] as any});
+  }
+
+  protected toggleLayout() {
+      this.heatmapsStackedLayout = !this.heatmapsStackedLayout;
   }
 
 
@@ -387,6 +410,7 @@ export class Heatmap implements AfterViewInit, OnChanges {
     this.groupMapping.b = this.data?.group_mapping.b ?? "SetB";
 
     this.rows = matrix.length;
+    //TODO check if we need to set this.cols even on max, as cols should all be same length
     this.cols = Math.max(...matrix.map(row => row.length));
     console.log(`Updating chart with dimensions: ${this.rows}x${this.cols}`);
 
@@ -421,7 +445,16 @@ export class Heatmap implements AfterViewInit, OnChanges {
         }
         const outA = cell.out_a ?? 0;
         const outB = cell.out_b ?? 0;
-        const delta_z = cell.delta_z ?? 0;
+        let delta_z = cell.delta_z ?? 0;
+        if (this.showPercentiles) {
+          const pKey = Object.keys(cell).find(
+            k => k.startsWith('veg_height_p') && k.endsWith('_a')
+          )?.replace('_a', '');
+
+          if (pKey && cell[`${pKey}_diff`] != null) {
+            delta_z = cell[`${pKey}_diff`];
+          }
+        }
         seriesDataA.push([x0, y0, x1, y1, valA, outA]);
         seriesDataB.push([x0, y0, x1, y1, valB, outB]);
         differenceData.push([x0, y0, x1, y1, delta_z]);
@@ -781,7 +814,7 @@ export class Heatmap implements AfterViewInit, OnChanges {
       min: -10,
       max: 10,
       orient: 'vertical',
-      left: 0,
+      left: -10,
       top: "middle",
       calculable: true,
       dimension: 4,
@@ -789,6 +822,7 @@ export class Heatmap implements AfterViewInit, OnChanges {
         color: this.COLOR_Schemes.deltas.color
       }
     }
+
 
 
 

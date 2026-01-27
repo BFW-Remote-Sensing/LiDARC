@@ -101,6 +101,11 @@ export class DefineGrid implements OnInit, AfterViewInit {
       this.maxYMax = Math.max(this.yMax, this.otherItem.maxY);
       this.minXMin = Math.min(this.xMin, this.otherItem.minX);
       this.minYMin = Math.min(this.yMin, this.otherItem.minY);
+
+      this.limitXMin = this.roundMin(this.minXMin);
+      this.limitXMax = this.roundMax(this.maxXMax);
+      this.limitYMin = this.roundMin(this.minYMin);
+      this.limitYMax = this.roundMax(this.maxYMax);
     }
   }
   ngOnInit() {
@@ -344,10 +349,10 @@ export class DefineGrid implements OnInit, AfterViewInit {
         });
 
         if (!this.swHandle) {
-          this.swHandle = L.marker(sw, { icon: resizeIcon, draggable: true }).addTo(this.map);
-          this.neHandle = L.marker(ne, { icon: resizeIcon, draggable: true }).addTo(this.map);
-          this.nwHandle = L.marker(nw, { icon: resizeIcon, draggable: true }).addTo(this.map);
-          this.seHandle = L.marker(se, { icon: resizeIcon, draggable: true }).addTo(this.map);
+          this.swHandle = L.marker(sw, { icon: resizeIcon, draggable: true, zIndexOffset: 1000 }).addTo(this.map);
+          this.neHandle = L.marker(ne, { icon: resizeIcon, draggable: true, zIndexOffset: 1000 }).addTo(this.map);
+          this.nwHandle = L.marker(nw, { icon: resizeIcon, draggable: true, zIndexOffset: 1000 }).addTo(this.map);
+          this.seHandle = L.marker(se, { icon: resizeIcon, draggable: true, zIndexOffset: 1000 }).addTo(this.map);
 
           this.swHandle.on('drag', (e) => this.onHandleDrag(e.target.getLatLng(), 'sw'));
           this.neHandle.on('drag', (e) => this.onHandleDrag(e.target.getLatLng(), 'ne'));

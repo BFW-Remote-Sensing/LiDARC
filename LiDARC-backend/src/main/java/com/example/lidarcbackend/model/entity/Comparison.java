@@ -22,17 +22,10 @@ public class Comparison {
     @Column(name = "name")
     private String name;
 
-    @Column(name = "need_highest_vegetation")
-    private Boolean needHighestVegetation;
 
     @Column(name = "need_outlier_detection")
     private Boolean needOutlierDetection;
 
-    @Column(name = "need_statistics_over_scenery")
-    private Boolean needStatisticsOverScenery;
-
-    @Column(name = "need_most_differences")
-    private Boolean needMostDifferences;
 
     @Column(name = "individual_statistics_percentile")
     private Double individualStatisticsPercentile;
@@ -78,10 +71,10 @@ public class Comparison {
     private Double gridMaxY;
 
     @Column(name = "point_filter_lower_bound")
-    private Integer pointFilterLowerBound;
+    private Double pointFilterLowerBound;
 
     @Column(name = "point_filter_upper_bound")
-    private Integer pointFilterUpperBound;
+    private Double pointFilterUpperBound;
 
     @Column(name = "need_point_filter")
     private Boolean needPointFilter;
