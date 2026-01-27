@@ -83,7 +83,8 @@
   </button>
   <button mat-button (click)="onCancel()">Cancel</button>
   <button mat-raised-button color="primary"
-          [disabled]="!currentZone || cellX === null || cellY === null || xMin === null || xMax === null || yMin === null || yMax === null || xMin >= xMax || yMin >= yMax || xMin < selectedItem.minX || xMax > selectedItem.maxX || yMin < selectedItem.minY || yMax > selectedItem.maxY"
+          [disabled]="!currentZone || cellX === null || cellY === null || xMin === null || xMax === null || yMin === null || yMax === null
+          || xMin >= xMax || yMin >= yMax || xMin < limitXMin || xMax > limitXMax || yMin < limitYMin || yMax > limitYMax"
           (click)="onDefine()">
     Define Grid
   </button>
