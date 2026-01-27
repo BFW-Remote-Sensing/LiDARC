@@ -79,12 +79,6 @@
   margin-bottom: 20px;
 }
 
-.charts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
-}
-
 .chart {
   max-width: 430px;
   height: 350px;
@@ -246,4 +240,32 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.chart-wrapper {
+  width: 100%;
+}
+
+.chart-container {
+  position: relative;
+  display: inline-block;
+}
+
+.chart-container .chart {
+  display: block;
+  width: 430px;
+  height: 350px;
+}
+
+.chart-info-button {
+  position: absolute;
+  top: 8px;
+  right: -16px;
+  z-index: 2;
 }

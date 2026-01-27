@@ -335,7 +335,7 @@
               File Specific Metrics of Vegetational Height
               <button
                 mat-icon-button
-                matTooltip="This card shows different statistics of the vegetational height per cell across the entire file, as well as the correlation between the grid cell heights of the two files."
+                matTooltip="This card shows different statistics of the vegetational heights across the entire comparison items, as well as the correlation between the grid cell heights of the two items."
                 matTooltipPosition="above"
               >
                 <mat-icon>info_outline</mat-icon>
@@ -389,12 +389,51 @@
                 </mat-card>
               </div>
               <div class="charts-grid">
-                <div echarts [options]="{}" [merge]="scatterOption" (chartInit)="onChartInit($event, 'scatter')"
-                     class="chart"></div>
-                <div echarts [options]="{}" [merge]="boxplotOption" (chartInit)="onChartInit($event, 'boxplot')"
-                     class="chart"></div>
-                <div echarts [options]="{}" [merge]="fileDistributionOption"
-                     (chartInit)="onChartInit($event, 'distribution')" class="chart"></div>
+                <div class="chart-wrapper">
+                  <div class="chart-container">
+                    <div echarts [options]="{}" [merge]="scatterOption" (chartInit)="onChartInit($event, 'scatter')" class="chart"></div>
+                    <button
+                      mat-icon-button
+                      class="chart-info-button"
+                      matTooltip="The scatter plot visualizes the relationship between vegetation height of item A and item B on a per-grid-cell basis.
+                                Each point represents a single grid cell, with its X-coordinate indicating the vegetation height from item A and its Y-coordinate
+                                representing the height from item B. The dashed red line shows the linear regression trend across all points. The Pearson correlation
+                                 coefficient (r) is displayed, quantifying the strength and direction of the linear relationship."
+                      matTooltipPosition="above">
+                      <mat-icon>info_outline</mat-icon>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="chart-wrapper">
+                  <div class="chart-container">
+                    <div echarts [options]="{}" [merge]="boxplotOption" (chartInit)="onChartInit($event, 'boxplot')" class="chart"></div>
+                    <button
+                      mat-icon-button
+                      class="chart-info-button"
+                      matTooltip="The boxplot shows the distribution of vegetation heights for each file across all grid cells. Each box represents one comparison item
+                              and summarizes its minimal vegetation height, the first and third quartile, the median and the maximum vegetation height of the item.
+                              This visualization provides a compact overview of the spread of the vegetational heights in the two items."
+                      matTooltipPosition="above">
+                      <mat-icon>info_outline</mat-icon>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="chart-wrapper">
+                  <div class="chart-container">
+                    <div echarts [options]="{}" [merge]="fileDistributionOption" (chartInit)="onChartInit($event, 'distribution')" class="chart"></div>
+                    <button
+                      mat-icon-button
+                      class="chart-info-button"
+                      matTooltip="The distribution chart shows a smoothed density estimate of the vegetation heights for item A and item B. The X-axis represents vegetation
+                                height values, while the Y-axis indicates the probabiltiy density. Peaks indicate the most common vegetation heights, while the width of each curve
+                                represents the spread or variability of the data."
+                      matTooltipPosition="above">
+                      <mat-icon>info_outline</mat-icon>
+                    </button>
+                  </div>
+                </div>
               </div>
 
             </mat-card-content>
@@ -406,7 +445,8 @@
               Difference Metrics
               <button
                 mat-icon-button
-                matTooltip="This card shows the difference of vegetational heights for each cell between File B and File A, and calculates statistics over all cells. The difference is calculated as height of file B - height of file A."
+                matTooltip="The difference metrics summarize the per-grid-cell vegetational height differences between item A and B.
+                          The difference is calculated as maximum of vegetational height of item B - maximum of vegetational height of item A."
                 matTooltipPosition="above"
               >
                 <mat-icon>info_outline</mat-icon>
@@ -443,10 +483,36 @@
                 </mat-card>
               </div>
               <div class="charts-grid">
-                <div echarts [options]="{}" [merge]="diffDistributionOption"
-                     (chartInit)="onChartInit($event, 'distribution_diff')" class="chart"></div>
-                <div echarts [options]="{}" [merge]="diffHistogramOption"
-                     (chartInit)="onChartInit($event, 'histo_diff')" class="chart"></div>
+                <div class="chart-wrapper">
+                  <div class="chart-container">
+                    <div echarts [options]="{}" [merge]="diffDistributionOption" (chartInit)="onChartInit($event, 'distribution_diff')" class="chart"></div>
+                    <button
+                      mat-icon-button
+                      class="chart-info-button"
+                      matTooltip="The difference distribution chart shows a smoothed density estimate of vegetational height differences between item A and item B.
+                              The X-axis represents the height difference for each grid cell (B minus A), where negative values indicate that the maximum vegetational height in item B is lower than in A and positive values indicate the maximum vegetational height in B is taller than in A.
+                              The Y-axis shows the probability density, highlighting how common each difference value is across all grid cells."
+                      matTooltipPosition="above">
+                      <mat-icon>info_outline</mat-icon>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="chart-wrapper">
+                  <div class="chart-container">
+                    <div echarts [options]="{}" [merge]="diffHistogramOption" (chartInit)="onChartInit($event, 'histo_diff')" class="chart"></div>
+                    <button
+                      mat-icon-button
+                      class="chart-info-button"
+                      matTooltip="The histogram visualizes the frequency of vegetational height differences across grid cells.
+                                Each bar represents the number of cells within a specific difference range.
+                                This allows easy identification of where most grid cells differ, and the magnitude of positive or negative deviations."
+                      matTooltipPosition="above">
+                      <mat-icon>info_outline</mat-icon>
+                    </button>
+                  </div>
+                </div>
+
               </div>
             </mat-card-content>
           </mat-card>

@@ -625,11 +625,11 @@ export class ComparisonDetails implements OnInit {
             : null
       },
       xAxis: {
-        name: 'veg_height_A',
+        name: 'Veg. Height A',
         type: 'value'
       },
       yAxis: {
-        name: 'veg_height_B',
+        name: 'Veg. Height B',
         type: 'value'
       },
       series: [
@@ -682,7 +682,7 @@ export class ComparisonDetails implements OnInit {
 
     return {
       title: {
-        text: 'File Height Distributions',
+        text: 'Distribution of Vegetation Heights',
         left: 'center',
         top: 0,
       },
@@ -705,7 +705,7 @@ export class ComparisonDetails implements OnInit {
       },
       series: [
         {
-          name: 'File A',
+          name: 'Item A',
           type: 'line',
           smooth: true,
           data: xValues.map((x, i) => [x, fileA_Y[i]]),
@@ -713,7 +713,7 @@ export class ComparisonDetails implements OnInit {
           showSymbol: false
         },
         {
-          name: 'File B',
+          name: 'Item B',
           type: 'line',
           smooth: true,
           data: xValues.map((x, i) => [x, fileB_Y[i]]),
@@ -897,7 +897,7 @@ export class ComparisonDetails implements OnInit {
         confine: true,
         formatter: (param: any) => {
           const metrics = param.data.tooltipValue;
-          const categories = ['File A', 'File B'];
+          const categories = ['Item A', 'Item B'];
           return `${categories[param.dataIndex]}<br>
             Min: ${metrics.min_veg_height}<br>
             Q1: ${metrics.percentiles.p25}<br>
