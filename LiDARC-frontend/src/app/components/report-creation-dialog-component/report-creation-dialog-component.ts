@@ -68,11 +68,33 @@ export class ReportCreationDialogComponent {
 
   onCreate(): void {
     this.isProcessing = true;
-    this.report.components = this.selectedCharts.map(chart => ({
-      type: chart.type ? chart.type : ReportType.SIMPLE,
-      fileName: chart.fileName,
-      title: chart.name
-    }));
+    this.report.components = this.selectedCharts.map(chart => {
+      let description = "";
+      if (chart.type === ReportType.HEATMAP) {
+        if (chart.name.includes("Diff")) {
+          description = "Visualizes the structural change (Target B - Reference A). Positive values indicate growth; Negative values indicate loss.";
+        } else {
+          description = "Spatial visualization of vegetation height. Color intensity indicates the height metric.";
+        }
+      } else if (chart.type === ReportType.SIDE_BY_SIDE) {
+        description = "A comparative view showing the spatial distribution of vegetation height for the Reference (Left) and Target (Right) datasets side-by-side.";
+      }
+      const gridW = this.data.comparison.grid?.cellWidth ?? '?';
+      const gridH = this.data.comparison.grid?.cellHeight ?? '?';
+      const gridText = `Grid Resolution: ${gridW}m x ${gridH}m`;
+
+      const outlierText = this.data.comparison.needOutlierDetection
+        ? ` | Outlier Filter: Active (SD Factor: ${this.data.comparison.outlierDeviationFactor})`
+        : "";
+      const fullDescription = `${description}\n\n[Configuration: ${gridText}${outlierText}]`;
+
+      return {
+        type: chart.type ? chart.type : ReportType.SIMPLE,
+        fileName: chart.fileName,
+        title: chart.name,
+        description: fullDescription,
+      };
+    });
     console.log(this.data.stats);
     this.report.stats = this.data.stats;
     const filesToSend: File[] = [];

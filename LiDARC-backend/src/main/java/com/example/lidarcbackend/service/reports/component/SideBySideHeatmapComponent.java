@@ -27,28 +27,37 @@ public class SideBySideHeatmapComponent implements IReportComponent {
             return document;
         }
         String[] fileNames = rawFileName.split(";");
-        byte[] leftBytes = fileMap.get(fileNames[0]);
-        byte[] rightBytes = fileMap.get(fileNames[1]);
 
-        PdfPTable table = new PdfPTable(2);
-        table.setWidthPercentage(100);
-        table.setWidths(new float[] {1, 1});
-        table.setSpacingBefore(10f);
-        table.setKeepTogether(true);
+        PdfPTable container = new PdfPTable(1);
+        container.setWidthPercentage(100);
+        container.setKeepTogether(true);
+        container.setSpacingAfter(20f);
 
         if (componentDto.getTitle() != null) {
             PdfPCell headerCell = new PdfPCell(new Paragraph(componentDto.getTitle(), new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD)));
-            headerCell.setColspan(2);
             headerCell.setBorder(Rectangle.NO_BORDER);
             headerCell.setPaddingBottom(5f);
-            table.addCell(headerCell);
+            container.addCell(headerCell);
         }
+        PdfPTable imgTable = new PdfPTable(2);
+        imgTable.setWidthPercentage(100);
+        imgTable.setWidths(new float[] {1, 1});
+
+        byte[] leftBytes = fileMap.get(fileNames[0]);
+        byte[] rightBytes = fileMap.get(fileNames[1]);
 
         //TODO: Either add real caption or remove it?
-        table.addCell(createImageCell(leftBytes, ""));
-        table.addCell(createImageCell(rightBytes, ""));
+        imgTable.addCell(createImageCell(leftBytes, ""));
+        imgTable.addCell(createImageCell(rightBytes, ""));
 
-        document.add(table);
+        PdfPCell imgTableCell = new PdfPCell(imgTable);
+        imgTableCell.setBorder(Rectangle.NO_BORDER);
+        container.addCell(imgTableCell);
+
+        if (componentDto.getDescription() != null) {
+            addDescriptionRow(container, componentDto.getDescription());
+        }
+        document.add(container);
         return document;
     }
 
@@ -80,5 +89,18 @@ public class SideBySideHeatmapComponent implements IReportComponent {
         Paragraph p = new Paragraph(title, new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD));
         p.setSpacingAfter(5f);
         document.add(p);
+    }
+
+    private void addDescriptionRow(PdfPTable container, String text) {
+        PdfPCell descCell = new PdfPCell();
+        descCell.setBorder(Rectangle.NO_BORDER);
+        descCell.setPaddingTop(8f);
+
+        Font descFont = new Font(Font.FontFamily.HELVETICA, 9, Font.NORMAL, BaseColor.DARK_GRAY);
+        Paragraph p = new Paragraph(text, descFont);
+        p.setAlignment(Element.ALIGN_JUSTIFIED);
+        descCell.addElement(p);
+
+        container.addCell(descCell);
     }
 }

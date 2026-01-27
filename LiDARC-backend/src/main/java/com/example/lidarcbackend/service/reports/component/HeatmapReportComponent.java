@@ -28,11 +28,12 @@ public class HeatmapReportComponent implements IReportComponent {
             container.setWidthPercentage(100);
             container.setKeepTogether(true);
             container.setSpacingBefore(10f);
+            container.setSpacingAfter(20f);
 
             PdfPCell headerCell = new PdfPCell();
             headerCell.setBorder(Rectangle.NO_BORDER);
-            Font subHeaderFont = new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD);
-            Paragraph p = new Paragraph("Heatmap Analysis", subHeaderFont);
+            String titleText = componentDto.getTitle() != null ? componentDto.getTitle() : "Heatmap Analysis";
+            Paragraph p = new Paragraph(titleText, new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD));
             p.setSpacingAfter(10f);
             headerCell.addElement(p);
             container.addCell(headerCell);
@@ -47,6 +48,18 @@ public class HeatmapReportComponent implements IReportComponent {
             imgCell.setBorder(Rectangle.NO_BORDER);
             imgCell.setHorizontalAlignment(Element.ALIGN_CENTER);
             container.addCell(imgCell);
+
+            if (componentDto.getDescription() != null) {
+                PdfPCell descCell = new PdfPCell();
+                descCell.setBorder(Rectangle.NO_BORDER);
+                descCell.setPaddingTop(8f);
+                Font descFont = new Font(Font.FontFamily.HELVETICA, 9, Font.NORMAL, BaseColor.DARK_GRAY);
+                Paragraph descP = new Paragraph(componentDto.getDescription(), descFont);
+                descP.setAlignment(Element.ALIGN_JUSTIFIED);
+                descCell.addElement(descP);
+                container.addCell(descCell);
+            }
+            
             document.add(container);
         }
         return document;

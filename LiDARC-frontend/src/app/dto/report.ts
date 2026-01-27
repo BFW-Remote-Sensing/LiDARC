@@ -8,7 +8,9 @@ export interface CreateReportDto {
 
 export interface ReportComponentDto {
   type: ReportType,
-  fileName: string
+  fileName: string,
+  title: string,
+  description: string,
 }
 
 export interface ChartData {

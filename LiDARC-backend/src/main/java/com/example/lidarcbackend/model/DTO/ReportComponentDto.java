@@ -17,4 +17,5 @@ public class ReportComponentDto {
     private ReportType type; //"heatmap_single"
     private String fileName; //"img.png -> echarts .getImage?"
     private String title;
+    private String description;
 }
