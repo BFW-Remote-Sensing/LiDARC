@@ -45,6 +45,7 @@
 .chart {
   min-width: 0;
   width: 100%;
+  //change the following to make the chart taller or shorter
   height: 600px;
 }
 
@@ -62,7 +63,8 @@
   border-radius: 10px;
   border-left: 4px solid #4c9aff;
   font-family: Arial, sans-serif;
-  max-width: 800px;
+  width: 100%;
+  max-width: 700px;
   margin-bottom: 16px;
   color: #333;
   box-shadow: 0 2px 4px rgba(0,0,0,0.06);
@@ -91,7 +93,7 @@
 /* ====== GUIDE + CONTROLS LAYOUT ====== */
 .guide-controls-layout {
   display: grid;
-  grid-template-columns: minmax(420px, 1.2fr) minmax(320px, 1fr);
+  grid-template-columns:1fr minmax(300px, auto);
   gap: 16px;
   align-items: start;
   margin-top: 12px;
@@ -119,7 +121,7 @@
 }
 
 .mode-toggle {
-  align-self: flex-start;
+  align-self: center;
 }
 
 /* Buttons als kompaktes Grid */
