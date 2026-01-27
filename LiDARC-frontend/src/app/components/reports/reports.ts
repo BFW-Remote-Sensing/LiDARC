@@ -1,26 +1,26 @@
-import { AfterViewInit, ChangeDetectorRef, Component, OnInit, signal, ViewChild } from '@angular/core';
-import { Globals } from '../../globals/globals';
-import { MatTableDataSource, MatTableModule } from '@angular/material/table';
-import { ComparisonReport } from '../../dto/comparisonReport';
-import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
-import { MatSortModule } from '@angular/material/sort';
-import { catchError, debounceTime, distinctUntilChanged, map, merge, of, startWith, Subject, switchMap } from 'rxjs';
-import { ReportSerivce } from '../../service/report.serivce';
-import { FormsModule } from '@angular/forms';
-import { MatSelectModule } from '@angular/material/select';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { RouterModule } from '@angular/router';
-import { CommonModule } from '@angular/common';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatCardModule } from '@angular/material/card';
-import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import { TextCard } from '../text-card/text-card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { PdfThumbnail } from '../pdf-thumbnail/pdf-thumbnail';
-import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
-import { MatDialog } from '@angular/material/dialog';
+import {AfterViewInit, ChangeDetectorRef, Component, OnInit, signal, ViewChild} from '@angular/core';
+import {Globals} from '../../globals/globals';
+import {MatTableDataSource, MatTableModule} from '@angular/material/table';
+import {ComparisonReport} from '../../dto/comparisonReport';
+import {MatPaginator, MatPaginatorModule} from '@angular/material/paginator';
+import {MatSortModule} from '@angular/material/sort';
+import {catchError, debounceTime, distinctUntilChanged, map, merge, of, startWith, Subject, switchMap} from 'rxjs';
+import {ReportService} from '../../service/report.service';
+import {FormsModule} from '@angular/forms';
+import {MatSelectModule} from '@angular/material/select';
+import {MatIconModule} from '@angular/material/icon';
+import {MatButtonModule} from '@angular/material/button';
+import {RouterModule} from '@angular/router';
+import {CommonModule} from '@angular/common';
+import {MatTooltipModule} from '@angular/material/tooltip';
+import {MatCardModule} from '@angular/material/card';
+import {MatProgressSpinner} from '@angular/material/progress-spinner';
+import {TextCard} from '../text-card/text-card';
+import {MatFormFieldModule} from '@angular/material/form-field';
+import {MatInputModule} from '@angular/material/input';
+import {PdfThumbnail} from '../pdf-thumbnail/pdf-thumbnail';
+import {ConfirmationDialogComponent, ConfirmationDialogData} from '../confirmation-dialog/confirmation-dialog';
+import {MatDialog} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-reports',
@@ -56,9 +56,9 @@ export class Reports implements OnInit, AfterViewInit {
   private defaultSortActive = 'creationDate';
   private defaultSortDirection = 'desc';
 
-  constructor(private reportService: ReportSerivce,
-    private dialog: MatDialog,
-    public globals: Globals,
+  constructor(private reportService: ReportService,
+              private dialog: MatDialog,
+              public globals: Globals,
     private cdr: ChangeDetectorRef
   ) {
   }

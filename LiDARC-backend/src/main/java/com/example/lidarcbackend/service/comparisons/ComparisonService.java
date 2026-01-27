@@ -27,7 +27,6 @@ import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.boot.configurationprocessor.json.JSONObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -63,21 +62,20 @@ public class ComparisonService implements IComparisonService {
     protected final MinioProperties minioProperties;
 
     public ComparisonService(
-            ComparisonRepository comparisonRepository,
-            ComparisonFileRepository comparisonFileRepository,
-            ComparisonFolderRepository comparisonFolderRepository,
-            FileRepository fileRepository,
-            FolderRepository folderRepository,
-            IMetadataService metadataService,
-            IJobTrackingService jobTrackingService,
-            Validator validator,
-            RabbitTemplate rabbitTemplate,
-            ComparisonMapper mapper,
-            ObjectMapper objectMapper,
-            MetadataMapper metadataMapper,
-            ReportRepository reportRepository,
-            WorkerStartService workerStartService,
-            ApplicationEventPublisher eventPublisher,
+        ComparisonRepository comparisonRepository,
+        ComparisonFileRepository comparisonFileRepository,
+        ComparisonFolderRepository comparisonFolderRepository,
+        FileRepository fileRepository,
+        FolderRepository folderRepository,
+        IMetadataService metadataService,
+        IJobTrackingService jobTrackingService,Validator validator,
+        RabbitTemplate rabbitTemplate,
+        ComparisonMapper mapper,
+        ObjectMapper objectMapper,
+        MetadataMapper metadataMapper,
+        ReportRepository reportRepository,
+        WorkerStartService workerStartService,
+        ApplicationEventPublisher eventPublisher,
             MinioClient minioClient,
             MinioProperties minioProperties,
             ChunkingResultCacheService chunkingCacheService
@@ -111,23 +109,23 @@ public class ComparisonService implements IComparisonService {
             comparisonPage = comparisonRepository.findAll(pageable);
         } else {
             comparisonPage = comparisonRepository.findByNameContainingIgnoreCase(
-                    search,
-                    pageable
+                search,
+                pageable
             );
         }
         List<ComparisonDTO> dtoList = comparisonPage.getContent().stream().map(comparison -> {
             ComparisonDTO dto = mapper.toDto(comparison);
             reportRepository.findTopByComparisonIdOrderByCreationDateDesc(comparison.getId())
-                    .ifPresent(report -> dto.setLatestReport("/reports/" + report.getId() + "/download"));
+                .ifPresent(report -> dto.setLatestReport("/reports/" + report.getId() + "/download"));
             List<Long> fileMetadataIds = comparisonFileRepository
-                    .getComparisonFilesByComparisonId(comparison.getId());
+                .getComparisonFilesByComparisonId(comparison.getId());
 
             List<String> fileMetadataIdStrings = fileMetadataIds.stream()
-                    .map(String::valueOf)
-                    .toList();
+                .map(String::valueOf)
+                .toList();
 
             List<FileMetadataDTO> fileMetadataDTOs = metadataService
-                    .getMetadataList(fileMetadataIdStrings);
+                .getMetadataList(fileMetadataIdStrings);
 
             dto.setFiles(fileMetadataDTOs);
             return dto;
@@ -144,17 +142,17 @@ public class ComparisonService implements IComparisonService {
         return comparisons.stream().map(comparison -> {
             ComparisonDTO dto = mapper.toDto(comparison);
             reportRepository.findTopByComparisonIdOrderByCreationDateDesc(comparison.getId())
-                    .ifPresent(report -> dto.setLatestReport("/reports/" + report.getId() + "/download"));
+                .ifPresent(report -> dto.setLatestReport("/reports/" + report.getId() + "/download"));
 
             List<Long> fileMetadataIds = comparisonFileRepository
-                    .getComparisonFilesByComparisonId(comparison.getId());
+                .getComparisonFilesByComparisonId(comparison.getId());
 
             List<String> fileMetadataIdStrings = fileMetadataIds.stream()
-                    .map(String::valueOf)
-                    .toList();
+                .map(String::valueOf)
+                .toList();
 
             List<FileMetadataDTO> fileMetadataDTOs = metadataService
-                    .getMetadataList(fileMetadataIdStrings);
+                .getMetadataList(fileMetadataIdStrings);
 
             dto.setFiles(fileMetadataDTOs);
             return dto;
@@ -173,7 +171,7 @@ public class ComparisonService implements IComparisonService {
 
         if (comparisonRequest.getFolderAFiles() != null && !comparisonRequest.getFolderAFiles().isEmpty()) {
             File firstFile = fileRepository.findById(comparisonRequest.getFolderAFiles().getFirst()).orElseThrow(() ->
-                    new NotFoundException("File for comparison with id: " + comparisonRequest.getFolderAFiles().getFirst() + " not found!"));
+                new NotFoundException("File for comparison with id: " + comparisonRequest.getFolderAFiles().getFirst() + " not found!"));
             //TODO test if works for file to file comparisons
             String groupName;
             if (firstFile.getFolder() != null) {
@@ -182,13 +180,13 @@ public class ComparisonService implements IComparisonService {
                 groupName = firstFile.getOriginalFilename();
             }
             fullPlan.merge(processFolderGroup(comparisonRequest.getFolderAFiles(), comparisonRequest.getGrid(),
-                    savedComparison, groupName, savedComparison.getPointFilterLowerBound(),
-                    savedComparison.getPointFilterUpperBound(), savedComparison.getNeedOutlierDetection(),
-                    savedComparison.getOutlierDeviationFactor(), savedComparison.getNeedPointFilter()));
+                savedComparison, groupName, savedComparison.getPointFilterLowerBound(),
+                savedComparison.getPointFilterUpperBound(), savedComparison.getNeedOutlierDetection(),
+                savedComparison.getOutlierDeviationFactor(), savedComparison.getNeedPointFilter()));
         }
         if (comparisonRequest.getFolderBFiles() != null && !comparisonRequest.getFolderBFiles().isEmpty()) {
             File firstFile = fileRepository.findById(comparisonRequest.getFolderBFiles().getFirst()).orElseThrow(() ->
-                    new NotFoundException("File for comparison with id: " + comparisonRequest.getFolderBFiles().getFirst() + " not found!"));
+                new NotFoundException("File for comparison with id: " + comparisonRequest.getFolderBFiles().getFirst() + " not found!"));
             //TODO test if works for file to file comparisons
             String groupName;
             if (firstFile.getFolder() != null) {
@@ -197,23 +195,23 @@ public class ComparisonService implements IComparisonService {
                 groupName = firstFile.getOriginalFilename();
             }
             fullPlan.merge(processFolderGroup(comparisonRequest.getFolderBFiles(), comparisonRequest.getGrid(),
-                    savedComparison, groupName, savedComparison.getPointFilterLowerBound(),
-                    savedComparison.getPointFilterUpperBound(), savedComparison.getNeedOutlierDetection(),
-                    savedComparison.getOutlierDeviationFactor(), savedComparison.getNeedPointFilter()));
+                savedComparison, groupName, savedComparison.getPointFilterLowerBound(),
+                savedComparison.getPointFilterUpperBound(), savedComparison.getNeedOutlierDetection(),
+                savedComparison.getOutlierDeviationFactor(), savedComparison.getNeedPointFilter()));
         }
         if (fileMetadataIds != null && !fileMetadataIds.isEmpty()) {
             fullPlan.merge(processFolderGroup(fileMetadataIds, comparisonRequest.getGrid(), savedComparison,
-                    "legacy", savedComparison.getPointFilterLowerBound(), savedComparison.getPointFilterUpperBound(),
-                    savedComparison.getNeedOutlierDetection(), savedComparison.getOutlierDeviationFactor(),
-                    savedComparison.getNeedPointFilter()));
+                "legacy", savedComparison.getPointFilterLowerBound(), savedComparison.getPointFilterUpperBound(),
+                savedComparison.getNeedOutlierDetection(), savedComparison.getOutlierDeviationFactor(),
+                savedComparison.getNeedPointFilter()));
         }
 
         //Saving all files (excluded and included)
         List<ComparisonFile> allFiles =
-                Stream.concat(
-                        fullPlan.getFilesToInclude().stream(),
-                        fullPlan.getFilesToExclude().stream()
-                ).toList();
+            Stream.concat(
+                fullPlan.getFilesToInclude().stream(),
+                fullPlan.getFilesToExclude().stream()
+            ).toList();
 
         comparisonFileRepository.saveAll(allFiles);
 
@@ -251,16 +249,18 @@ public class ComparisonService implements IComparisonService {
     }
 
     private ComparisonPlan processFolderGroup(List<Long> fileIds, GridParameters grid, Comparison savedComparison,
-            String groupName, Double pointFilterLowerBound, Double pointFilterUpperBound,
-            Boolean outlierDetectionEnabled, Double outlierDeviationFactor, Boolean needPointFilter)
-            throws NotFoundException {
+                                              String groupName, Double pointFilterLowerBound, Double pointFilterUpperBound,
+                                              Boolean outlierDetectionEnabled, Double outlierDeviationFactor, Boolean needPointFilter)
+        throws NotFoundException {
         ComparisonPlan plan = new ComparisonPlan();
-        if (fileIds == null || fileIds.isEmpty()) return plan;
+        if (fileIds == null || fileIds.isEmpty()) {
+            return plan;
+        }
 
         List<File> files = new ArrayList<>();
         for (Long fileId : fileIds) {
             files.add(fileRepository.findById(fileId)
-                    .orElseThrow(() -> new NotFoundException("File for comparison with id: " + fileId + " not found!")));
+                .orElseThrow(() -> new NotFoundException("File for comparison with id: " + fileId + " not found!")));
         }
         //TODO: Order by newer dates so newer file is higher prio
         //TODO: Which dates? Upload or capture year?
@@ -274,7 +274,9 @@ public class ComparisonService implements IComparisonService {
 
             for (BoundingBox restrictedZone : restrictedZones) {
                 validRegions = subtractRectangleFromList(validRegions, restrictedZone);
-                if (validRegions.isEmpty()) break;
+                if (validRegions.isEmpty()) {
+                    break;
+                }
             }
 
             ComparisonFile cf = new ComparisonFile();
@@ -285,18 +287,19 @@ public class ComparisonService implements IComparisonService {
 
             if (!validRegions.isEmpty()) {
                 cf.setIncluded(true);
-                String uniqueJobId = UUID.randomUUID().toString();
+                String uniqueJobId =
+                    UUID.randomUUID().toString();
                 StartPreProcessJobDto jobDto = StartPreProcessJobDto.builder()
-                        .jobId(uniqueJobId)
-                        .grid(grid)
-                        .bboxes(validRegions)
-                        .comparisonId(savedComparison.getId())
-                        .file(new MinioObjectDto("basebucket", fileEntity.getFilename()))
-                        .fileId(fileEntity.getId())
-                        .outlierDetectionEnabled(outlierDetectionEnabled)
-                        .outlierDeviationFactor(outlierDeviationFactor)
-                        .pointFilterEnabled(Boolean.TRUE.equals(needPointFilter))
-                        .build();
+                    .jobId(uniqueJobId)
+                    .grid(grid)
+                    .bboxes(validRegions)
+                    .comparisonId(savedComparison.getId())
+                    .file(new MinioObjectDto("basebucket", fileEntity.getFilename()))
+                    .fileId(fileEntity.getId())
+                    .outlierDetectionEnabled(outlierDetectionEnabled)
+                    .outlierDeviationFactor(outlierDeviationFactor)
+                    .pointFilterEnabled(Boolean.TRUE.equals(needPointFilter))
+                    .build();
 
                 if(savedComparison.getIndividualStatisticsPercentile() != null) {
                     jobDto.setIndividualPercentile(savedComparison.getIndividualStatisticsPercentile());
@@ -390,25 +393,25 @@ public class ComparisonService implements IComparisonService {
 
     private boolean intersects(BoundingBox a, BoundingBox b) {
         return a.getxMin() < b.getxMax() && a.getxMax() > b.getxMin() &&
-                a.getyMin() < b.getyMax() && a.getyMax() > b.getyMin();
+            a.getyMin() < b.getyMax() && a.getyMax() > b.getyMin();
     }
 
     @Override
     public ComparisonDTO getComparison(Long comparisonId) throws NotFoundException {
         ComparisonDTO dto = comparisonRepository.findById(comparisonId).map(mapper::toDto).orElse(null);
-        if (dto == null) return null;
+        if (dto == null) {
+            return null;
+        }
         reportRepository.findTopByComparisonIdOrderByCreationDateDesc(dto.getId())
-                .ifPresent(report -> dto.setLatestReport("/reports/" + report.getId() + "/download"));
-
+            .ifPresent(report -> dto.setLatestReport("/reports/" + report.getId() + "/download"));
         List<Long> fileMetadataIds = comparisonFileRepository.getComparisonFilesByComparisonId(comparisonId);
         List<String> fileMetadataIdStrings = fileMetadataIds.stream()
-                .map(String::valueOf)
-                .toList();
+            .map(String::valueOf)
+            .toList();
         setComparisonFolders(comparisonId, dto);
 
         List<Long> comparisonFolderIds = comparisonFolderRepository.getComparisonFoldersByComparisonId(comparisonId);
-
-        List<FileMetadataDTO> files = metadataService.getMetadataList(fileMetadataIdStrings);
+           List<FileMetadataDTO> files = metadataService.getMetadataList(fileMetadataIdStrings);
         List<FileMetadataDTO> independentFilesInComparison = files.stream()
                 .filter(f -> !comparisonFolderIds.contains(f.getFolderId()))
                 .toList();
@@ -423,7 +426,7 @@ public class ComparisonService implements IComparisonService {
         if (cfIds == null || cfIds.isEmpty()) {
             return;
         }
-
+        //TODO: How do we know that (0) is the Folder A? Especially after processing?
         Folder folderA = findFolderOrThrow(cfIds.get(0));
         dto.setFolderA(new FolderDTO(folderA.getId(), folderA.getName()));
 
@@ -435,9 +438,9 @@ public class ComparisonService implements IComparisonService {
 
     private Folder findFolderOrThrow(Long folderId) throws NotFoundException {
         return folderRepository.findById(folderId)
-                .orElseThrow(() ->
-                        new NotFoundException("Folder for comparison with id: " + folderId + " not found!")
-                );
+            .orElseThrow(() ->
+                new NotFoundException("Folder for comparison with id: " + folderId + " not found!")
+            );
     }
 
     @Override
@@ -461,7 +464,8 @@ public class ComparisonService implements IComparisonService {
 
     @Override
     public void saveVisualizationComparison(Map<String, Object> result) {
-        log.info("Received visualization comparison notification");
+        //TODO: This should be at most a debug log -> trashes the whole logs of BE (live)
+        //log.info("Received visualization comparison notification");
         if (!result.containsKey("payload")) {
             log.warn("No comparison id or payload found in result of chunking worker");
             return;
@@ -757,14 +761,14 @@ public class ComparisonService implements IComparisonService {
             List<ComparisonFile> comparisonFiles = comparisonFileRepository.findAllByComparisonIdAndIncludedTrue(comparisonId);
             log.info("Comparison {}: all preprocessing files contain bucket & objectKey. Starting comparison worker...", comparisonId);
             List<ComparisonWorkerInputFileDto> filesDto = comparisonFiles.stream()
-                    .map(cf -> new ComparisonWorkerInputFileDto(cf.getBucket(), cf.getObjectKey(), cf.getGroupName()))
-                    .toList();
+                .map(cf -> new ComparisonWorkerInputFileDto(cf.getBucket(), cf.getObjectKey(), cf.getGroupName()))
+                .toList();
 
             UUID comparisonJobId = UUID.randomUUID();
             StartComparisonJobDto dto = new StartComparisonJobDto(
-                    comparisonJobId.toString(),
-                    comparisonId.toString(),
-                    filesDto
+                comparisonJobId.toString(),
+                comparisonId.toString(),
+                filesDto
             );
 
 
