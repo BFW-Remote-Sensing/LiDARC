@@ -1,4 +1,14 @@
-import {AfterViewInit, Component, ElementRef, Input, OnInit, OnChanges,SimpleChanges, ViewChild} from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  Input,
+  OnInit,
+  OnChanges,
+  SimpleChanges,
+  ViewChild,
+  booleanAttribute, Signal, signal, Output, EventEmitter, WritableSignal
+} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {provideEchartsCore} from 'ngx-echarts';
 import {EChartsCoreOption} from 'echarts/core';
@@ -26,6 +36,8 @@ import {MatIcon} from '@angular/material/icon';
 import {MatButton} from '@angular/material/button';
 import {MatButtonToggle, MatButtonToggleGroup} from '@angular/material/button-toggle';
 import {ComparisonDTO} from '../../dto/comparison';
+import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
+import {MatTooltip} from '@angular/material/tooltip';
 
 
 echarts.use([TitleComponent, DataZoomComponent, LegacyGridContainLabel, TooltipComponent, VisualMapComponent, BarChart, GridComponent, CanvasRenderer, HeatmapChart, CustomChart]);
@@ -38,7 +50,7 @@ type SchemeKey = "greens" | "browns" | "deltas";
   selector: 'app-heatmap',
   standalone: true,
   imports: [CommonModule,
-    FormsModule, MatButtonToggleGroup, MatButtonToggle, MatIcon, MatButton, MatMenu, MatMenuTrigger, MatMenuItem],
+    FormsModule, MatButtonToggleGroup, MatButtonToggle, MatIcon, MatButton, MatMenu, MatMenuTrigger, MatMenuItem, MatCheckbox, MatTooltip],
   templateUrl: './heatmap.html',
   styleUrl: './heatmap.scss',
   providers: [
@@ -80,15 +92,26 @@ export class Heatmap implements AfterViewInit, OnChanges {
       color: ['#2166ac', '#67a9cf','#f7f7f7','#ef8a62','#b2182b']
     }
   };
+  selectedColorScheme: SchemeKey = "greens"; //default color scheme
+
 
   @Input() groupMapping!: {a: string, b: string};
+  @Input({transform: booleanAttribute}) needOutlierDetection: boolean = false;
+  @Input() outlierDeviationFactor: number | undefined;
+  @Input() comparisonId: number | null = null;
 
+  @Input() data?: ChunkingResult; //fetch result from parent component
 
-  //private resizeObserver?: ResizeObserver;
+  @Input() showOutliers = true;
+  @Output() showOutliersChange = new EventEmitter<boolean>();
+
+  // onOutlierToggle(e: MatCheckboxChange) {
+  //   this.showOutliersChange.emit(e.checked);
+  // }
 
   showVisualMap = true;
   showZoom = true;
-  selectedColorScheme: SchemeKey = "greens"; //default color scheme
+  heatmapsStackedLayout = false;
 
   optionsLeft!: EChartsCoreOption;
   optionsRight!: EChartsCoreOption;
@@ -106,9 +129,10 @@ export class Heatmap implements AfterViewInit, OnChanges {
   rows: number = 100;
   cols: number = 100;
   groupSize: number = 5;
-  @Input() comparisonId: number | null = null;
   cellsMatrix: string[][] = [];
   chunkedMatrix: string[][] = [];
+
+
   private groupSizeChange$ = new Subject<number>();
   private _showPercentiles = false;
   @Input()
@@ -123,8 +147,7 @@ export class Heatmap implements AfterViewInit, OnChanges {
   }
 
 
-  @Input() data?: ChunkingResult; //fetch result from parent component
-  @Input() showOutliers: boolean = true;
+
 
   constructor() {
   }
@@ -362,6 +385,10 @@ export class Heatmap implements AfterViewInit, OnChanges {
     this.chartInstance1?.setOption(opt, {replaceMerge: ['dataZoom'] as any});
     this.chartInstance2?.setOption(opt, {replaceMerge: ['dataZoom'] as any});
     this.differenceInstance?.setOption(opt, {replaceMerge: ['dataZoom'] as any});
+  }
+
+  protected toggleLayout() {
+      this.heatmapsStackedLayout = !this.heatmapsStackedLayout;
   }
 
 
@@ -795,6 +822,7 @@ export class Heatmap implements AfterViewInit, OnChanges {
         color: this.COLOR_Schemes.deltas.color
       }
     }
+
 
 
 

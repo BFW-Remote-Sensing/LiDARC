@@ -133,6 +133,14 @@
   margin-right: 6px;
 }
 
+.grid.is-stacked {
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "a"
+    "b"
+    "d";
+}
+
 /* ====== RESPONSIVE ====== */
 @media (max-width: 900px) {
   .guide-controls-layout {

@@ -190,6 +190,8 @@ export class ComparisonDetails implements OnInit {
   });
 
   groupMapping = computed(() => this.vegetationStats().group_mapping);
+  needOutlierDetection = computed(() => this.comparison()?.needOutlierDetection);
+  outlierDeviationFactor = computed(() => this.comparison()?.outlierDeviationFactor);
   private pollingSubscription?: Subscription;
   private chunkSize$ = new Subject<number>();
 
@@ -397,6 +399,10 @@ export class ComparisonDetails implements OnInit {
     if (roughFactor <= 5.0) return 8;
     return 12;
   }
+
+  // onOutlierToggle(): void {
+  //   this.showOutlierDots.update((value) => !value);
+  // }
 
   private handleChunkingResult(result: ChunkingResult): void {
     console.log('[FINAL CHUNKING RESULT]', result);
@@ -801,9 +807,7 @@ export class ComparisonDetails implements OnInit {
     };
   }
 
-  onOutlierToggle(): void {
-    this.showOutlierDots.update((value) => !value);
-  }
+
 
   private buildDifferenceHistogramChart(): EChartsCoreOption {
     const histogram = this.vegetationStats().difference_metrics.histogram;

@@ -1,93 +1,92 @@
 @if (loading()) {
-<div class="flex-center">
-  <mat-spinner></mat-spinner>
-</div>
+  <div class="flex-center">
+    <mat-spinner></mat-spinner>
+  </div>
 } @else if (!loading() && !comparison && !errorMessage()) {
-<app-text-card type="info" message="No file found."></app-text-card>
+  <app-text-card type="info" message="No file found."></app-text-card>
 } @else if (errorMessage()) {
-<app-text-card type="error" message="{{ errorMessage() }}"></app-text-card>
+  <app-text-card type="error" message="{{ errorMessage() }}"></app-text-card>
 } @else if (comparison()) {
-<div class="file-details-container">
+  <div class="file-details-container">
 
-  <header class="metadata-header mat-elevation-z2">
-    <mat-icon class="header-icon">description</mat-icon>
-    <h1>Comparison Details: {{ comparison()!.name }}</h1>
-    <button mat-raised-button color="primary" (click)="createReport()" style="width: 180px;"
-      [disabled]="comparison()!.status !== 'COMPLETED'">
-      Create Report
-    </button>
-  </header>
+    <header class="metadata-header mat-elevation-z2">
+      <mat-icon class="header-icon">description</mat-icon>
+      <h1>Comparison Details: {{ comparison()!.name }}</h1>
+      <button mat-raised-button color="primary" (click)="createReport()" style="width: 180px;"
+              [disabled]="comparison()!.status !== 'COMPLETED'">
+        Create Report
+      </button>
+    </header>
 
 
-  <div class="content-wrapper">
+    <div class="content-wrapper">
 
-    <section class="general-info-section">
-      <h2>
-        <mat-icon>info</mat-icon>
-        General Information
-      </h2>
-      <mat-list role="list">
+      <section class="general-info-section">
+        <h2>
+          <mat-icon>info</mat-icon>
+          General Information
+        </h2>
+        <mat-list role="list">
 
-        <mat-list-item role="listitem">
-          <mat-icon matListItemIcon>adjust</mat-icon>
-          <div matListItemTitle class="mat-list-item-row">
+          <mat-list-item role="listitem">
+            <mat-icon matListItemIcon>adjust</mat-icon>
+            <div matListItemTitle class="mat-list-item-row">
             <span>
               Status
             </span>
-            <div class="status-column">
+              <div class="status-column">
               <span [ngClass]="{
         'status-ready': comparison()!.status === 'COMPLETED',
         'status-error': comparison()!.status === 'FAILED',
         'status-default': ['PREPROCESSING', 'COMPARING'].includes(comparison()!.status)
     }">{{ comparison()!.status | titlecase }}</span>
-              @if (['PREPROCESSING', 'COMPARING'].includes(comparison()!.status)) {
-              <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
-              }
-              @else if (comparison()!.status === 'FAILED') {
-              <mat-icon [matTooltip]="comparison()!.errorMessage" matTooltipPosition="above">
-                error
-              </mat-icon>
-              }
+                @if (['PREPROCESSING', 'COMPARING'].includes(comparison()!.status)) {
+                  <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+                } @else if (comparison()!.status === 'FAILED') {
+                  <mat-icon [matTooltip]="comparison()!.errorMessage" matTooltipPosition="above">
+                    error
+                  </mat-icon>
+                }
+              </div>
             </div>
-          </div>
-        </mat-list-item>
-        <mat-divider></mat-divider>
+          </mat-list-item>
+          <mat-divider></mat-divider>
 
-        <mat-list-item role="listitem">
-          <mat-icon matListItemIcon>calendar_today</mat-icon>
-          <div matListItemTitle class="mat-list-item-row">
+          <mat-list-item role="listitem">
+            <mat-icon matListItemIcon>calendar_today</mat-icon>
+            <div matListItemTitle class="mat-list-item-row">
             <span>
               Created At
             </span>
-            <span>
+              <span>
               {{ comparison()?.createdAt ? (comparison()!.createdAt | date: 'MMM d, y, HH:mm') : 'N/A' }}
             </span>
-          </div>
-        </mat-list-item>
-        <mat-divider></mat-divider>
+            </div>
+          </mat-list-item>
+          <mat-divider></mat-divider>
 
-        <mat-list-item role="listitem">
-          <mat-icon matListItemIcon>bar_chart_4_bars</mat-icon>
-          <div matListItemTitle class="mat-list-item-row">
+          <mat-list-item role="listitem">
+            <mat-icon matListItemIcon>bar_chart_4_bars</mat-icon>
+            <div matListItemTitle class="mat-list-item-row">
             <span>
               Outlier Detection
             </span>
-            <span>
+              <span>
               <mat-icon [color]="comparison()!.needOutlierDetection ? 'primary' : 'warn'">
                 {{ comparison()!.needOutlierDetection ? 'check_circle' : 'cancel' }}
               </mat-icon>
             </span>
-          </div>
-        </mat-list-item>
-        <mat-divider></mat-divider>
+            </div>
+          </mat-list-item>
+          <mat-divider></mat-divider>
 
-        <mat-list-item role="listitem">
-          <mat-icon matListItemIcon>bar_chart_4_bars</mat-icon>
-          <div matListItemTitle class="mat-list-item-row">
+          <mat-list-item role="listitem">
+            <mat-icon matListItemIcon>bar_chart_4_bars</mat-icon>
+            <div matListItemTitle class="mat-list-item-row">
             <span>
               Individual Percentile
             </span>
-            <span>
+              <span>
               <ng-container *ngIf="comparison()!.individualStatisticsPercentile; else noPercentile">
                 <span class="percentile-badge">
                   {{ comparison()!.individualStatisticsPercentile }}
@@ -98,354 +97,375 @@
                 <mat-icon color="warn">cancel</mat-icon>
               </ng-template>
             </span>
-          </div>
-        </mat-list-item>
-      </mat-list>
-      <h2 style="margin-top: 20px;">
-        <mat-icon>folder</mat-icon>
-        Compared Items
-      </h2>
-      <mat-list role="list">
-        @for (item of comparedItems; track item.id; let last = $last) {
-        <mat-list-item role="listitem">
-          <mat-icon matListItemIcon>
-            {{ item.type === 'file' ? 'insert_drive_file' : 'folder' }}
-          </mat-icon>
+            </div>
+          </mat-list-item>
+        </mat-list>
+        <h2 style="margin-top: 20px;">
+          <mat-icon>folder</mat-icon>
+          Compared Items
+        </h2>
+        <mat-list role="list">
+          @for (item of comparedItems; track item.id; let last = $last) {
+            <mat-list-item role="listitem">
+              <mat-icon matListItemIcon>
+                {{ item.type === 'file' ? 'insert_drive_file' : 'folder' }}
+              </mat-icon>
 
-          <div matListItemTitle class="mat-list-item-row">
-            <span class="file-name truncate-long">{{ item.name | titlecase }}</span>
+              <div matListItemTitle class="mat-list-item-row">
+                <span class="file-name truncate-long">{{ item.name | titlecase }}</span>
 
-            <span>
+                <span>
               <a [routerLink]="[item.type === 'file' ? '/stored-files' : '/folders', item.id]">
                 <button mat-icon-button matTooltip="View Details" matTooltipPosition="right">
                   <mat-icon>visibility</mat-icon>
                 </button>
               </a>
             </span>
-          </div>
-        </mat-list-item>
+              </div>
+            </mat-list-item>
 
-        @if (!last) {
-        <mat-divider></mat-divider>
-        }
-        }
-      </mat-list>
+            @if (!last) {
+              <mat-divider></mat-divider>
+            }
+          }
+        </mat-list>
 
-    </section>
+      </section>
 
-    <mat-divider vertical="true"></mat-divider>
+      <mat-divider vertical="true"></mat-divider>
 
-    <section class="technical-info-section">
-      <h2>
-        <mat-icon>grid_on</mat-icon>
-        Grid Parameters
-      </h2>
+      <section class="technical-info-section">
+        <h2>
+          <mat-icon>grid_on</mat-icon>
+          Grid Parameters
+        </h2>
 
-      <div class="bounding-box-flex align-center">
-        <h4>
-          Cell Width:
-          <span class="coordinate">
+        <div class="bounding-box-flex align-center">
+          <h4>
+            Cell Width:
+            <span class="coordinate">
             {{ comparison()!.grid?.cellWidth != null ? (comparison()!.grid?.cellWidth | number:'1.2-6') : 'N/A' }}
-            m
+              m
           </span>
-        </h4>
-        <h4>
-          Cell Height:
-          <span class="coordinate">
+          </h4>
+          <h4>
+            Cell Height:
+            <span class="coordinate">
             {{
-            comparison()!.grid?.cellHeight != null ? (comparison()!.grid?.cellHeight | number:'1.2-6') : 'N/A'
-            }} m
+                comparison()!.grid?.cellHeight != null ? (comparison()!.grid?.cellHeight | number:'1.2-6') : 'N/A'
+              }} m
           </span>
-        </h4>
-      </div>
-      <mat-divider></mat-divider>
-      <div class="bounding-box-flex align-center">
-        <h4>
-          X<sub style="font-size: 0.6em;">min</sub>:
-          <span class="coordinate">
+          </h4>
+        </div>
+        <mat-divider></mat-divider>
+        <div class="bounding-box-flex align-center">
+          <h4>
+            X<sub style="font-size: 0.6em;">min</sub>:
+            <span class="coordinate">
             {{ comparison()!.grid?.xMin != null ? (comparison()!.grid?.xMin | number:'1.2-6') : 'N/A' }}
           </span>
-        </h4>
-        <mat-icon>east</mat-icon>
-        <h4>
-          X<sub style="font-size: 0.6em;">max</sub>:
-          <span class="coordinate">
+          </h4>
+          <mat-icon>east</mat-icon>
+          <h4>
+            X<sub style="font-size: 0.6em;">max</sub>:
+            <span class="coordinate">
             {{ comparison()!.grid?.xMax != null ? (comparison()!.grid?.xMax | number:'1.2-6') : 'N/A' }}
           </span>
-        </h4>
-      </div>
-      <mat-divider></mat-divider>
-      <div class="bounding-box-flex align-center">
-        <h4>
-          Y<sub style="font-size: 0.6em;">min</sub>:
-          <span class="coordinate">
+          </h4>
+        </div>
+        <mat-divider></mat-divider>
+        <div class="bounding-box-flex align-center">
+          <h4>
+            Y<sub style="font-size: 0.6em;">min</sub>:
+            <span class="coordinate">
             {{ comparison()!.grid?.yMin != null ? (comparison()!.grid?.yMin | number:'1.2-6') : 'N/A' }}
           </span>
-        </h4>
-        <mat-icon>east</mat-icon>
-        <h4>
-          Y<sub style="font-size: 0.6em;">max</sub>:
-          <span class="coordinate">
+          </h4>
+          <mat-icon>east</mat-icon>
+          <h4>
+            Y<sub style="font-size: 0.6em;">max</sub>:
+            <span class="coordinate">
             {{ comparison()!.grid?.yMax != null ? (comparison()!.grid?.yMax | number:'1.2-6') : 'N/A' }}
           </span>
-        </h4>
-      </div>
+          </h4>
+        </div>
 
-      @if (comparison()!.needPointFilter) {
-      <h2 style="margin-top: 20px;">
-        <mat-icon>filter_alt</mat-icon>
-        Point Filter Settings
-      </h2>
-      <div class="bounding-box-flex align-center">
-        <h4>
-          Lower Bound:
-          <span class="coordinate">
-            {{ comparison()!.pointFilterLowerBound != null ? comparison()!.pointFilterLowerBound!.toFixed(2) : '0.00' }}%
+        @if (comparison()!.needPointFilter) {
+          <h2 style="margin-top: 20px;">
+            <mat-icon>filter_alt</mat-icon>
+            Point Filter Settings
+          </h2>
+          <div class="bounding-box-flex align-center">
+            <h4>
+              Lower Bound:
+              <span class="coordinate">
+            {{ comparison()!.pointFilterLowerBound != null ? comparison()!.pointFilterLowerBound!.toFixed(2) : '0.00' }}
+                %
           </span>
-        </h4>
-        <mat-icon>east</mat-icon>
-        <h4>
-          Upper Bound:
-          <span class="coordinate">
-            {{ comparison()!.pointFilterUpperBound != null ? comparison()!.pointFilterUpperBound!.toFixed(2) : '100.00' }}%
+            </h4>
+            <mat-icon>east</mat-icon>
+            <h4>
+              Upper Bound:
+              <span class="coordinate">
+            {{ comparison()!.pointFilterUpperBound != null ? comparison()!.pointFilterUpperBound!.toFixed(2) : '100.00' }}
+                %
           </span>
-        </h4>
-      </div>
-      @if (comparison()!.pointFilterLowerBound != null && comparison()!.pointFilterLowerBound !== 0 ||
-      comparison()!.pointFilterUpperBound != null && comparison()!.pointFilterUpperBound !== 100) {
-      <div style="padding: 8px 0; font-size: 0.9em; color: #666;">
-        <mat-icon style="font-size: 16px; vertical-align: middle; margin-right: 4px;">info</mat-icon>
-        Points filtered to {{ (comparison()!.pointFilterLowerBound ?? 0).toFixed(2) }}th-{{ (comparison()!.pointFilterUpperBound ?? 100).toFixed(2) }}th
-        percentile based on vegetation height
-      </div>
-      }
-      }
+            </h4>
+          </div>
+          @if (comparison()!.pointFilterLowerBound != null && comparison()!.pointFilterLowerBound !== 0 ||
+          comparison()!.pointFilterUpperBound != null && comparison()!.pointFilterUpperBound !== 100) {
+            <div style="padding: 8px 0; font-size: 0.9em; color: #666;">
+              <mat-icon style="font-size: 16px; vertical-align: middle; margin-right: 4px;">info</mat-icon>
+              Points filtered to {{ (comparison()!.pointFilterLowerBound ?? 0).toFixed(2) }}
+              th-{{ (comparison()!.pointFilterUpperBound ?? 100).toFixed(2) }}th
+              percentile based on vegetation height
+            </div>
+          }
+        }
 
-      <h2 style="margin-top: 10px;">
-        <mat-icon>assignment</mat-icon>
-        Reports
-      </h2>
-      <div class="reports-scroll-container">
-        <mat-nav-list role="navigation">
-          @for (report of reports(); track report.id; let last = $last) {
+        <h2 style="margin-top: 10px;">
+          <mat-icon>assignment</mat-icon>
+          Reports
+        </h2>
+        <div class="reports-scroll-container">
+          <mat-nav-list role="navigation">
+            @for (report of reports(); track report.id; let last = $last) {
 
-          <mat-list-item class="report-row">
-            <mat-icon matListItemIcon>assessment</mat-icon>
+              <mat-list-item class="report-row">
+                <mat-icon matListItemIcon>assessment</mat-icon>
 
-            <span matListItemTitle>
+                <span matListItemTitle>
               {{ report.title | titlecase }}
             </span>
-            <span matListItemLine class="date-line">
+                <span matListItemLine class="date-line">
               Created At: {{ report.creationDate | date:'mediumDate' }} {{ report.creationDate | date:'shortTime' }}
             </span>
-            <a [href]="this.globals.backendUri + '/reports/' + report.id + '/view'" target="_blank"
-              rel="noopener noreferrer" class="row-overlay-link" aria-label="View Report" matTooltip="View Report">
-            </a>
-            <span matListItemMeta>
+                <a [href]="this.globals.backendUri + '/reports/' + report.id + '/view'" target="_blank"
+                   rel="noopener noreferrer" class="row-overlay-link" aria-label="View Report" matTooltip="View Report">
+                </a>
+                <span matListItemMeta>
               <a mat-icon-button [href]="this.globals.backendUri + '/reports/' + report.id + '/download'"
-                target="_blank" download class="action-button" matTooltip="Download Report">
+                 target="_blank" download class="action-button" matTooltip="Download Report">
                 <mat-icon>download</mat-icon>
               </a>
               <button mat-icon-button color="warn" (click)="deleteReport(report.id, report.title)"
-                matTooltip="Delete Report" class="action-button">
+                      matTooltip="Delete Report" class="action-button">
                 <mat-icon>delete</mat-icon>
               </button>
             </span>
-          </mat-list-item>
-          @if (!last) {
-          <mat-divider></mat-divider>
-          }
-          }
-          @if (reports().length === 0) {
-          <mat-list-item role="listitem">
-            <div matListItemTitle class="mat-list-item-row">
+              </mat-list-item>
+              @if (!last) {
+                <mat-divider></mat-divider>
+              }
+            }
+            @if (reports().length === 0) {
+              <mat-list-item role="listitem">
+                <div matListItemTitle class="mat-list-item-row">
               <span style="font-style: italic; color: gray; margin-left: 10px;">
                 No reports available.
               </span>
-            </div>
-          </mat-list-item>
-          }
-        </mat-nav-list>
-      </div>
-      @if (hasMoreReports() && reports().length > 0) {
-      <div class="load-more-container">
-        @if (reportsLoading()) {
-        <mat-spinner diameter="30"></mat-spinner>
-        } @else {
-        <button mat-stroked-button color="primary" (click)="loadMoreReports()">
-          Load More
-          <mat-icon>expand_more</mat-icon>
-        </button>
+                </div>
+              </mat-list-item>
+            }
+          </mat-nav-list>
+        </div>
+        @if (hasMoreReports() && reports().length > 0) {
+          <div class="load-more-container">
+            @if (reportsLoading()) {
+              <mat-spinner diameter="30"></mat-spinner>
+            } @else {
+              <button mat-stroked-button color="primary" (click)="loadMoreReports()">
+                Load More
+                <mat-icon>expand_more</mat-icon>
+              </button>
+            }
+          </div>
         }
-      </div>
-      }
-    </section>
+      </section>
+    </div>
   </div>
-</div>
-<!-- ===== HARDCODED COMPARISON VISUALIZATION ===== -->
-@if (comparison()!.status !== 'FAILED') {
-<div class="file-details-container">
-  <mat-divider style="margin: 40px 0;"></mat-divider>
-  <h2>
-    <mat-icon>analytics</mat-icon>
-    Comparison Results
-    <div *ngIf="percentilesAvailable()" class="chart-toggle">
-      <mat-slide-toggle
-        [checked]="showPercentiles()"
-        (change)="toggleStatisticsView()"
-        color="primary"
-      >
-        Show p{{comparison()!.individualStatisticsPercentile}} Statistics
-      </mat-slide-toggle>
-      <button
-        mat-icon-button
-        matTooltip="This toggle enables showing the statistics for the individual percentile of the vegetational height instead of the maximum vegetational height." matTooltipPosition="above">
-        <mat-icon>info_outline</mat-icon>
+  <!-- ===== HARDCODED COMPARISON VISUALIZATION ===== -->
+  @if (comparison()!.status !== 'FAILED') {
+    <div class="file-details-container">
+      <mat-divider style="margin: 40px 0;"></mat-divider>
+      <h2>
+        <mat-icon>analytics</mat-icon>
+        Comparison Results
+        <div *ngIf="percentilesAvailable()" class="chart-toggle">
+          <mat-slide-toggle
+            [checked]="showPercentiles()"
+            (change)="toggleStatisticsView()"
+            color="primary"
+          >
+            Show p{{ comparison()!.individualStatisticsPercentile }} Statistics
+          </mat-slide-toggle>
+          <button
+            mat-icon-button
+            matTooltip="This toggle enables showing the statistics for the individual percentile of the vegetational height instead of the maximum vegetational height."
+            matTooltipPosition="above">
+            <mat-icon>info_outline</mat-icon>
+          </button>
+        </div>
+      </h2>
+      @if (comparison()!.status === 'COMPLETED') {
+
+        <app-chunking-settings [groupSizeInput]="chunkingSize" (visualizationData)="onChunkingSliderChange($event)"
+                               [comparisonId]="comparisonId"></app-chunking-settings>
+        <div class="comparison-container">
+          <mat-card class="section-card">
+            <mat-card-title>
+              <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <span>Heatmaps of Vegetational Heights</span>
+              </div>
+            </mat-card-title>
+            <mat-divider></mat-divider>
+            <mat-card-content>
+              <app-heatmap [outlierDeviationFactor]="outlierDeviationFactor()"
+                           [needOutlierDetection]="needOutlierDetection()"
+                           [groupMapping]="groupMapping()" [data]="sharedChunkingResult"
+                           [showOutliers]="showOutlierDots()" (showOutliersChange)="showOutlierDots.set($event)"
+                           [showPercentiles]="showPercentiles()">
+              </app-heatmap>
+            </mat-card-content>
+          </mat-card>
+
+
+          <mat-card class="section-card">
+            <mat-card-title>
+              File Specific Metrics of Vegetational Height
+              <button
+                mat-icon-button
+                matTooltip="This card shows different statistics of the vegetational height per cell across the entire file, as well as the correlation between the grid cell heights of the two files."
+                matTooltipPosition="above"
+              >
+                <mat-icon>info_outline</mat-icon>
+              </button>
+            </mat-card-title>
+            <mat-divider></mat-divider>
+            <mat-card-content>
+              <div class="metrics-grid">
+                <mat-card class="file-metrics-card file">
+                  <mat-card-header>
+                    <mat-card-title class="statistics-heading truncate-medium">
+                      A: {{ vegetationStats().group_mapping.a }}
+                    </mat-card-title>
+                  </mat-card-header>
+                  <mat-card-content class="metrics-card-content">
+                    <div class="metrics-item"><span class="metric-label">Mean:</span> <span
+                      class="metric-value">{{ vegetationStats().fileA_metrics.mean_veg_height }} m</span></div>
+                    <div class="metrics-item"><span class="metric-label">Median:</span> <span
+                      class="metric-value">{{ vegetationStats().fileA_metrics.median_veg_height }} m</span></div>
+                    <div class="metrics-item"><span class="metric-label">Std:</span> <span
+                      class="metric-value">{{ vegetationStats().fileA_metrics.std_veg_height }} m</span></div>
+                    <div class="metrics-item"><span class="metric-label">Min:</span> <span
+                      class="metric-value">{{ vegetationStats().fileA_metrics.min_veg_height }} m</span></div>
+                    <div class="metrics-item"><span class="metric-label">Max:</span> <span
+                      class="metric-value">{{ vegetationStats().fileA_metrics.max_veg_height }} m</span></div>
+                    <div class="metrics-item"><span class="metric-label">Avg. Points:</span> <span
+                      class="metric-value">{{ vegetationStats().fileA_metrics.mean_points_per_grid_cell }}</span></div>
+                  </mat-card-content>
+                </mat-card>
+
+                <mat-card class="file-metrics-card file">
+                  <mat-card-header>
+                    <mat-card-title class="statistics-heading truncate-medium">
+                      B: {{ vegetationStats().group_mapping.b }}
+                    </mat-card-title>
+                  </mat-card-header>
+                  <mat-card-content>
+                    <div class="metrics-item"><span class="metric-label">Mean:</span> <span
+                      class="metric-value">{{ vegetationStats().fileB_metrics.mean_veg_height }} m</span></div>
+                    <div class="metrics-item"><span class="metric-label">Median:</span> <span
+                      class="metric-value">{{ vegetationStats().fileB_metrics.median_veg_height }} m</span></div>
+                    <div class="metrics-item"><span class="metric-label">Std:</span> <span
+                      class="metric-value">{{ vegetationStats().fileB_metrics.std_veg_height }} m</span></div>
+                    <div class="metrics-item"><span class="metric-label">Min:</span> <span
+                      class="metric-value">{{ vegetationStats().fileB_metrics.min_veg_height }} m</span></div>
+                    <div class="metrics-item"><span class="metric-label">Max:</span> <span
+                      class="metric-value">{{ vegetationStats().fileB_metrics.max_veg_height }} m</span></div>
+                    <div class="metrics-item"><span class="metric-label">Avg. Points:</span> <span
+                      class="metric-value">{{ vegetationStats().fileB_metrics.mean_points_per_grid_cell }}</span></div>
+                  </mat-card-content>
+                </mat-card>
+              </div>
+              <div class="charts-grid">
+                <div echarts [options]="{}" [merge]="scatterOption" (chartInit)="onChartInit($event, 'scatter')"
+                     class="chart"></div>
+                <div echarts [options]="{}" [merge]="boxplotOption" (chartInit)="onChartInit($event, 'boxplot')"
+                     class="chart"></div>
+                <div echarts [options]="{}" [merge]="fileDistributionOption"
+                     (chartInit)="onChartInit($event, 'distribution')" class="chart"></div>
+              </div>
+
+            </mat-card-content>
+          </mat-card>
+
+          <!-- ===== Difference Metrics Section ===== -->
+          <mat-card class="section-card">
+            <mat-card-title>
+              Difference Metrics
+              <button
+                mat-icon-button
+                matTooltip="This card shows the difference of vegetational heights for each cell between File B and File A, and calculates statistics over all cells. The difference is calculated as height of file B - height of file A."
+                matTooltipPosition="above"
+              >
+                <mat-icon>info_outline</mat-icon>
+              </button>
+            </mat-card-title>
+            <mat-divider></mat-divider>
+            <mat-card-content>
+              <div class="metrics-grid">
+                <mat-card class="file-metrics-card file">
+                  <mat-card-header>
+                    <mat-card-title class="statistics-heading">Vegetational Height Difference</mat-card-title>
+                  </mat-card-header>
+                  <mat-card-content class="metrics-card-content">
+                    <div class="metrics-item"><span class="metric-label">A:</span> <span
+                      class="metric-value truncate-small">{{ vegetationStats().group_mapping.a }}</span></div>
+                    <div class="metrics-item"><span class="metric-label">B:</span> <span
+                      class="metric-value truncate-small">{{ vegetationStats().group_mapping.b }}</span></div>
+
+                    <div class="metrics-item"><span class="metric-label">Mean:</span> <span
+                      class="metric-value">{{ vegetationStats().difference_metrics.mean }}</span></div>
+                    <div class="metrics-item"><span class="metric-label">Median:</span> <span
+                      class="metric-value">{{ vegetationStats().difference_metrics.median }}</span></div>
+                    <div class="metrics-item"><span class="metric-label">Std:</span> <span
+                      class="metric-value">{{ vegetationStats().difference_metrics.std }}</span></div>
+                    <div class="metrics-item"><span class="metric-label">Most Negative:</span> <span
+                      class="metric-value">{{ vegetationStats().difference_metrics.most_negative }}</span></div>
+                    <div class="metrics-item"><span class="metric-label">Least Negative:</span> <span
+                      class="metric-value">{{ vegetationStats().difference_metrics.least_negative }}</span></div>
+                    <div class="metrics-item"><span class="metric-label">Smallest Positive:</span> <span
+                      class="metric-value">{{ vegetationStats().difference_metrics.smallest_positive }}</span></div>
+                    <div class="metrics-item"><span class="metric-label">Largest Positive:</span> <span
+                      class="metric-value">{{ vegetationStats().difference_metrics.largest_positive }}</span></div>
+                  </mat-card-content>
+                </mat-card>
+              </div>
+              <div class="charts-grid">
+                <div echarts [options]="{}" [merge]="diffDistributionOption"
+                     (chartInit)="onChartInit($event, 'distribution_diff')" class="chart"></div>
+                <div echarts [options]="{}" [merge]="diffHistogramOption"
+                     (chartInit)="onChartInit($event, 'histo_diff')" class="chart"></div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+
+        </div>
+      } @else if (['PREPROCESSING', 'COMPARING'].includes(comparison()!.status)) {
+        <div class="flex-center" style="margin-top: 50px;">
+          <mat-spinner></mat-spinner>
+        </div>
+      }
+    </div>
+  }
+  @if (comparison()!.status === 'FAILED' || comparison()!.status === 'COMPLETED') {
+    <div class="delete-button-container comparison-delete-button">
+      <button matButton="filled" color="warn" (click)="onDeleteComparison()">
+        <mat-icon>delete</mat-icon>
+        Delete Comparison
       </button>
     </div>
-  </h2>
-  @if (comparison()!.status === 'COMPLETED') {
-
-  <app-chunking-settings [groupSizeInput]="chunkingSize" (visualizationData)="onChunkingSliderChange($event)"
-                         [comparisonId]="comparisonId"></app-chunking-settings>
-  <div class="comparison-container">
-
-    <mat-card class="section-card">
-      <mat-card-title>
-        File Specific Metrics of Vegetational Height
-        <button
-          mat-icon-button
-          matTooltip="This card shows different statistics of the vegetational height per cell across the entire file, as well as the correlation between the grid cell heights of the two files."
-          matTooltipPosition="above"
-        >
-          <mat-icon>info_outline</mat-icon>
-        </button>
-      </mat-card-title>
-      <mat-divider></mat-divider>
-      <mat-card-content>
-        <div class="metrics-grid">
-          <mat-card class="file-metrics-card file">
-            <mat-card-header>
-              <mat-card-title class="statistics-heading truncate-medium">A: {{ vegetationStats().group_mapping.a }}</mat-card-title>
-            </mat-card-header>
-            <mat-card-content class="metrics-card-content">
-              <div class="metrics-item"><span class="metric-label">Mean:</span> <span class="metric-value">{{ vegetationStats().fileA_metrics.mean_veg_height }} m</span></div>
-              <div class="metrics-item"><span class="metric-label">Median:</span> <span class="metric-value">{{ vegetationStats().fileA_metrics.median_veg_height }} m</span></div>
-              <div class="metrics-item"><span class="metric-label">Std:</span> <span class="metric-value">{{ vegetationStats().fileA_metrics.std_veg_height }} m</span></div>
-              <div class="metrics-item"><span class="metric-label">Min:</span> <span class="metric-value">{{ vegetationStats().fileA_metrics.min_veg_height }} m</span></div>
-              <div class="metrics-item"><span class="metric-label">Max:</span> <span class="metric-value">{{ vegetationStats().fileA_metrics.max_veg_height }} m</span></div>
-              <div class="metrics-item"><span class="metric-label">Avg. Points:</span> <span class="metric-value">{{ vegetationStats().fileA_metrics.mean_points_per_grid_cell }}</span></div>
-            </mat-card-content>
-          </mat-card>
-
-              <mat-card class="file-metrics-card file">
-                <mat-card-header >
-              <mat-card-title class="statistics-heading truncate-medium">B: {{ vegetationStats().group_mapping.b }}</mat-card-title>
-            </mat-card-header>
-                <mat-card-content>
-              <div class="metrics-item"><span class="metric-label">Mean:</span> <span class="metric-value">{{ vegetationStats().fileB_metrics.mean_veg_height }} m</span></div>
-              <div class="metrics-item"><span class="metric-label">Median:</span> <span class="metric-value">{{ vegetationStats().fileB_metrics.median_veg_height }} m</span></div>
-              <div class="metrics-item"><span class="metric-label">Std:</span> <span class="metric-value">{{ vegetationStats().fileB_metrics.std_veg_height }} m</span></div>
-              <div class="metrics-item"><span class="metric-label">Min:</span> <span class="metric-value">{{ vegetationStats().fileB_metrics.min_veg_height }} m</span></div>
-              <div class="metrics-item"><span class="metric-label">Max:</span> <span class="metric-value">{{ vegetationStats().fileB_metrics.max_veg_height }} m</span></div>
-              <div class="metrics-item"><span class="metric-label">Avg. Points:</span> <span class="metric-value">{{ vegetationStats().fileB_metrics.mean_points_per_grid_cell }}</span></div>
-            </mat-card-content>
-              </mat-card>
-        </div>
-        <div class="charts-grid">
-          <div echarts [options]="{}" [merge]="scatterOption" (chartInit)="onChartInit($event, 'scatter')" class="chart"></div>
-          <div echarts [options]="{}" [merge]="boxplotOption" (chartInit)="onChartInit($event, 'boxplot')" class="chart"></div>
-          <div echarts [options]="{}" [merge]="fileDistributionOption" (chartInit)="onChartInit($event, 'distribution')" class="chart"></div>
-        </div>
-
-      </mat-card-content>
-    </mat-card>
-
-    <!-- ===== Difference Metrics Section ===== -->
-    <mat-card class="section-card">
-      <mat-card-title>
-        Difference Metrics
-        <button
-          mat-icon-button
-          matTooltip="This card shows the difference of vegetational heights for each cell between File B and File A, and calculates statistics over all cells. The difference is calculated as height of file B - height of file A."
-          matTooltipPosition="above"
-        >
-          <mat-icon>info_outline</mat-icon>
-        </button>
-      </mat-card-title>
-      <mat-divider></mat-divider>
-      <mat-card-content>
-        <div class="metrics-grid">
-          <mat-card class="file-metrics-card file">
-            <mat-card-header>
-              <mat-card-title class="statistics-heading">Vegetational Height Difference</mat-card-title>
-            </mat-card-header>
-            <mat-card-content class="metrics-card-content">
-              <div class="metrics-item"><span class="metric-label">A:</span> <span class="metric-value truncate-small">{{ vegetationStats().group_mapping.a }}</span></div>
-              <div class="metrics-item"><span class="metric-label">B:</span> <span class="metric-value truncate-small">{{ vegetationStats().group_mapping.b }}</span></div>
-
-              <div class="metrics-item"><span class="metric-label">Mean:</span> <span class="metric-value">{{ vegetationStats().difference_metrics.mean }}</span></div>
-              <div class="metrics-item"><span class="metric-label">Median:</span> <span class="metric-value">{{ vegetationStats().difference_metrics.median }}</span></div>
-              <div class="metrics-item"><span class="metric-label">Std:</span> <span class="metric-value">{{ vegetationStats().difference_metrics.std }}</span></div>
-              <div class="metrics-item"><span class="metric-label">Most Negative:</span> <span class="metric-value">{{ vegetationStats().difference_metrics.most_negative }}</span></div>
-              <div class="metrics-item"><span class="metric-label">Least Negative:</span> <span class="metric-value">{{ vegetationStats().difference_metrics.least_negative }}</span></div>
-              <div class="metrics-item"><span class="metric-label">Smallest Positive:</span> <span class="metric-value">{{ vegetationStats().difference_metrics.smallest_positive }}</span></div>
-              <div class="metrics-item"><span class="metric-label">Largest Positive:</span> <span class="metric-value">{{ vegetationStats().difference_metrics.largest_positive }}</span></div>
-            </mat-card-content>
-          </mat-card>
-        </div>
-        <div class="charts-grid">
-          <div echarts [options]="{}" [merge]="diffDistributionOption" (chartInit)="onChartInit($event, 'distribution_diff')" class="chart"></div>
-          <div echarts [options]="{}" [merge]="diffHistogramOption" (chartInit)="onChartInit($event, 'histo_diff')" class="chart"></div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-    <mat-card class="section-card">
-      <mat-card-title>
-        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-          <span>Heatmaps of Vegetational Heights</span>
-          @if (comparison()!.needOutlierDetection) {
-          <div style="display: flex; align-items: center; gap: 20px; font-size: 0.8em; font-weight: normal;">
-            <span>Std Dev Factor: <strong>{{ comparison()!.outlierDeviationFactor }}</strong></span>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <mat-checkbox [checked]="showOutlierDots()" (change)="onOutlierToggle()" color="primary">
-                Show Outliers
-              </mat-checkbox>
-              <mat-icon
-                style="font-size: 18px; width: 18px; height: 18px; color: #666; cursor: help;"
-                matTooltip="Toggle visibility of red dots on the heatmaps. Red dots indicate grid cells containing outlier points that exceed the specified standard deviation threshold. This is a visual-only toggle and does not affect the statistical calculations."
-                matTooltipPosition="below"
-                matTooltipClass="outlier-info-tooltip">
-                info_outline
-              </mat-icon>
-            </div>
-          </div>
-          }
-        </div>
-      </mat-card-title>
-      <mat-divider></mat-divider>
-      <mat-card-content>
-        <app-heatmap [groupMapping]="groupMapping()" [data]="sharedChunkingResult" [showOutliers]="showOutlierDots()" [showPercentiles]="showPercentiles()">
-        </app-heatmap>
-      </mat-card-content>
-    </mat-card>
-
-
-  </div>
-  } @else if (['PREPROCESSING', 'COMPARING'].includes(comparison()!.status)) {
-  <div class="flex-center" style="margin-top: 50px;">
-    <mat-spinner></mat-spinner>
-  </div>
   }
-</div>
-}
-@if (comparison()!.status === 'FAILED' || comparison()!.status === 'COMPLETED') {
-<div class="delete-button-container comparison-delete-button">
-  <button matButton="filled" color="warn" (click)="onDeleteComparison()">
-    <mat-icon>delete</mat-icon>
-    Delete Comparison
-  </button>
-</div>
-}
 }
