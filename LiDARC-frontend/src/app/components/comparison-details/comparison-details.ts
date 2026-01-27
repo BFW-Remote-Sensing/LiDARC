@@ -1,9 +1,7 @@
-import {Component, inject, Input, OnInit, signal, WritableSignal, ViewChild, computed} from '@angular/core';
+import {Component, Input, OnInit, signal, WritableSignal, ViewChild, computed} from '@angular/core';
 import { ComparisonService } from '../../service/comparison.service';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { FormatService } from '../../service/format.service';
-import { MetadataService } from '../../service/metadata.service';
-import { debounceTime, finalize, forkJoin, interval, map, Subject, Subscription, switchMap, timer } from 'rxjs';
+import { finalize, forkJoin, interval, map, Subject, Subscription, switchMap, timer } from 'rxjs';
 import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
 import { ComparisonDTO } from '../../dto/comparison';
 import { ComparisonReport } from '../../dto/comparisonReport';
@@ -15,7 +13,6 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { TextCard } from '../text-card/text-card';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatTooltip } from '@angular/material/tooltip';
-import { MatCheckbox } from '@angular/material/checkbox';
 
 
 import * as echarts from 'echarts/core';
@@ -49,11 +46,9 @@ import {
   VegetationStats,
   CellEntry
 } from '../../dto/chunking';
-import { filter, takeUntil, takeWhile } from 'rxjs/operators';
-import { HttpResponse } from '@angular/common/http';
+import { takeUntil } from 'rxjs/operators';
 import { ChunkingSettings } from '../chunking-settings/chunking-settings';
 import { FormsModule } from '@angular/forms';
-import { FolderDTO } from '../../dto/folder';
 import {MatSlideToggleModule} from '@angular/material/slide-toggle';
 import { StatusService } from '../../service/status.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -97,8 +92,7 @@ echarts.use([
     MatButton,
     ChunkingSettings,
     FormsModule,
-    MatSlideToggleModule,
-    MatCheckbox
+    MatSlideToggleModule
   ],
   templateUrl: './comparison-details.html',
   styleUrls: ['./comparison-details.scss', '../file-details/file-details.scss', '../stored-files/stored-files.scss'],
@@ -190,6 +184,8 @@ export class ComparisonDetails implements OnInit {
   });
 
   groupMapping = computed(() => this.vegetationStats().group_mapping);
+  needOutlierDetection = computed(() => this.comparison()?.needOutlierDetection);
+  outlierDeviationFactor = computed(() => this.comparison()?.outlierDeviationFactor);
   private pollingSubscription?: Subscription;
   private chunkSize$ = new Subject<number>();
 
@@ -398,6 +394,10 @@ export class ComparisonDetails implements OnInit {
     return 12;
   }
 
+  // onOutlierToggle(): void {
+  //   this.showOutlierDots.update((value) => !value);
+  // }
+
   private handleChunkingResult(result: ChunkingResult): void {
     console.log('[FINAL CHUNKING RESULT]', result);
     if (!result?.chunked_cells) {
@@ -502,6 +502,9 @@ export class ComparisonDetails implements OnInit {
   }
 
   createReport(): void {
+    // TODO move snapshot of heatmaps to last of charts
+    if (!this.heatmapComponent.showVisualMap) this.heatmapComponent.toggleVisualMap();
+    if (this.heatmapComponent.showZoom) this.heatmapComponent.toggleZoom();
     const chartImages: ChartData[] = [];
     if (this.heatmapComponent) {
       if (this.heatmapComponent.chartInstance1) {
@@ -510,6 +513,9 @@ export class ComparisonDetails implements OnInit {
       }
       if (this.heatmapComponent.chartInstance2) {
         this.pushChartImage(chartImages, this.heatmapComponent.chartInstance2, 'Vegetation Heatmap Right', 'heatmap_right.png')
+      }
+      if (this.heatmapComponent.differenceInstance){
+        this.pushChartImage(chartImages, this.heatmapComponent.differenceInstance, 'Vegetation Heatmap Difference', 'heatmap_difference.png')
       }
     }
     const chartsToExport = [
@@ -795,9 +801,7 @@ export class ComparisonDetails implements OnInit {
     };
   }
 
-  onOutlierToggle(): void {
-    this.showOutlierDots.update((value) => !value);
-  }
+
 
   private buildDifferenceHistogramChart(): EChartsCoreOption {
     const histogram = this.vegetationStats().difference_metrics.histogram;
