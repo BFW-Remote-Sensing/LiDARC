@@ -159,6 +159,7 @@ public class ComparisonController {
         @Parameter(description = "Report images", content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE))
         @RequestPart(value = "files", required = false) MultipartFile[] files) {
         log.info("POST /api/v1/reports");
+        log.info("Report Stats: {}", report.getStats());
         try {
             ReportInfoDto createdReport = reportService.createReport(id, report, files);
             Resource resource = new UrlResource(Paths.get(UPLOAD_DIRECTORY).resolve(createdReport.getFileName()).toUri());

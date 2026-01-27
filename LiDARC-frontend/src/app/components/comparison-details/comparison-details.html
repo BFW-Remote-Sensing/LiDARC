@@ -391,7 +391,8 @@
               <div class="charts-grid">
                 <div class="chart-wrapper">
                   <div class="chart-container">
-                    <div echarts [options]="{}" [merge]="scatterOption" (chartInit)="onChartInit($event, 'scatter')" class="chart"></div>
+                    <div echarts [options]="{}" [merge]="scatterOption" (chartInit)="onChartInit($event, 'scatter')"
+                         class="chart"></div>
                     <button
                       mat-icon-button
                       class="chart-info-button"
@@ -407,7 +408,8 @@
 
                 <div class="chart-wrapper">
                   <div class="chart-container">
-                    <div echarts [options]="{}" [merge]="boxplotOption" (chartInit)="onChartInit($event, 'boxplot')" class="chart"></div>
+                    <div echarts [options]="{}" [merge]="boxplotOption" (chartInit)="onChartInit($event, 'boxplot')"
+                         class="chart"></div>
                     <button
                       mat-icon-button
                       class="chart-info-button"
@@ -422,12 +424,13 @@
 
                 <div class="chart-wrapper">
                   <div class="chart-container">
-                    <div echarts [options]="{}" [merge]="fileDistributionOption" (chartInit)="onChartInit($event, 'distribution')" class="chart"></div>
+                    <div echarts [options]="{}" [merge]="fileDistributionOption"
+                         (chartInit)="onChartInit($event, 'distribution')" class="chart"></div>
                     <button
                       mat-icon-button
                       class="chart-info-button"
                       matTooltip="The distribution chart shows a smoothed density estimate of the vegetation heights for item A and item B. The X-axis represents vegetation
-                                height values, while the Y-axis indicates the probabiltiy density. Peaks indicate the most common vegetation heights, while the width of each curve
+                                height values, while the Y-axis indicates the probability density. Peaks indicate the most common vegetation heights, while the width of each curve
                                 represents the spread or variability of the data."
                       matTooltipPosition="above">
                       <mat-icon>info_outline</mat-icon>
@@ -485,7 +488,8 @@
               <div class="charts-grid">
                 <div class="chart-wrapper">
                   <div class="chart-container">
-                    <div echarts [options]="{}" [merge]="diffDistributionOption" (chartInit)="onChartInit($event, 'distribution_diff')" class="chart"></div>
+                    <div echarts [options]="{}" [merge]="diffDistributionOption"
+                         (chartInit)="onChartInit($event, 'distribution_diff')" class="chart"></div>
                     <button
                       mat-icon-button
                       class="chart-info-button"
@@ -500,7 +504,8 @@
 
                 <div class="chart-wrapper">
                   <div class="chart-container">
-                    <div echarts [options]="{}" [merge]="diffHistogramOption" (chartInit)="onChartInit($event, 'histo_diff')" class="chart"></div>
+                    <div echarts [options]="{}" [merge]="diffHistogramOption"
+                         (chartInit)="onChartInit($event, 'histo_diff')" class="chart"></div>
                     <button
                       mat-icon-button
                       class="chart-info-button"

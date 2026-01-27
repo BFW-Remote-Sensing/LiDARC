@@ -16,10 +16,10 @@ public class ReportComponentFactory {
     public ReportComponentFactory() {
         reportComponentRegistry = new HashMap<>();
         reportComponentRegistry.put("SIMPLE", SimpleReportComponent::new);
-
         reportComponentRegistry.put("HEATMAP", HeatmapReportComponent::new);
         reportComponentRegistry.put("BOXPLOT", SimpleReportComponent::new);
         reportComponentRegistry.put("DISTRIBUTION", SimpleReportComponent::new);
+        reportComponentRegistry.put("DISTRIBUTION_DIFF", SimpleReportComponent::new);
         reportComponentRegistry.put("HISTO", SimpleReportComponent::new);
         reportComponentRegistry.put("SCATTER", SimpleReportComponent::new);
         reportComponentRegistry.put("SIDE_BY_SIDE", SideBySideHeatmapComponent::new);

@@ -16,6 +16,8 @@ import {MatButton} from '@angular/material/button';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatIconModule} from '@angular/material/icon';
 import {CommonModule} from '@angular/common';
+import {VegetationStatsWithoutCells} from '../../dto/chunking';
+
 
 @Component({
   selector: 'app-report-creation-dialog-component',
@@ -39,14 +41,18 @@ import {CommonModule} from '@angular/common';
 })
 export class ReportCreationDialogComponent {
 
-  report: CreateReportDto = {title: '', components: []};
+  report: CreateReportDto = {title: '', components: [], stats: undefined} as CreateReportDto;
   selectedCharts: ChartData[] = [];
   isProcessing = false;
 
   constructor(
     public dialogRef: MatDialogRef<ReportCreationDialogComponent>,
     public comparisonService: ComparisonService,
-    @Inject(MAT_DIALOG_DATA) public data: { comparison: ComparisonDTO, availableCharts: ChartData[] }
+    @Inject(MAT_DIALOG_DATA) public data: {
+      comparison: ComparisonDTO,
+      availableCharts: ChartData[],
+      stats: VegetationStatsWithoutCells
+    }
   ) {
     console.log(this.data.availableCharts)
     this.selectedCharts = [...this.data.availableCharts];
@@ -67,6 +73,8 @@ export class ReportCreationDialogComponent {
       fileName: chart.fileName,
       title: chart.name
     }));
+    console.log(this.data.stats);
+    this.report.stats = this.data.stats;
     const filesToSend: File[] = [];
     this.selectedCharts.forEach(chart => {
       if (chart.files && chart.files.length > 0) {

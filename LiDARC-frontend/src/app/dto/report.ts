@@ -1,6 +1,9 @@
+import {VegetationStatsWithoutCells} from './chunking';
+
 export interface CreateReportDto {
   title: string,
-  components: ReportComponentDto[]
+  components: ReportComponentDto[],
+  stats?: VegetationStatsWithoutCells
 }
 
 export interface ReportComponentDto {
@@ -24,6 +27,7 @@ export enum ReportType {
   SIDE_BY_SIDE = "SIDE_BY_SIDE",
   BOXPLOT = "BOXPLOT",
   DISTRIBUTION = "DISTRIBUTION",
+  DISTRIBUTION_DIFF = "DISTRIBUTION_DIFF",
   HISTO = "HISTO",
   SCATTER = "SCATTER"
 }

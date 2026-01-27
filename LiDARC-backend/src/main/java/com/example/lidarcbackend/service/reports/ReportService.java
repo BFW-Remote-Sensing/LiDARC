@@ -2,8 +2,13 @@ package com.example.lidarcbackend.service.reports;
 
 import com.example.lidarcbackend.exception.NotFoundException;
 import com.example.lidarcbackend.model.DTO.CreateReportDto;
+import com.example.lidarcbackend.model.DTO.DifferenceMetricsDto;
+import com.example.lidarcbackend.model.DTO.FileMetricsDto;
+import com.example.lidarcbackend.model.DTO.PercentilesDto;
+import com.example.lidarcbackend.model.DTO.RegressionLineDto;
 import com.example.lidarcbackend.model.DTO.ReportComponentDto;
 import com.example.lidarcbackend.model.DTO.ReportInfoDto;
+import com.example.lidarcbackend.model.DTO.VegetationStatsDto;
 import com.example.lidarcbackend.model.entity.Comparison;
 import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.model.entity.Folder;
@@ -15,8 +20,11 @@ import com.example.lidarcbackend.repository.FileRepository;
 import com.example.lidarcbackend.repository.FolderRepository;
 import com.example.lidarcbackend.repository.ReportRepository;
 import com.itextpdf.text.*;
+import com.itextpdf.text.pdf.ColumnText;
+import com.itextpdf.text.pdf.PdfContentByte;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfPageEventHelper;
 import com.itextpdf.text.pdf.PdfWriter;
 import com.itextpdf.text.pdf.draw.LineSeparator;
 import jakarta.transaction.Transactional;
@@ -74,8 +82,9 @@ public class ReportService implements IReportService {
             () -> new NotFoundException("Comparison with id " + id + " not found"));
         String filename = generateUniqueReportName();
         try {
+
             Document document = createDocument(filename);
-            Document baseLayout = generateBaseLayout(document, report.getTitle(), comparison);
+            Document baseLayout = generateBaseLayout(document, report.getTitle(), comparison, report.getStats());
             document = assembleReport(report, files, baseLayout);
         } catch (DocumentException | IOException e) {
             log.error("Error while creating report {}", e.getMessage());
@@ -92,7 +101,8 @@ public class ReportService implements IReportService {
             Files.createDirectories(uploadPath);
         }
         Path filePath = uploadPath.resolve(uniqueName);
-        PdfWriter.getInstance(document, new FileOutputStream(filePath.toFile()));
+        PdfWriter writer = PdfWriter.getInstance(document, new FileOutputStream(filePath.toFile()));
+        writer.setPageEvent(new PageNumberFooter());
         document.open();
         return document;
     }
@@ -197,7 +207,7 @@ public class ReportService implements IReportService {
         return null;
     }
 
-    private Document generateBaseLayout(Document document, String reportTitle, Comparison comparison) throws IOException, DocumentException {
+    private Document generateBaseLayout(Document document, String reportTitle, Comparison comparison, VegetationStatsDto stats) throws IOException, DocumentException {
         PdfPTable headerTable = new PdfPTable(3);
         headerTable.setWidthPercentage(100);
         headerTable.setWidths(new float[] {2f, 6f, 2f});
@@ -257,9 +267,85 @@ public class ReportService implements IReportService {
             document.add(new Paragraph("\n"));
         }
 
+        if (stats != null) {
+            addVegetationStatistics(document, stats);
+            document.add(new Paragraph("\n"));
+        }
+
         document.add(ls);
         return document;
 
+    }
+
+    private void addVegetationStatistics(Document document, VegetationStatsDto stats) throws IOException, DocumentException {
+        Font headerFont = new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD, BaseColor.BLACK);
+        Font labelFont = new Font(Font.FontFamily.HELVETICA, 10, Font.BOLD, BaseColor.DARK_GRAY);
+        Font valueFont = new Font(Font.FontFamily.HELVETICA, 10, Font.NORMAL, BaseColor.BLACK);
+
+        Paragraph title = new Paragraph("Vegetation Statistics", headerFont);
+        title.setSpacingAfter(10f);
+        document.add(title);
+
+        PdfPTable compareTable = new PdfPTable(3);
+        compareTable.setWidthPercentage(100);
+        compareTable.setWidths(new float[] {3f, 3.5f, 3.5f});
+
+        String nameA = (stats.getGroupMapping() != null && stats.getGroupMapping().getA() != null)
+            ? stats.getGroupMapping().getA() : "Reference (A)";
+        String nameB = (stats.getGroupMapping() != null && stats.getGroupMapping().getB() != null)
+            ? stats.getGroupMapping().getB() : "Target (B)";
+
+        addHeaderCell(compareTable, "Metric", labelFont);
+        addHeaderCell(compareTable, nameA, labelFont);
+        addHeaderCell(compareTable, nameB, labelFont);
+
+        FileMetricsDto ma = stats.getItemAMetrics();
+        FileMetricsDto mb = stats.getItemBMetrics();
+
+        if (ma != null && mb != null) {
+            addStatThreeColRow(compareTable, "Mean Height", formatDouble(ma.getMeanVegHeight()) + " m", formatDouble(mb.getMeanVegHeight()) + " m", labelFont, valueFont);
+            addStatThreeColRow(compareTable, "Median Height", formatDouble(ma.getMedianVegHeight()) + " m", formatDouble(mb.getMedianVegHeight()) + " m", labelFont, valueFont);
+            addStatThreeColRow(compareTable, "Std Dev Height", formatDouble(ma.getStdVegHeight()) + " m", formatDouble(mb.getStdVegHeight()) + " m", labelFont, valueFont);
+            addStatThreeColRow(compareTable, "Min / Max Height",
+                formatDouble(ma.getMinVegHeight()) + " m / " + formatDouble(ma.getMaxVegHeight()) + " m",
+                formatDouble(mb.getMinVegHeight()) + " m / " + formatDouble(mb.getMaxVegHeight()) + " m", labelFont, valueFont);
+
+            // Percentiles
+            if (ma.getPercentiles() != null && mb.getPercentiles() != null) {
+                addStatThreeColRow(compareTable, "Percentiles (P10 | P50 | P90)",
+                    formatPctl(ma.getPercentiles()), formatPctl(mb.getPercentiles()), labelFont, valueFont);
+            }
+
+            addStatThreeColRow(compareTable, "Mean Points/Grid Cell", formatDouble(ma.getMeanPointsPerGridCell()), formatDouble(mb.getMeanPointsPerGridCell()), labelFont, valueFont);
+        }
+        document.add(compareTable);
+        document.add(new Paragraph("\n"));
+
+        if (stats.getDifferenceMetrics() != null) {
+            DifferenceMetricsDto diff = stats.getDifferenceMetrics();
+
+            PdfPTable diffTable = new PdfPTable(2);
+            diffTable.setWidthPercentage(100);
+            diffTable.setWidths(new float[] {2f, 5f});
+
+            addMetaRow(diffTable, "Mean Difference:", formatDouble(diff.getMean()), labelFont, valueFont);
+            addMetaRow(diffTable, "Median Difference:", formatDouble(diff.getMedian()), labelFont, valueFont);
+            addMetaRow(diffTable, "Std Dev Difference:", formatDouble(diff.getStd()), labelFont, valueFont);
+            addMetaRow(diffTable, "Range (Most Neg to Largest Pos):",
+                formatDouble(diff.getMostNegative()) + " to " + formatDouble(diff.getLargestPositive()), labelFont, valueFont);
+
+            if (diff.getCorrelation() != null) {
+                addMetaRow(diffTable, "Pearson Correlation:", formatDouble(diff.getCorrelation().getPearsonCorrelation()), labelFont, valueFont);
+
+                if (diff.getCorrelation().getRegressionLine() != null) {
+                    RegressionLineDto reg = diff.getCorrelation().getRegressionLine();
+                    String regStr = String.format("Slope: %s, Intercept: %s", formatDouble(reg.getSlope()), formatDouble(reg.getIntercept()));
+                    addMetaRow(diffTable, "Regression Line:", regStr, labelFont, valueFont);
+                }
+            }
+
+            document.add(diffTable);
+        }
     }
 
     private void addComparisonMetadata(Document document, Comparison comparison) throws DocumentException {
@@ -399,6 +485,49 @@ public class ReportService implements IReportService {
         table.addCell(valueCell);
     }
 
+    private void addHeaderCell(PdfPTable table, String text, Font font) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, font));
+        cell.setBackgroundColor(BaseColor.LIGHT_GRAY);
+        cell.setPadding(5f);
+        cell.setBorderWidth(1f);
+        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        table.addCell(cell);
+    }
+
+    private void addStatThreeColRow(PdfPTable table, String label, String valA, String valB, Font labelFont, Font valueFont) {
+        PdfPCell labelCell = new PdfPCell(new Phrase(label, labelFont));
+        labelCell.setPadding(5f);
+        labelCell.setBorderColor(BaseColor.LIGHT_GRAY);
+
+        PdfPCell cellA = new PdfPCell(new Phrase(valA, valueFont));
+        cellA.setPadding(5f);
+        cellA.setBorderColor(BaseColor.LIGHT_GRAY);
+        cellA.setHorizontalAlignment(Element.ALIGN_CENTER);
+
+        PdfPCell cellB = new PdfPCell(new Phrase(valB, valueFont));
+        cellB.setPadding(5f);
+        cellB.setBorderColor(BaseColor.LIGHT_GRAY);
+        cellB.setHorizontalAlignment(Element.ALIGN_CENTER);
+
+        table.addCell(labelCell);
+        table.addCell(cellA);
+        table.addCell(cellB);
+    }
+
+    private String formatDouble(Double d) {
+        if (d == null) {
+            return "-";
+        }
+        return new java.text.DecimalFormat("#0.00").format(d);
+    }
+
+    private String formatPctl(PercentilesDto p) {
+        if (p == null) {
+            return "-";
+        }
+        return formatDouble(p.getP10()) + " | " + formatDouble(p.getP50()) + " | " + formatDouble(p.getP90());
+    }
+
     private Paragraph formatLine(String label, String value, Font boldFont, Font normalFont) {
         Paragraph p = new Paragraph();
         p.add(new Chunk(label + " ", boldFont));
@@ -413,5 +542,20 @@ public class ReportService implements IReportService {
             uniqueFileName = UUID.randomUUID() + ".pdf";
         } while (Files.exists(Path.of(UPLOAD_DIRECTORY, uniqueFileName)));
         return uniqueFileName;
+    }
+
+    private static class PageNumberFooter extends PdfPageEventHelper {
+        private final Font footerFont = new Font(Font.FontFamily.HELVETICA, 9, Font.ITALIC, BaseColor.GRAY);
+
+        @Override
+        public void onEndPage(PdfWriter writer, Document document) {
+            PdfContentByte cb = writer.getDirectContent();
+
+            float centerX = (document.right() - document.left()) / 2 + document.leftMargin();
+            float centerY = document.bottom() - 20;
+
+            Phrase footer = new Phrase("Page " + writer.getPageNumber(), footerFont);
+            ColumnText.showTextAligned(cb, Element.ALIGN_CENTER, footer, centerX, centerY, 0);
+        }
     }
 }

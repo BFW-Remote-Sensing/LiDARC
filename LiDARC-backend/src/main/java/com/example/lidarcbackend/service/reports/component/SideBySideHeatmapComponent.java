@@ -29,15 +29,25 @@ public class SideBySideHeatmapComponent implements IReportComponent {
         String[] fileNames = rawFileName.split(";");
         byte[] leftBytes = fileMap.get(fileNames[0]);
         byte[] rightBytes = fileMap.get(fileNames[1]);
-        addHeader(document, componentDto.getTitle());
+
         PdfPTable table = new PdfPTable(2);
         table.setWidthPercentage(100);
         table.setWidths(new float[] {1, 1});
         table.setSpacingBefore(10f);
+        table.setKeepTogether(true);
+
+        if (componentDto.getTitle() != null) {
+            PdfPCell headerCell = new PdfPCell(new Paragraph(componentDto.getTitle(), new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD)));
+            headerCell.setColspan(2);
+            headerCell.setBorder(Rectangle.NO_BORDER);
+            headerCell.setPaddingBottom(5f);
+            table.addCell(headerCell);
+        }
 
         //TODO: Either add real caption or remove it?
         table.addCell(createImageCell(leftBytes, ""));
         table.addCell(createImageCell(rightBytes, ""));
+
         document.add(table);
         return document;
     }

@@ -10,6 +10,7 @@ export interface ChunkedCell {
   out_b: number;
   out_c7_a: number;
   out_c7_b: number;
+
   [key: string]: number;
 }
 
@@ -60,7 +61,7 @@ export interface ChunkingResult {
     difference: DifferenceMetrics;
     categorized: CategorizedCounts;
   };
-  statistics_p?:{
+  statistics_p?: {
     file_a: FileMetrics;
     file_b: FileMetrics;
     difference: DifferenceMetrics;
@@ -81,6 +82,14 @@ export interface VegetationStats {
   difference_metrics: DifferenceMetrics;
   group_mapping: GroupMapping;
 }
+
+export interface VegetationStatsWithoutCells {
+  fileA_metrics: FileMetrics;
+  fileB_metrics: FileMetrics;
+  difference_metrics: DifferenceMetrics;
+  group_mapping: GroupMapping;
+}
+
 export interface GroupMapping {
   a: string;
   b: string;

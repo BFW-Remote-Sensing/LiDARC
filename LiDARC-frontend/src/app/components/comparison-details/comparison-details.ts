@@ -1,24 +1,24 @@
 import {Component, Input, OnInit, signal, WritableSignal, ViewChild, computed} from '@angular/core';
-import { ComparisonService } from '../../service/comparison.service';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { finalize, forkJoin, interval, map, Subject, Subscription, switchMap, timer } from 'rxjs';
-import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
-import { ComparisonDTO } from '../../dto/comparison';
-import { ComparisonReport } from '../../dto/comparisonReport';
-import { CommonModule } from '@angular/common';
-import { MatExpansionModule } from '@angular/material/expansion';
-import { MatIcon } from '@angular/material/icon';
-import { MatListModule } from '@angular/material/list';
-import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import { TextCard } from '../text-card/text-card';
-import { MatButton, MatIconButton } from '@angular/material/button';
-import { MatTooltip } from '@angular/material/tooltip';
+import {ComparisonService} from '../../service/comparison.service';
+import {ActivatedRoute, Router, RouterModule} from '@angular/router';
+import {finalize, forkJoin, interval, map, Subject, Subscription, switchMap, timer} from 'rxjs';
+import {FormatBytesPipe} from '../../pipes/formatBytesPipe';
+import {ComparisonDTO} from '../../dto/comparison';
+import {ComparisonReport} from '../../dto/comparisonReport';
+import {CommonModule} from '@angular/common';
+import {MatExpansionModule} from '@angular/material/expansion';
+import {MatIcon} from '@angular/material/icon';
+import {MatListModule} from '@angular/material/list';
+import {MatProgressSpinner} from '@angular/material/progress-spinner';
+import {TextCard} from '../text-card/text-card';
+import {MatButton, MatIconButton} from '@angular/material/button';
+import {MatTooltip} from '@angular/material/tooltip';
 
 
 import * as echarts from 'echarts/core';
-import { EChartsCoreOption, ECElementEvent } from 'echarts/core';
-import { NgxEchartsDirective, provideEchartsCore } from "ngx-echarts";
-import { BarChart, BoxplotChart, HeatmapChart, LineChart, ScatterChart } from 'echarts/charts';
+import {EChartsCoreOption, ECElementEvent} from 'echarts/core';
+import {NgxEchartsDirective, provideEchartsCore} from "ngx-echarts";
+import {BarChart, BoxplotChart, HeatmapChart, LineChart, ScatterChart} from 'echarts/charts';
 import {
   GraphicComponent,
   GridComponent,
@@ -46,7 +46,7 @@ import {
   VegetationStats,
   CellEntry
 } from '../../dto/chunking';
-import { takeUntil } from 'rxjs/operators';
+import {takeUntil} from 'rxjs/operators';
 
 import {ChunkingSettings} from '../chunking-settings/chunking-settings';
 import {FormsModule} from '@angular/forms';
@@ -93,7 +93,6 @@ echarts.use([
     ChunkingSettings,
     FormsModule,
     MatSlideToggleModule,
-    MatCheckbox,
     Heatmap
   ],
   templateUrl: './comparison-details.html',
@@ -192,7 +191,6 @@ export class ComparisonDetails implements OnInit {
   private chunkSize$ = new Subject<number>();
 
 
-
   scatterOption!: EChartsCoreOption;
   fileDistributionOption!: EChartsCoreOption;
   diffDistributionOption!: EChartsCoreOption;
@@ -289,17 +287,17 @@ export class ComparisonDetails implements OnInit {
     this.comparisonService.getComparisonReportsById(+this.comparisonId!, this.reportsLimit)
       .subscribe({
         next: (reports) => {
-            this.reports.set(reports);
-            this.checkIfMoreReportsExist(reports.length);
-            if (this.comparison()!.individualStatisticsPercentile) {
-              this.percentilesAvailable.set(true);
-              this.showPercentiles.set(false);
-            } else {
-              this.percentilesAvailable.set(false);
-              this.showPercentiles.set(false);
-            }
-          },
-          error: (err) => console.error('Failed to fetch reports:', err)
+          this.reports.set(reports);
+          this.checkIfMoreReportsExist(reports.length);
+          if (this.comparison()!.individualStatisticsPercentile) {
+            this.percentilesAvailable.set(true);
+            this.showPercentiles.set(false);
+          } else {
+            this.percentilesAvailable.set(false);
+            this.showPercentiles.set(false);
+          }
+        },
+        error: (err) => console.error('Failed to fetch reports:', err)
       });
   }
 
@@ -484,7 +482,7 @@ export class ComparisonDetails implements OnInit {
           }
         }
 
-        cells.push({ A, B, delta_z: delta });
+        cells.push({A, B, delta_z: delta});
       }
     }
 
@@ -532,9 +530,6 @@ export class ComparisonDetails implements OnInit {
       if (this.heatmapComponent.differenceInstance) {
         this.pushChartImage(chartImages, this.heatmapComponent.differenceInstance, 'Heatmap Diff', 'heatmap_diff.png', ReportType.HEATMAP)
       }
-      if (this.heatmapComponent.differenceInstance){
-        this.pushChartImage(chartImages, this.heatmapComponent.differenceInstance, 'Vegetation Heatmap Difference', 'heatmap_difference.png')
-      }
     }
     const chartsToExport = [
       {key: 'scatter', name: 'Vegetation Height Scatter Plot', fileName: 'scatter_plot.png', type: ReportType.SCATTER},
@@ -549,7 +544,7 @@ export class ComparisonDetails implements OnInit {
         key: 'distribution_diff',
         name: 'Vegetation Height Distribution Differences',
         fileName: 'distribution_diff.png',
-        type: ReportType.DISTRIBUTION
+        type: ReportType.DISTRIBUTION_DIFF
       },
       {key: 'histo_diff', name: 'Histogram Differences', fileName: 'histo_diff.png', type: ReportType.HISTO}
     ];
@@ -561,13 +556,15 @@ export class ComparisonDetails implements OnInit {
         console.warn(`Instance not found for ${chart.name}. Is the chart visible in the DOM?`);
       }
     });
-
+    const statsValue = this.vegetationStats();
+    const {cells, ...statsWithoutCells} = statsValue;
     const dialogRef = this.dialog.open(ReportCreationDialogComponent, {
       width: '600px',
       height: 'auto',
       data: {
         comparison: this.comparison(),
-        availableCharts: chartImages
+        availableCharts: chartImages,
+        stats: statsWithoutCells
       }
     });
 
@@ -585,7 +582,7 @@ export class ComparisonDetails implements OnInit {
       }
       const dataUrl = instance.getDataURL({
         type: 'png',
-        pixelRatio: 2,
+        pixelRatio: 3,
         backgroundColor: '#fff',
         excludeComponents: ['toolbox']
       });
@@ -828,37 +825,36 @@ export class ComparisonDetails implements OnInit {
           type: 'line',
           smooth: true,
           data: xValues.map((x, i) => [x, yValues[i]]),
-          lineStyle: { width: 2, color: 'green' },
+          lineStyle: {width: 2, color: 'green'},
           showSymbol: false
         },
         {
           name: 'Mean',
           type: 'line',
           data: [[mean, 0], [mean, maxY]],
-          lineStyle: { type: 'dashed', width: 2 },
+          lineStyle: {type: 'dashed', width: 2},
           showSymbol: false,
-          tooltip: { show: false }
+          tooltip: {show: false}
         },
         {
           name: '+2σ',
           type: 'line',
           data: [[mean + 2 * std, 0], [mean + 2 * std, maxY]],
-          lineStyle: { type: 'dashed' },
+          lineStyle: {type: 'dashed'},
           showSymbol: false,
-          tooltip: { show: false }
+          tooltip: {show: false}
         },
         {
           name: '-2σ',
           type: 'line',
           data: [[mean - 2 * std, 0], [mean - 2 * std, maxY]],
-          lineStyle: { type: 'dashed' },
+          lineStyle: {type: 'dashed'},
           showSymbol: false,
-          tooltip: { show: false }
+          tooltip: {show: false}
         }
       ]
     };
   }
-
 
 
   private buildDifferenceHistogramChart(): EChartsCoreOption {
@@ -895,7 +891,7 @@ export class ComparisonDetails implements OnInit {
         type: 'category',
         name: 'Difference B - A',
         data: binLabels,
-        axisLabel: { rotate: 45 }
+        axisLabel: {rotate: 45}
       },
       yAxis: {
         type: 'value',
@@ -906,7 +902,7 @@ export class ComparisonDetails implements OnInit {
           name: 'Count',
           type: 'bar',
           data: counts,
-          itemStyle: { color: 'steelblue' },
+          itemStyle: {color: 'steelblue'},
           barGap: 0,
           barCategoryGap: '0%'
         }
@@ -977,7 +973,7 @@ export class ComparisonDetails implements OnInit {
           name: 'Boxplot',
           type: 'boxplot',
           data: data,
-          itemStyle: { color: 'lightblue' }
+          itemStyle: {color: 'lightblue'}
         }
       ]
     };
