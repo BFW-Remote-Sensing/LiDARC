@@ -16,7 +16,6 @@ import com.example.lidarcbackend.repository.*;
 import com.example.lidarcbackend.repository.projection.FileUsageCount;
 import com.example.lidarcbackend.repository.projection.FolderUsageCount;
 import com.example.lidarcbackend.service.IJobTrackingService;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.example.lidarcbackend.service.files.IMetadataService;
 import com.example.lidarcbackend.service.files.WorkerStartService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -243,6 +242,7 @@ public class ComparisonService implements IComparisonService {
             validationErrors.add("Cell height is bigger than area of interest height");
         }
         //TODO Check if grid AOI inside max / min of total files for FolderA & FolderB / File1 & File2
+
         if (!validationErrors.isEmpty()) {
             throw new ValidationException("Validation of Grid for comparison: " + comparisonRequest.getName() + " failed!", validationErrors);
         }
@@ -262,11 +262,30 @@ public class ComparisonService implements IComparisonService {
             files.add(fileRepository.findById(fileId)
                 .orElseThrow(() -> new NotFoundException("File for comparison with id: " + fileId + " not found!")));
         }
+        BoundingBox gridBox = new BoundingBox(
+            grid.getxMin(), grid.getxMax(),
+            grid.getyMin(), grid.getyMax()
+        );
         //TODO: Order by newer dates so newer file is higher prio
         //TODO: Which dates? Upload or capture year?
         List<BoundingBox> restrictedZones = new ArrayList<>();
         for (File fileEntity : files) {
-            BoundingBox rawBox = new BoundingBox(fileEntity.getMinX(), fileEntity.getMaxX(), fileEntity.getMinY(), fileEntity.getMaxY());
+            BoundingBox rawBox = new BoundingBox(
+                fileEntity.getMinX(), fileEntity.getMaxX(),
+                fileEntity.getMinY(), fileEntity.getMaxY()
+            );
+            ComparisonFile cf = new ComparisonFile();
+            cf.setComparisonId(savedComparison.getId());
+            cf.setFileId(fileEntity.getId());
+            cf.setGroupName(groupName);
+            cf.setStatus(ComparisonFile.Status.PREPROCESSING);
+
+            if (!intersects(rawBox, gridBox)) {
+                cf.setIncluded(false);
+                cf.setStatus(ComparisonFile.Status.COMPLETED);
+                plan.addExcludedFile(cf);
+                continue;
+            }
             BoundingBox snappedBox = snapToGrid(rawBox, grid);
 
             List<BoundingBox> validRegions = new ArrayList<>();
@@ -278,12 +297,6 @@ public class ComparisonService implements IComparisonService {
                     break;
                 }
             }
-
-            ComparisonFile cf = new ComparisonFile();
-            cf.setComparisonId(savedComparison.getId());
-            cf.setFileId(fileEntity.getId());
-            cf.setGroupName(groupName);
-            cf.setStatus(ComparisonFile.Status.PREPROCESSING);
 
             if (!validRegions.isEmpty()) {
                 cf.setIncluded(true);
@@ -327,10 +340,10 @@ public class ComparisonService implements IComparisonService {
                 );
                 jobTrackingService.registerJob(trackedJob);
 
-        } else {
-                cf.setIncluded(false);
-                cf.setStatus(ComparisonFile.Status.COMPLETED);
-                plan.addExcludedFile(cf);
+            } else {
+                    cf.setIncluded(false);
+                    cf.setStatus(ComparisonFile.Status.COMPLETED);
+                    plan.addExcludedFile(cf);
             }
             //TODO: Handle traceability in BE
             //TODO: Check if this is reliable

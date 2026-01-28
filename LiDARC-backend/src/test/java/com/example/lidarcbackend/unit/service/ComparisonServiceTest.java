@@ -14,6 +14,7 @@ import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.repository.ComparisonFileRepository;
 import com.example.lidarcbackend.repository.ComparisonRepository;
 import com.example.lidarcbackend.repository.FileRepository;
+import com.example.lidarcbackend.service.IJobTrackingService;
 import com.example.lidarcbackend.service.comparisons.ComparisonService;
 import com.example.lidarcbackend.service.files.MetadataService;
 import com.example.lidarcbackend.service.files.WorkerStartService;
@@ -56,6 +57,10 @@ public class ComparisonServiceTest {
     private ComparisonMapper comparisonMapper;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private IJobTrackingService jobTrackingService;
+
     @InjectMocks
     private ComparisonService comparisonService;
 
@@ -88,7 +93,6 @@ public class ComparisonServiceTest {
         ArgumentCaptor<PreProcessJobsReadyEvent> eventCaptor = ArgumentCaptor.forClass(PreProcessJobsReadyEvent.class);
         verify(eventPublisher).publishEvent(eventCaptor.capture());
 
-        // Ensure the service didn't cheat and call the worker directly!
         verifyNoInteractions(workerStartService);
 
         return eventCaptor.getValue().jobsToStart();
@@ -386,6 +390,52 @@ public class ComparisonServiceTest {
             .orElseThrow(() -> new AssertionError("Job for File 1 missing"));
 
         assertBoundingBox(job1.getBboxes().getFirst(), 0.0, 100.0, 0.0, 100.0);
+
+        StartPreProcessJobDto job2 = jobs.stream()
+            .filter(j -> j.getFileId().equals(fileId2))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Job for File 2 missing"));
+
+        assertBoundingBox(job2.getBboxes().getFirst(), 0.0, 100.0, 0.0, 100.0);
+    }
+
+
+    @Test
+    void saveComparison_OneFileInFolderAOutsideOfAOI_ShouldOnlyStartOneJob() throws NotFoundException, ValidationException {
+        Long fileId1 = 1L;
+        Long fileId2 = 2L;
+        Long fileId3 = 3L;
+
+        File file1 = createFile(fileId1, 0.0, 30.0, 0.0, 30.0);
+        File file2 = createFile(fileId2, 0.0, 100.0, 0.0, 100.0);
+        File file3 = createFile(fileId3, 30.0, 60.0, 30.0, 60.0);
+
+        when(fileRepository.findById(fileId1)).thenReturn(Optional.of(file1));
+        when(fileRepository.findById(fileId2)).thenReturn(Optional.of(file2));
+        when(fileRepository.findById(fileId3)).thenReturn(Optional.of(file3));
+        createRequest.setFolderAFiles(List.of(fileId1, fileId3));
+        createRequest.setFolderBFiles(List.of(fileId2));
+
+        GridParameters aoi = new GridParameters();
+        aoi.setCellWidth(2);
+        aoi.setCellHeight(2);
+        aoi.setxMin(30.0);
+        aoi.setyMin(30.0);
+        aoi.setxMax(100.0);
+        aoi.setyMax(100.0);
+        createRequest.setGrid(aoi);
+
+        comparisonService.saveComparison(createRequest, List.of());
+
+        List<StartPreProcessJobDto> jobs = captureJobs();
+
+        assertEquals(2, jobs.size());
+        StartPreProcessJobDto job1 = jobs.stream()
+            .filter(j -> j.getFileId().equals(fileId3))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Job for File 3 missing"));
+
+        assertBoundingBox(job1.getBboxes().getFirst(), 30.0, 60.0, 30.0, 60.0);
 
         StartPreProcessJobDto job2 = jobs.stream()
             .filter(j -> j.getFileId().equals(fileId2))
