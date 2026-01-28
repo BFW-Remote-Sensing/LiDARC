@@ -187,6 +187,8 @@ export class ComparisonDetails implements OnInit {
   groupMapping = computed(() => this.vegetationStats().group_mapping);
   needOutlierDetection = computed(() => this.comparison()?.needOutlierDetection);
   outlierDeviationFactor = computed(() => this.comparison()?.outlierDeviationFactor);
+  maxVegHeightA = computed(() => this.vegetationStats().fileA_metrics.max_veg_height);
+  minVegHeightA = computed(() => this.vegetationStats().fileA_metrics.min_veg_height);
   private pollingSubscription?: Subscription;
   private chunkSize$ = new Subject<number>();
 

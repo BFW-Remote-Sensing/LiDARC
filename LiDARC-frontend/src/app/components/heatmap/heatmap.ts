@@ -95,10 +95,13 @@ export class Heatmap implements AfterViewInit, OnChanges {
   selectedColorScheme: SchemeKey = "greens"; //default color scheme
 
 
+
   @Input() groupMapping!: {a: string, b: string};
   @Input({transform: booleanAttribute}) needOutlierDetection: boolean = false;
   @Input() outlierDeviationFactor: number | undefined;
   @Input() comparisonId: number | null = null;
+  @Input() max_veg_height_a: number | null = 30;
+  @Input() min_veg_height_a: number | null = 0;
 
   @Input() data?: ChunkingResult; //fetch result from parent component
 
@@ -189,19 +192,8 @@ export class Heatmap implements AfterViewInit, OnChanges {
     this.chartInstance2.setOption(this.optionsRight);
     this.differenceInstance.setOption(this.differenceOptions);
 
-
-    // this.resizeObserver = new ResizeObserver(() => {
-    //   if (this.showAB) { this.chartInstance1.resize(); this.chartInstance2.resize(); }
-    //   if (this.showD) { this.differenceInstance.resize(); }
-    // });
-    // this.resizeObserver.observe(this.chart1!.nativeElement);
-    // this.resizeObserver.observe(this.chart2!.nativeElement);
-    // this.resizeObserver.observe(this.diffElement!.nativeElement);
-
     this.setupHoverInteractions();
 
-    // connect initial mode
-    //this.applyConnections();
 
   }
 
@@ -231,16 +223,6 @@ export class Heatmap implements AfterViewInit, OnChanges {
   }
 
   private applyColorScheme(): void {
-    // const colors = this.COLOR_Schemes[this.selectedColorScheme].color;
-    // // Update visual maps with new colors
-    // const opt = {
-    //   ...this.BASE_VirtualMap
-    // };
-    // this.updateVisualMap(this.chartInstance1,true, false);
-    // this.updateVisualMap(this.chartInstance2,false, false);
-  //
-  //   this.chartInstance1?.setOption(opt, {replaceMerge: ['visualMap'] as any});
-  //   this.chartInstance2?.setOption(opt, {replaceMerge: ['visualMap'] as any});
     const colors = this.COLOR_Schemes[this.selectedColorScheme].color;
     console.log("apply" + colors);
 
@@ -321,6 +303,8 @@ export class Heatmap implements AfterViewInit, OnChanges {
     const opt = {
       visualMap: [
         {
+          min: this.min_veg_height_a,
+          max: this.max_veg_height_a,
           ...option,
           inRange: {
             color: colors
@@ -474,6 +458,7 @@ export class Heatmap implements AfterViewInit, OnChanges {
     console.log(differenceData)
     console.log(seriesDataA);
     console.log(seriesDataB);
+
 
     const renderItem = (params: any, api: any) => {
       const x0 = api.value(0);
@@ -676,6 +661,8 @@ export class Heatmap implements AfterViewInit, OnChanges {
         {type: 'slider', yAxisIndex: 0, orient: 'vertical', right: 0, filterMode: 'none'}
       ],
       visualMap: [{
+        min: 0,
+        max: 30,
         ...this.BASE_VisualMap,
         show: showVisualMap
       }],// We will set the rest in updateHeatmaps
@@ -796,8 +783,8 @@ export class Heatmap implements AfterViewInit, OnChanges {
 
 
   private BASE_VisualMap: any = {
-    min: 0,
-    max: 30,
+    // min: this.min_veg_height_a,
+    // max: this.max_veg_height_a,
     calculable: true,
     orient: 'vertical',
     left: -5,

@@ -322,6 +322,8 @@
             <mat-card-content>
               <app-heatmap [outlierDeviationFactor]="outlierDeviationFactor()"
                            [needOutlierDetection]="needOutlierDetection()"
+                           [max_veg_height_a]="maxVegHeightA()"
+                            [min_veg_height_a]="minVegHeightA()"
                            [groupMapping]="groupMapping()" [data]="sharedChunkingResult"
                            [showOutliers]="showOutlierDots()" (showOutliersChange)="showOutlierDots.set($event)"
                            [showPercentiles]="showPercentiles()">
