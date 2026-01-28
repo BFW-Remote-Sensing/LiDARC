@@ -26,6 +26,11 @@ export class SelectedItemService {
         for (let fileItem of thisFolderSelectedItem.files) {
           if (fileItem.id === id) {
             thisFolderSelectedItem.files = thisFolderSelectedItem.files.filter(f => f.id !== id);
+            selectedItem.fileCount--;
+            if (thisFolderSelectedItem.files.length === 0) {
+              this.items.delete(selectedItem);
+              return true;
+            }
             return false;
           }
         }

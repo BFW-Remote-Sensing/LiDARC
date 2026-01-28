@@ -1,40 +1,40 @@
-import {ChangeDetectorRef, Component, Input, signal, WritableSignal} from '@angular/core';
-import {SelectedItemService} from '../../service/selectedItem.service';
-import {MatAnchor, MatButtonModule} from "@angular/material/button";
-import {FormsModule} from '@angular/forms';
-import {MatFormFieldModule} from '@angular/material/form-field';
-import {MatInputModule} from '@angular/material/input';
-import {MatDivider, MatDividerModule} from '@angular/material/divider';
-import {MatCheckbox} from '@angular/material/checkbox';
-import {CreateComparison} from '../../dto/comparison';
-import {MatProgressSpinner} from '@angular/material/progress-spinner';
-import {ComparisonService} from '../../service/comparison.service';
-import {ActivatedRoute, Router, RouterModule} from '@angular/router';
-import {MatDialog} from '@angular/material/dialog';
-import {DefineGrid} from '../define-grid/define-grid';
-import {MatCardModule} from '@angular/material/card';
-import {MatIcon} from "@angular/material/icon";
-import {ConfirmationDialogComponent, ConfirmationDialogData} from '../confirmation-dialog/confirmation-dialog';
+import { ChangeDetectorRef, Component, Input, signal, WritableSignal } from '@angular/core';
+import { SelectedItemService } from '../../service/selectedItem.service';
+import { MatAnchor, MatButtonModule } from "@angular/material/button";
+import { FormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatDivider, MatDividerModule } from '@angular/material/divider';
+import { MatCheckbox } from '@angular/material/checkbox';
+import { CreateComparison } from '../../dto/comparison';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { ComparisonService } from '../../service/comparison.service';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { DefineGrid } from '../define-grid/define-grid';
+import { MatCardModule } from '@angular/material/card';
+import { MatIcon } from "@angular/material/icon";
+import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
 import {
   PointFilterDialogData,
   PointFilterDialogue,
   PointFilterResult
 } from '../point-filter-dialogue/point-filter-dialogue';
-import {ReferenceFileService} from '../../service/referenceFile.service';
-import {ComparableListItem} from '../../dto/comparableItem';
-import {MatTableDataSource, MatTableModule} from '@angular/material/table';
-import {MatSelectModule} from '@angular/material/select';
-import {CommonModule} from '@angular/common';
-import {FormatBytesPipe} from '../../pipes/formatBytesPipe';
-import {animate, state, style, transition, trigger} from '@angular/animations';
-import {MatTooltipModule} from '@angular/material/tooltip';
+import { ReferenceFileService } from '../../service/referenceFile.service';
+import { ComparableListItem } from '../../dto/comparableItem';
+import { MatTableDataSource, MatTableModule } from '@angular/material/table';
+import { MatSelectModule } from '@angular/material/select';
+import { CommonModule } from '@angular/common';
+import { FormatBytesPipe } from '../../pipes/formatBytesPipe';
+import { animate, state, style, transition, trigger } from '@angular/animations';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import * as L from 'leaflet';
-import {FileMetadataDTO} from '../../dto/fileMetadata';
-import {FolderFilesDTO} from '../../dto/folderFiles';
-import {getExtremeValue} from '../../helpers/extremeValue';
-import {CdkDragDrop, DragDropModule, moveItemInArray} from '@angular/cdk/drag-drop';
-import {CoordinateService} from '../../service/coordinate.service';
-import {finalize, Observable } from 'rxjs';import {MatSnackBar, MatSnackBarModule} from '@angular/material/snack-bar';
+import { FileMetadataDTO } from '../../dto/fileMetadata';
+import { FolderFilesDTO } from '../../dto/folderFiles';
+import { getExtremeValue } from '../../helpers/extremeValue';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
+import { CoordinateService } from '../../service/coordinate.service';
+import { finalize, Observable } from 'rxjs'; import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-comparison-setup',
@@ -59,11 +59,11 @@ import {finalize, Observable } from 'rxjs';import {MatSnackBar, MatSnackBarModul
     FormatBytesPipe
   ],
   templateUrl: './comparison-setup.html',
-  styleUrls: ['./comparison-setup.scss', '../comparable-items/comparable-items.scss'],
+  styleUrls: ['./comparison-setup.scss', '../comparable-items/comparable-items.scss', '../stored-files/stored-files.scss'],
   animations: [
     trigger('detailExpand', [
-      state('collapsed', style({height: '0px', minHeight: '0', visibility: 'hidden'})),
-      state('expanded', style({height: '*', visibility: 'visible'})),
+      state('collapsed', style({ height: '0px', minHeight: '0', visibility: 'hidden' })),
+      state('expanded', style({ height: '*', visibility: 'visible' })),
       transition('expanded <=> collapsed', animate('200ms ease')),
     ]),
   ],
@@ -120,7 +120,7 @@ export class ComparisonSetup {
     }
     this.expandedElement = this.isExpanded(element) ? null : element;
     this.router.navigate([], {
-      queryParams: {expandedItemId: this.isExpanded(element) ? element.id : null},
+      queryParams: { expandedItemId: this.isExpanded(element) ? element.id : null },
       queryParamsHandling: 'merge',
     });
   }
@@ -454,7 +454,7 @@ export class ComparisonSetup {
       fillOpacity: 0.2,
       interactive: false
     }).addTo(this.resultMap);
-    this.resultMap.fitBounds(completeBounds, {padding: [20, 20]});
+    this.resultMap.fitBounds(completeBounds, { padding: [20, 20] });
   }
 
   private checkSpatialOverlap(items: Set<ComparableListItem>): boolean {
@@ -510,6 +510,6 @@ export class ComparisonSetup {
     const zone = this.getEpsgCode(item) || 31256;
     const sw = this.coordService.toLatLng(minX, minY, zone);
     const ne = this.coordService.toLatLng(maxX, maxY, zone);
-    return {sw, ne};
+    return { sw, ne };
   }
 }

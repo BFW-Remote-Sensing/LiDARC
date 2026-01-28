@@ -66,15 +66,20 @@
         <!-- Status Column -->
         <ng-container matColumnDef="status">
           <th mat-header-cell *matHeaderCellDef>Status</th>
-          <td mat-cell *matCellDef="let element" [ngClass]="{
+          <td mat-cell *matCellDef="let element">
+            <div class="status-column">
+              <span [ngClass]="{
         'status-ready': element.status === 'PROCESSED',
         'status-error': element.status === 'FAILED',
-        'status-default': element.status === 'UPLOADED' || element.status === 'PROCESSING'
+        'status-default': ['UPLOADED', 'PROCESSING', 'UPLOADING'].includes(element.status)
     }">
-            <div style="display: flex; column-gap: 10px;">
-              <span>{{ element.status }}</span>
-              @if (element.status === 'PROCESSING') {
+                {{ element.status | titlecase }}</span>
+              @if (element.status === 'PREPROCESSING' || element.status === 'COMPARING') {
               <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+              } @else if (element.status === 'FAILED') {
+              <mat-icon [matTooltip]="element.errorMessage" matTooltipPosition="above" diameter="20">
+                error
+              </mat-icon>
               }
             </div>
           </td>
@@ -132,15 +137,21 @@
                 <!-- Status Column -->
                 <ng-container matColumnDef="status">
                   <th mat-header-cell *matHeaderCellDef>Status</th>
-                  <td mat-cell *matCellDef="let file" [ngClass]="{
-            'status-ready': file.status === 'PROCESSED',
-            'status-error': file.status === 'FAILED',
-            'status-default': file.status === 'UPLOADED' || file.status === 'PROCESSING'
-        }">
-                    <div style="display: flex; column-gap: 10px;">
-                      <span>{{ file.status }}</span>
-                      <mat-progress-spinner *ngIf="file.status === 'PROCESSING'" diameter="20"
-                        mode="indeterminate"></mat-progress-spinner>
+                  <td mat-cell *matCellDef="let file">
+                    <div class="status-column">
+                      <span [ngClass]="{
+        'status-ready': file.status === 'PROCESSED',
+        'status-error': file.status === 'FAILED',
+        'status-default': ['UPLOADED', 'PROCESSING', 'UPLOADING'].includes(file.status)
+    }">
+                        {{ file.status | titlecase }}</span>
+                      @if (file.status === 'PREPROCESSING' || file.status === 'COMPARING') {
+                      <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+                      } @else if (file.status === 'FAILED') {
+                      <mat-icon [matTooltip]="file.errorMessage" matTooltipPosition="above" diameter="20">
+                        error
+                      </mat-icon>
+                      }
                     </div>
                   </td>
                 </ng-container>
@@ -240,26 +251,18 @@
       </div>
       <div>
         <mat-checkbox [checked]="comparison.individualStatisticsPercentile !== null" [disabled]="loadingStart()"
-                      (change)="onIndividualPercentileToggle($event.checked)">
+          (change)="onIndividualPercentileToggle($event.checked)">
           Individual Statistics Percentile
         </mat-checkbox>
         @if (comparison.individualStatisticsPercentile !== null) {
-          <div class="individualStatisticsPercentileInput">
-            <mat-form-field
-              appearance="outline"
-              class="percentile-field">
+        <div class="individualStatisticsPercentileInput">
+          <mat-form-field appearance="outline" class="percentile-field">
 
-              <mat-label>Percentile</mat-label>
-              <input
-                matInput
-                type="number"
-                step="0.01"
-                min="0.01"
-                max="99.99"
-                [(ngModel)]="comparison.individualStatisticsPercentile"
-                (blur)="normalizePercentile()">
-            </mat-form-field>
-          </div>
+            <mat-label>Percentile</mat-label>
+            <input matInput type="number" step="0.01" min="0.01" max="99.99"
+              [(ngModel)]="comparison.individualStatisticsPercentile" (blur)="normalizePercentile()">
+          </mat-form-field>
+        </div>
         }
       </div>
 
