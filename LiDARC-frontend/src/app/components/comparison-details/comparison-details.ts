@@ -189,6 +189,9 @@ export class ComparisonDetails implements OnInit {
   outlierDeviationFactor = computed(() => this.comparison()?.outlierDeviationFactor);
   maxVegHeightA = computed(() => this.vegetationStats().fileA_metrics.max_veg_height);
   minVegHeightA = computed(() => this.vegetationStats().fileA_metrics.min_veg_height);
+  minVegHeightB = computed(() => this.vegetationStats().fileB_metrics.min_veg_height);
+  maxVegHeightB = computed(()=> this.vegetationStats().fileB_metrics.max_veg_height);
+
   private pollingSubscription?: Subscription;
   private chunkSize$ = new Subject<number>();
 

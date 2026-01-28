@@ -102,6 +102,8 @@ export class Heatmap implements AfterViewInit, OnChanges {
   @Input() comparisonId: number | null = null;
   @Input() max_veg_height_a: number | null = 30;
   @Input() min_veg_height_a: number | null = 0;
+  @Input() min_veg_height_b: number | null = 0;
+  @Input() max_veg_height_b: number | null = 30;
 
   @Input() data?: ChunkingResult; //fetch result from parent component
 
@@ -292,19 +294,49 @@ export class Heatmap implements AfterViewInit, OnChanges {
     this.applyZoomVisibility();
   }
 
-  private updateVisualMap(chart: echarts.ECharts, show: boolean, delta_chart: boolean) {
+  private updateVisualMap(show: boolean, delta_chart: boolean) {
     let option;
     let colors;
     delta_chart ? option = this.BASE_DeltaVirtualMap : option = this.BASE_VisualMap;
     delta_chart ? colors = this.COLOR_Schemes.deltas.color : colors = this.COLOR_Schemes[this.selectedColorScheme].color;
 
     console.log("updateVisualMap" + colors);
+    if (!delta_chart){
+      const opt1 = {
+        visualMap: [
+          {
+            ...option,
+            inRange: {
+              color: colors
+            },
+            min: this.min_veg_height_a,
+            max: this.max_veg_height_a,
+            show: show
+          }
+        ]
+      }
+      const opt2 = {
+        visualMap: [
+          {
+            ...option,
+            inRange: {
+              color: colors
+            },
+            min: this.min_veg_height_b,
+            max: this.max_veg_height_b,
+            show: show
+          }
+        ]
+      }
+
+      this.chartInstance1?.setOption(opt1, { replaceMerge: ['visualMap'] as any });
+      this.chartInstance2?.setOption(opt2, { replaceMerge: ['visualMap'] as any });
+      return;
+    }
 
     const opt = {
       visualMap: [
         {
-          min: this.min_veg_height_a,
-          max: this.max_veg_height_a,
           ...option,
           inRange: {
             color: colors
@@ -313,7 +345,7 @@ export class Heatmap implements AfterViewInit, OnChanges {
         }
       ]
     }
-    chart?.setOption(opt, { replaceMerge: ['visualMap'] as any });
+    this.differenceInstance?.setOption(opt, { replaceMerge: ['visualMap'] as any });
 
 
     // chart.setOption(
@@ -335,11 +367,10 @@ export class Heatmap implements AfterViewInit, OnChanges {
     console.log("Toggling visual map to " + this.showVisualMap);
 
     if (this.showAB) {
-      this.updateVisualMap(this.chartInstance1, this.showVisualMap, false);
-      this.updateVisualMap(this.chartInstance2, this.showVisualMap, false);
+      this.updateVisualMap(this.showVisualMap, false);
     }
     if (this.showD) {
-      this.updateVisualMap(this.differenceInstance, this.showVisualMap, true);
+      this.updateVisualMap( this.showVisualMap, true);
     }
   }
 
@@ -594,6 +625,8 @@ export class Heatmap implements AfterViewInit, OnChanges {
         formatter: tooltipFormatter,
           },
       visualMap: {
+        min: this.min_veg_height_a,
+        max: this.max_veg_height_a,
         dimension: 4  // Use dimension 4 (value) for color mapping
       },
       series: [{
@@ -611,6 +644,8 @@ export class Heatmap implements AfterViewInit, OnChanges {
         formatter: tooltipFormatter,
            },
       visualMap: {
+        min: this.min_veg_height_b,
+        max: this.max_veg_height_b,
         dimension: 4  // Use dimension 4 (value) for color mapping
       },
       series: [{
