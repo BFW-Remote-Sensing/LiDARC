@@ -173,6 +173,8 @@ def calculate_file_statistics(data: pd.Series, name: str) -> dict:
     }
 
 def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b: str) -> dict:
+    logging.info("Calculating comparison statistics...")
+
     percentile_columns = [col for col in merged.columns if col.endswith("_a") and col.startswith("veg_height_p")]
     percentile_a = percentile_columns[0] if percentile_columns else None
     percentile_b = percentile_a.replace("_a", "_b") if percentile_a else None
@@ -292,6 +294,21 @@ def calculate_comparison_statistics(merged: pd.DataFrame, group_a: str, group_b:
 
     return round_floats(result)
 
+def is_legit_value(v):
+    if v is None:
+        return False
+    if isinstance(v, (float, np.floating)):
+        if np.isnan(v) or np.isinf(v):
+            return False
+        if v == 0.0:
+            return False
+    return True
+
+def set_if_missing(container: dict, key: str, new_value):
+    old_val = container.get(key)
+    if not is_legit_value(old_val):
+        container[key] = new_value
+
 
 def build_merged_dataframe(
     files: list,
@@ -313,6 +330,7 @@ def build_merged_dataframe(
 
 
     for f in files:
+        logging.info("Adding file to dataframe...")
         group = f["groupName"]
 
         if group == group_a:
@@ -341,25 +359,22 @@ def build_merged_dataframe(
                 if key not in cells:
                     cells[key] = {"a": None, "b": None}
 
-                cells[key][slot] = row["veg_height_max"]
+                set_if_missing(cells[key], slot, row["veg_height_max"])
                 if slot == "a":
-                    cells[key]["count_a"] = row.get("count", 0) if "count" in row else 0
-                    cells[key]["out_a"] = getattr(row, "veg_height_outlier_count", 0)
-                    cells[key]["out_c7_a"] = getattr(row, "veg_height_outlier_class7_count", 0)
+                    set_if_missing(cells[key], "count_a", row.get("count", 0))
+                    set_if_missing(cells[key], "out_a", getattr(row, "veg_height_outlier_count", 0))
+                    set_if_missing(cells[key], "out_c7_a", getattr(row, "veg_height_outlier_class7_count", 0))
                 if slot == "b":
-                    cells[key]["count_b"] = row.get("count", 0) if "count" in row else 0
-                    cells[key]["out_b"] = getattr(row, "veg_height_outlier_count", 0)
-                    cells[key]["out_c7_b"] = getattr(row, "veg_height_outlier_class7_count", 0)
+                    set_if_missing(cells[key], "count_b", row.get("count", 0))
+                    set_if_missing(cells[key], "out_b", getattr(row, "veg_height_outlier_count", 0))
+                    set_if_missing(cells[key], "out_c7_b", getattr(row, "veg_height_outlier_class7_count", 0))
 
                 for col in percentile_cols:
                     if "percentiles" not in cells[key]:
                         cells[key]["percentiles"] = {}
                     if col not in cells[key]["percentiles"]:
                         cells[key]["percentiles"][col] = {"a": None, "b": None}
-                    cells[key]["percentiles"][col][slot] = row[col]
-
-
-
+                    set_if_missing(cells[key]["percentiles"][col],slot,row[col])
 
         finally:
             os.remove(local_path)
@@ -397,6 +412,7 @@ def process_req(ch, method, props, body):
     comparison_id = ""
     temp_dir = tempfile.mkdtemp()
     try:
+        logging.info("Starting comparison job %s", comparison_id)
         req = json.loads(body)
         if not req["jobId"]:
             logging.warning("The comparison job is cancelled because there is no job id")
