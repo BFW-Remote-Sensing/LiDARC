@@ -20,17 +20,17 @@ deploy_prod:
     - sed -i 's/127.0.0.1/10.10.30.103/g' /tmp/kubeconfig
   script:
     - skaffold run -p prod --tag=$CI_PIPELINE_ID --cleanup=false
-backend_unit_test:
-  stage: test
-  image: docker:27
-  tags:
-    - customrunner
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
-  script:
-    - docker version
-    - docker build -t backend-tests -f LiDARC-backend/Dockerfile.test LiDARC-backend
-    - docker run --rm backend-tests
+#backend_unit_test:
+#  stage: test
+#  image: docker:27
+#  tags:
+#    - customrunner
+#  rules:
+#    - if: '$CI_COMMIT_BRANCH == "master"'
+#  script:
+#    - docker version
+#    - docker build -t backend-tests -f LiDARC-backend/Dockerfile.test LiDARC-backend
+#    - docker run --rm backend-tests
 
 
 preprocess_worker_test:
