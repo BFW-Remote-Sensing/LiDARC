@@ -1,6 +1,6 @@
 import { Injectable } from "@angular/core";
-import { FileMetadataDTO } from "../dto/fileMetadata";
 import { ComparableListItem } from "../dto/comparableItem";
+import { FolderFilesDTO } from "../dto/folderFiles";
 
 @Injectable({ providedIn: 'root' })
 export class SelectedItemService {
@@ -12,5 +12,25 @@ export class SelectedItemService {
         this.items.delete(selectedItem);
       }
     });
+  }
+
+  deleteById(id: number, type: string): boolean {
+    console.log("Deleting item with id:", id, "and type:", type);
+    for (let selectedItem of this.items) {
+      if (selectedItem.id === id && selectedItem.type === type) {
+        this.items.delete(selectedItem);
+        return true;
+      }
+      if (selectedItem.type === "Folder" && type === "File") {
+        const thisFolderSelectedItem = selectedItem as FolderFilesDTO;
+        for (let fileItem of thisFolderSelectedItem.files) {
+          if (fileItem.id === id) {
+            thisFolderSelectedItem.files = thisFolderSelectedItem.files.filter(f => f.id !== id);
+            return false;
+          }
+        }
+      }
+    }
+    return false;
   }
 }

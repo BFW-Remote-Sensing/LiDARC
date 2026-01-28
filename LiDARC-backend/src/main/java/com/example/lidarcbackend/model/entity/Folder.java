@@ -40,7 +40,7 @@ public class Folder {
   @Column(name = "status")
   private String status;
 
-  @OneToMany(mappedBy = "folder", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToMany(mappedBy = "folder")
   private List<File> files;
 
   @ColumnDefault("true")

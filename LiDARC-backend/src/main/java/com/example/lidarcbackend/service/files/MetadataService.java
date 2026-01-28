@@ -12,12 +12,11 @@ import com.example.lidarcbackend.model.entity.Comparison;
 import com.example.lidarcbackend.model.entity.CoordinateSystem;
 import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.model.entity.Folder;
-import com.example.lidarcbackend.repository.ComparisonFileRepository;
-import com.example.lidarcbackend.repository.CoordinateSystemRepository;
-import com.example.lidarcbackend.repository.FileRepository;
-import com.example.lidarcbackend.repository.FolderRepository;
+import com.example.lidarcbackend.repository.*;
 import com.example.lidarcbackend.service.IJobTrackingService;
 import com.example.lidarcbackend.service.folders.IFolderService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.minio.MinioClient;
 import io.minio.RemoveObjectArgs;
 import io.minio.errors.*;
@@ -46,12 +45,14 @@ public class MetadataService implements IMetadataService {
     private final CoordinateSystemRepository coordinateSystemRepository;
     private final FolderRepository folderRepository;
     private final ComparisonFileRepository comparisonFileRepository;
+    private final ComparisonFolderRepository comparisonFolderRepository;
     private final MinioClient minioClient;
     protected final MinioProperties minioProperties;
     private final Validator validator;
     private final MetadataMapper mapper;
     private final IFolderService folderService;
     private final IJobTrackingService jobTrackingService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public MetadataService(
         FileRepository fileRepository,
@@ -60,14 +61,17 @@ public class MetadataService implements IMetadataService {
         IFolderService folderService,
         ComparisonFileRepository comparisonFileRepository,
             MinioClient minioClient,
-            MinioProperties minioProperties,Validator validator,
-        MetadataMapper mapper,
-            IJobTrackingService jobTrackingService) {
+            MinioProperties minioProperties,
+            Validator validator,
+            MetadataMapper mapper,
+            IJobTrackingService jobTrackingService,
+            ComparisonFolderRepository comparisonFolderRepository) {
         this.fileRepository = fileRepository;
         this.coordinateSystemRepository = coordinateSystemRepository;
         this.folderRepository = folderRepository;
         this.folderService = folderService;
         this.comparisonFileRepository = comparisonFileRepository;
+        this.comparisonFolderRepository = comparisonFolderRepository;
         this.minioClient = minioClient;
         this.minioProperties = minioProperties;
         this.validator = validator;
@@ -175,7 +179,7 @@ public class MetadataService implements IMetadataService {
 
     @Transactional
     @Override
-    public void deleteMetadataById(Long id) throws NotFoundException, BadRequestException {
+    public void deleteMetadataById(Long id, boolean independentDelete) throws NotFoundException, BadRequestException {
         // Case 1: Check if the file exists
         File file = fileRepository.findById(id).orElseThrow(() ->
                 new NotFoundException("File with id " + id + " not found")
@@ -187,8 +191,15 @@ public class MetadataService implements IMetadataService {
         }
 
         // Case 3: Check if the file is in an ONGOING comparison
-        if(comparisonFileRepository.isFileInOngoingComparison(id)) {
+        if (comparisonFileRepository.isFileInOngoingComparison(id)) {
             throw new BadRequestException("Cannot delete file. It is currently being used in an ongoing comparison.");
+        }
+
+        if (independentDelete && file.getFolder() != null) {
+            boolean folderHasBeenCompared = comparisonFolderRepository.existsByFolderId(file.getFolder().getId());
+            if (folderHasBeenCompared) {
+                throw new BadRequestException("Cannot delete a file if its folder has already been compared.");
+            }
         }
 
         // 4. Delete from Minio bucket
@@ -202,6 +213,8 @@ public class MetadataService implements IMetadataService {
         } catch (Exception e) {
             throw new BadRequestException("Files couldn't be deleted from the storage.");
         }
+
+        log.info("File id to delete: {}", id);
 
         // 5. Check if used in COMPLETED/FAILED comparisons
         boolean usedInHistory = comparisonFileRepository.existsByFileId(id);
@@ -279,7 +292,7 @@ public class MetadataService implements IMetadataService {
         Map<String, Object> payload = (Map<String, Object>) payloadObj;
         Object metadataObj = ((Map<?, ?>) payload).get("metadata");
         Object payloadFileName = ((Map<?, ?>) payload).get("file_name");
-        if((payloadFileName instanceof String fileName)) {
+        if ((payloadFileName instanceof String fileName)) {
             Optional<File> old = fileRepository.findFileByFilename(fileName);
             if (old.isEmpty()) {
                 log.warn("Original file not found in database, skipping save: {}", fileName);
@@ -293,13 +306,13 @@ public class MetadataService implements IMetadataService {
 
             if (!(metadataObj instanceof Map)) {
                 log.error("Invalid metadata object for job {}", jobId);
-                persistMetadataError(fileName,"Received invalid payload from metadata worker");
+                persistMetadataError(fileName, "Received invalid payload from metadata worker");
             } else {
                 Map<String, Object> metadata = (Map<String, Object>) metadataObj;
                 file = parseMetadata(metadata, file);
                 if (file == null) {
                     log.error("Invalid metadata object for job {}", jobId);
-                    this.persistMetadataError(fileName,"Received invalid payload from metadata worker");
+                    this.persistMetadataError(fileName, "Received invalid payload from metadata worker");
                 } else {
                     file.setErrorMsg(null);
                     tryUpdateFolderStatusToProcessed(file);
@@ -490,7 +503,7 @@ public class MetadataService implements IMetadataService {
             return;
         }
 
-        if(Objects.equals(folder.getStatus(), "FAILED")) return;
+        if (Objects.equals(folder.getStatus(), "FAILED")) return;
 
         boolean hasUnfinishedFiles = folder.getFiles().stream()
                 .filter(f -> !f.getId().equals(file.getId()))
@@ -517,8 +530,6 @@ public class MetadataService implements IMetadataService {
         folder.setStatus("FAILED");
         folderRepository.save(folder);
     }
-
-
 
 
 }

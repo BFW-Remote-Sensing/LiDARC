@@ -197,7 +197,12 @@ public class FolderService implements IFolderService {
         // 4. Delete the files inside the folder.
         List<File> files = fileRepository.findAllByFolderId(id, Sort.unsorted());
         for (File file : files) {
-            metadataService.deleteMetadataById(file.getId());
+            try {
+                metadataService.deleteMetadataById(file.getId(), false);
+            } catch (Exception e) {
+                log.info("File deletion failed with id: {}", file.getId());
+            }
+
         }
 
         // 5. Check if used in COMPLETED/FAILED comparisons
@@ -210,6 +215,7 @@ public class FolderService implements IFolderService {
             log.info("Folder id {} marked as inactive", id);
         } else {
             // 6.2: Hard delete from DB
+            folder.getFiles().forEach(file -> file.setFolder(null));
             folderRepository.delete(folder);
             log.info("Folder id {} deleted completely from DB", id);
         }

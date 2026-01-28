@@ -18,6 +18,8 @@ import { StatusService } from '../../service/status.service';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
 import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
+import { SelectedItemService } from '../../service/selectedItem.service';
+import { Location } from '@angular/common';
 
 @Component({
   selector: 'app-file-details',
@@ -47,8 +49,16 @@ export class FileDetails implements OnInit, OnDestroy {
   private isPolling = false;
   private previousFileStatus: string | null = null;
 
-  constructor(private route: ActivatedRoute, private formatService: FormatService, private statusService: StatusService, private snackBar: MatSnackBar,
-    private dialog: MatDialog, private router: Router) {
+  constructor(
+    private route: ActivatedRoute,
+    private formatService: FormatService,
+    private statusService: StatusService,
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog,
+    private location: Location,
+    private router: Router,
+    private selectedItemService: SelectedItemService
+  ) {
     const idParam = this.route.snapshot.paramMap.get('id');
     this.metadataId = idParam ? Number(idParam) : null;
   }
@@ -156,7 +166,14 @@ export class FileDetails implements OnInit, OnDestroy {
 
     dialogRef.afterClosed().subscribe(success => {
       if (success) {
-        this.router.navigate(['/unassigned-files']);
+        const backToList = this.selectedItemService.deleteById(this.metadataId!, "File");
+        if (backToList) {
+          this.router.navigate(['/comparable-items']);
+        } else if (window.history.length > 1) {
+          this.location.back();
+        } else {
+          this.router.navigate(['/unassigned-files']);
+        }
       }
     });
   }
