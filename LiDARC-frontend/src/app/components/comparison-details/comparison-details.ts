@@ -647,7 +647,9 @@ export class ComparisonDetails implements OnInit {
 
   buildScatterChart(): EChartsCoreOption {
     const stats = this.vegetationStats();
-    const scatterData = stats.cells.map(c => [c.A, c.B]);
+    const MAX_POINTS = 1000;
+    const sampledCells = this.randomSample(stats.cells, MAX_POINTS);
+    const scatterData = sampledCells.map(c => [c.A, c.B]);
 
     const regression = stats.difference_metrics.correlation?.regression_line;
     const pearson = stats.difference_metrics.correlation?.pearson_correlation;
@@ -977,6 +979,19 @@ export class ComparisonDetails implements OnInit {
         }
       ]
     };
+  }
+
+  private randomSample<T>(array: T[], maxPoints: number): T[] {
+    if (array.length <= maxPoints) return array;
+
+    const shuffled = array.slice();
+
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    return shuffled.slice(0, maxPoints);
   }
 
 }

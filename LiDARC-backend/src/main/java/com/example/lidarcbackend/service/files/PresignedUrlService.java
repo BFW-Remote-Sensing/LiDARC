@@ -370,6 +370,7 @@ public class PresignedUrlService implements IPresignedUrlService {
 
         if (!hasPendingFiles) {
             folder.setStatus("PROCESSING");
+            folderRepository.save(folder);
         }
     }
 
