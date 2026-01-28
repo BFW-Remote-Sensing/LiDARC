@@ -248,8 +248,8 @@ public class ComparisonService implements IComparisonService {
         }
     }
 
-    private ComparisonPlan processFolderGroup(List<Long> fileIds, GridParameters grid, Long comparisonId,
-                                              String groupName, Integer pointFilterLowerBound, Integer pointFilterUpperBound,
+    private ComparisonPlan processFolderGroup(List<Long> fileIds, GridParameters grid, Comparison savedComparison,
+                                              String groupName, Double pointFilterLowerBound, Double pointFilterUpperBound,
                                               Boolean outlierDetectionEnabled, Double outlierDeviationFactor, Boolean needPointFilter)
             throws NotFoundException {
         ComparisonPlan plan = new ComparisonPlan();
