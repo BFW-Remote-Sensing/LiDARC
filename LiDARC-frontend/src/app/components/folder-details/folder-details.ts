@@ -21,6 +21,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { StatusService } from '../../service/status.service';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '../confirmation-dialog/confirmation-dialog';
 import { MatDialog } from '@angular/material/dialog';
+import { SelectedItemService } from '../../service/selectedItem.service';
+import { Location } from '@angular/common';
 
 @Component({
   selector: 'app-folder-details',
@@ -56,8 +58,15 @@ export class FolderDetails {
   displayedColumns: string[] = ['filename', 'status', 'captureYear', 'sizeBytes', 'uploadedAt', 'actions'];
   dataSource = new MatTableDataSource<FileMetadataDTO>([]);
 
-  constructor(private route: ActivatedRoute, private formatService: FormatService, private snackBar: MatSnackBar, private statusService: StatusService,
-    private dialog: MatDialog, private router: Router
+  constructor(
+    private route: ActivatedRoute,
+    private formatService: FormatService,
+    private snackBar: MatSnackBar,
+    private statusService: StatusService,
+    private dialog: MatDialog,
+    private router: Router,
+    private selectedItemService: SelectedItemService,
+    private location: Location
   ) {
     this.folderId = Number(this.route.snapshot.paramMap.get('id'));
   }
@@ -207,7 +216,12 @@ export class FolderDetails {
 
     dialogRef.afterClosed().subscribe(success => {
       if (success) {
-        this.router.navigate(['/comparable-items']);
+        const backToList = this.selectedItemService.deleteById(this.folderId!, "Folder");
+        if (window.history.length > 1 && !backToList) {
+          this.location.back();
+        } else {
+          this.router.navigate(['/comparable-items']);
+        }
       }
     });
   }

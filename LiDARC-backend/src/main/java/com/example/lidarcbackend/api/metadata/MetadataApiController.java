@@ -154,7 +154,7 @@ class MetadataApiController {
             @PathVariable Long id
     ) {
         try {
-            metadataService.deleteMetadataById(id);
+            metadataService.deleteMetadataById(id, true);
             return ResponseEntity.noContent().build();
         } catch (NotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());

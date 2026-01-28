@@ -248,10 +248,10 @@ public class ComparisonService implements IComparisonService {
         }
     }
 
-    private ComparisonPlan processFolderGroup(List<Long> fileIds, GridParameters grid, Comparison savedComparison,
-                                              String groupName, Double pointFilterLowerBound, Double pointFilterUpperBound,
+    private ComparisonPlan processFolderGroup(List<Long> fileIds, GridParameters grid, Long comparisonId,
+                                              String groupName, Integer pointFilterLowerBound, Integer pointFilterUpperBound,
                                               Boolean outlierDetectionEnabled, Double outlierDeviationFactor, Boolean needPointFilter)
-        throws NotFoundException {
+            throws NotFoundException {
         ComparisonPlan plan = new ComparisonPlan();
         if (fileIds == null || fileIds.isEmpty()) {
             return plan;
@@ -574,11 +574,19 @@ public class ComparisonService implements IComparisonService {
 
         // 3. Delete pre-processing results from minio
         for (ComparisonFile cf : cfs) {
-            deleteObjectFromMinio(cf.getBucket(), cf.getObjectKey());
+            try {
+                deleteObjectFromMinio(cf.getBucket(), cf.getObjectKey());
+            } catch (Exception error) {
+                log.info("Error deleting preprocessing result in MinIO.");
+            }
         }
 
         // 4. Delete comparison result
-        deleteObjectFromMinio(cp.getResultBucket(), cp.getResultObjectKey());
+        try {
+            deleteObjectFromMinio(cp.getResultBucket(), cp.getResultObjectKey());
+        } catch (Exception error) {
+            log.info("Error deleting comparison result in MinIO.");
+        }
 
         // 5. Delete the comparison
         comparisonRepository.deleteById(id);
