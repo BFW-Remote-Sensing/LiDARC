@@ -75,8 +75,8 @@ public class ComparisonServiceTest {
         defaultGrid.setCellHeight(2);
         defaultGrid.setxMin(0.0);
         defaultGrid.setyMin(0.0);
-        defaultGrid.setxMax(3.0);
-        defaultGrid.setyMax(3.0);
+        defaultGrid.setxMax(100.0);
+        defaultGrid.setyMax(100.0);
 
         createRequest = new CreateComparisonRequest();
         createRequest.setGrid(defaultGrid);
@@ -340,8 +340,8 @@ public class ComparisonServiceTest {
         gridWidth2.setCellHeight(2); // Height doesn't matter here
         gridWidth2.setxMin(0.0);
         gridWidth2.setyMin(0.0);
-        gridWidth2.setxMax(3.0);
-        gridWidth2.setyMax(3.0);
+        gridWidth2.setxMax(120.0);
+        gridWidth2.setyMax(10.0);
         createRequest.setGrid(gridWidth2);
 
         File file1 = createFile(fileId1, 0.0, 101.0, 0.0, 10.0);
