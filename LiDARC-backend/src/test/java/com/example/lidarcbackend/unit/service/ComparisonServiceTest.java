@@ -445,6 +445,90 @@ public class ComparisonServiceTest {
         assertBoundingBox(job2.getBboxes().getFirst(), 0.0, 100.0, 0.0, 100.0);
     }
 
+
+    @Test
+    void saveComparison_FileOutsideAOI_ShouldStartNoJobs() throws NotFoundException, ValidationException {
+        Long fileId1 = 1L;
+        File file1 = createFile(fileId1, 200.0, 300.0, 200.0, 300.0);
+        when(fileRepository.findById(fileId1)).thenReturn(Optional.of(file1));
+
+        createRequest.setFileMetadataIds(List.of(fileId1));
+        comparisonService.saveComparison(createRequest, List.of(fileId1));
+        List<StartPreProcessJobDto> jobs = captureJobs();
+        assertEquals(0, jobs.size());
+    }
+
+    @Test
+    void saveComparison_FileOnAOIEdge_ShouldBeExcluded()  throws NotFoundException, ValidationException {
+        Long fileId1 = 1L;
+        Long fileId2 = 2L;
+
+        File file1 = createFile(fileId1, -50.0, 0.0, 0.0, 50.0);
+        File file2 = createFile(fileId2, 100.0, 150.0, 0.0, 50.0);
+
+        when(fileRepository.findById(fileId1)).thenReturn(Optional.of(file1));
+        when(fileRepository.findById(fileId2)).thenReturn(Optional.of(file2));
+
+        createRequest.setFileMetadataIds(List.of(fileId1, fileId2));
+        comparisonService.saveComparison(createRequest, List.of(fileId1, fileId2));
+        List<StartPreProcessJobDto> jobs = captureJobs();
+        assertEquals(0, jobs.size());
+    }
+
+    @Test
+    void saveComparison_FilePartiallyInAOI_ShouldBeIncluded() throws NotFoundException, ValidationException {
+        Long fileId1 = 1L;
+        Long fileId2 = 2L;
+        File file1 = createFile(fileId1, -50.0, 10.0, 0.0, 50.0);
+        File file2 = createFile(fileId2, 100.0, 150.0, 0.0, 50.0);
+
+        when(fileRepository.findById(fileId1)).thenReturn(Optional.of(file1));
+        when(fileRepository.findById(fileId2)).thenReturn(Optional.of(file2));
+
+        createRequest.setFileMetadataIds(List.of(fileId1, fileId2));
+        comparisonService.saveComparison(createRequest, List.of(fileId1, fileId2));
+        List<StartPreProcessJobDto> jobs = captureJobs();
+        assertEquals(1, jobs.size());
+        StartPreProcessJobDto job1 = jobs.stream()
+            .filter(j -> j.getFileId().equals(fileId1))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Job for File 1 missing"));
+
+        assertBoundingBox(job1.getBboxes().getFirst(), -50.0, 10.0, 0.0, 50.0);
+    }
+
+
+    @Test
+    void saveComparison_OverlappingFiles_FirstOutsideAOI_ShouldNotClipSecond() throws NotFoundException, ValidationException {
+        Long fileId1 = 1L;
+        Long fileId2 = 2L;
+
+        GridParameters offsetGrid = new GridParameters();
+        offsetGrid.setCellWidth(2);
+        offsetGrid.setCellHeight(2);
+        offsetGrid.setxMin(50.0);
+        offsetGrid.setxMax(100.0);
+        offsetGrid.setyMin(0.0);
+        offsetGrid.setyMax(100.0);
+        createRequest.setGrid(offsetGrid);
+        File file1 = createFile(fileId1, 0.0, 40.0, 0.0, 100.0);
+        File file2 = createFile(fileId2, 30.0, 100.0, 0.0, 100.0);
+        when(fileRepository.findById(fileId1)).thenReturn(Optional.of(file1));
+        when(fileRepository.findById(fileId2)).thenReturn(Optional.of(file2));
+
+        createRequest.setFolderAFiles(List.of(fileId1, fileId2));
+
+        comparisonService.saveComparison(createRequest, List.of());
+
+        List<StartPreProcessJobDto> jobs = captureJobs();
+        assertEquals(1, jobs.size(), "Should only process File 2");
+        StartPreProcessJobDto job = jobs.getFirst();
+        assertEquals(fileId2, job.getFileId());
+        List<BoundingBox> regions = job.getBboxes();
+        assertEquals(1, regions.size());
+        assertBoundingBox(regions.getFirst(), 30.0, 100.0, 0.0, 100.0);
+    }
+
     private void assertBoundingBox(BoundingBox box, double xMin, double xMax, double yMin, double yMax) {
         assertEquals(xMin, box.getxMin(), "xMin mismatch");
         assertEquals(xMax, box.getxMax(), "xMax mismatch");
