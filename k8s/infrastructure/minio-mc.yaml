@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-init
+spec:
+  template:
+    spec:
+      containers:
+        - name: minio-init
+          image: quay.io/minio/mc:latest
+          command: [ "/bin/sh", "-c" ]
+          args:
+            - |
+              echo "Waiting for Minio..."
+              until /usr/bin/mc alias set myminio http://minio:9000 admin aseWS25LiDARC; do
+                echo "Minio not ready... retrying in 2s"
+                sleep 2
+              done
+              echo "Minio is UP! Creating bucket..."
+              /usr/bin/mc mb myminio/basebucket || true
+              echo "Bucket created!"
+      restartPolicy: OnFailure
+  backoffLimit: 4
+  

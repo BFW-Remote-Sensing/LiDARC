@@ -1,0 +1,62 @@
+<h2 mat-dialog-title>{{ data.title }}</h2>
+
+<mat-dialog-content>
+  <p *ngIf="data.subtitle">{{ data.subtitle }}</p>
+
+  <div class="bounds-form">
+    <mat-form-field appearance="outline" class="bound-input">
+      <mat-label>Lower Bound (0.00-100.00)</mat-label>
+      <input
+        matInput
+        type="number"
+        [(ngModel)]="lowerBound"
+        min="0"
+        max="100"
+        step="0.01"
+        placeholder="Enter lower bound"
+      />
+      <mat-hint>Minimum percentile value</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="bound-input">
+      <mat-label>Upper Bound (0.00-100.00)</mat-label>
+      <input
+        matInput
+        type="number"
+        [(ngModel)]="upperBound"
+        min="0"
+        max="100"
+        step="0.01"
+        placeholder="Enter upper bound"
+      />
+      <mat-hint>Maximum percentile value</mat-hint>
+    </mat-form-field>
+  </div>
+
+  <div *ngIf="errorMessage" class="error-message">
+    {{ errorMessage }}
+  </div>
+
+  <div class="bounds-summary" *ngIf="lowerBound !== null && upperBound !== null && canConfirm()">
+    <mat-icon>filter_alt</mat-icon>
+    <span>Points will be filtered between <strong>{{ lowerBound.toFixed(2) }}%</strong> and <strong>{{ upperBound.toFixed(2) }}%</strong></span>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onClear()" color="warn">
+    Clear Filter
+  </button>
+  <button mat-button (click)="onCancel()">
+    {{ data.secondaryButtonText || 'Cancel' }}
+  </button>
+  <button
+    mat-raised-button
+    color="primary"
+    (click)="onConfirm()"
+    [disabled]="!canConfirm()"
+  >
+    {{ data.primaryButtonText || 'Apply' }}
+  </button>
+</mat-dialog-actions>
+

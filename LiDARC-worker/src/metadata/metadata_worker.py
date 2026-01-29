@@ -1,6 +1,8 @@
 import json
 import logging
 import os
+from urllib.parse import unquote
+
 import laspy
 import argparse
 import signal
@@ -40,22 +42,26 @@ def connect_rabbitmq():
             logging.error("RabbitMQ connection failed, Retrying in 5s... Error: {}".format(e))
             time.sleep(5)
 
-def mk_error_msg(job_id: str, error_msg: str):
+def mk_error_msg(job_id: str, file_name: str, error_msg: str):
     return BaseMessage(
         type = "metadata",
         job_id = job_id,
         status = "error",
         payload={
-            "msg": error_msg
+            "msg": error_msg,
+            "file_name": file_name,
         }
     )
 
-def mk_success_msg(job_id: str, metadata: dict):
+def mk_success_msg(job_id: str,file_name: str, metadata: dict):
     return BaseMessage(
         type = "metadata",
         job_id = job_id,
         status = "success",
-        payload={"metadata":metadata}
+        payload={
+            "metadata":metadata,
+            "file_name": file_name
+        }
     )
 
 def publish_response(ch, msg: BaseMessage):
@@ -102,9 +108,15 @@ def parse_coordinate_system(header) -> str:
 
 def extract_metadata(file_path: str) -> dict:
     try:
-        filename = os.path.basename(file_path)
+        raw_filename = os.path.basename(file_path)
+        filename = unquote(raw_filename)
         match = re.search(r"\d{4}_", filename)
-        capture_year = int(match.group(0)[:-1]) if match else None
+        capture_year = None
+        if match:
+            year = int(match.group(0)[:-1])
+            if 1990 < year < 2100:
+                capture_year = year
+
         size_bytes = os.path.getsize(file_path)
 
         with laspy.open(file_path) as las:
@@ -135,17 +147,26 @@ def extract_metadata(file_path: str) -> dict:
 def process_req(ch, method, properties, body):
     start_time = time.time()
     job_id = ""
+    file_name = ""
     try:
         req = json.loads(body)
+        if req["jobId"]:
+            job_id = req["jobId"]
+
+        if req["fileName"]:
+            file_name = req["fileName"]
+
         if not req["jobId"]:
             logging.warning("The metadata job is cancelled because there is no job id")
-            publish_response(ch, mk_error_msg(job_id="", error_msg="Metadata job is cancelled because job has no job id"))
+            publish_response(ch, mk_error_msg(job_id=job_id, file_name=file_name, error_msg="Metadata job is cancelled because job has no job id"))
 
-        job_id = req["jobId"]
+        if not req["fileName"]:
+            logging.warning("The metadata job is cancelled because there is no filename specified")
+            publish_response(ch, mk_error_msg(job_id=job_id, file_name= file_name, error_msg="Metadata job is cancelled because job has no filename specified"))
 
         if not validate_request(req):
             logging.warning("The metadata job is cancelled because of a Validation Error")
-            publish_response(ch, mk_error_msg(job_id, "Metadata job is cancelled because job request is invalid"))
+            publish_response(ch, mk_error_msg(job_id, file_name, "Metadata job is cancelled because job request is invalid"))
             return
 
         las_file_url = req["url"]
@@ -156,26 +177,26 @@ def process_req(ch, method, properties, body):
             local_file = file_handler.download_file(las_file_url)
         except HTTPError as e:
             logging.warning("Couldn't download file from: {}, error: {}".format(las_file_url, e))
-            publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, metadata job cancelled".format(las_file_url)))
+            publish_response(ch, mk_error_msg(job_id, file_name, "Failed to download file from minio"))
             return
         if local_file == "":
             logging.warning("File not downloaded, stopping processing the request!")
-            publish_response(ch, mk_error_msg(job_id, "Couldn't download file from: {}, metadata job cancelled".format(las_file_url)))
+            publish_response(ch, mk_error_msg(job_id, file_name, "Failed to download file from minio"))
             return
 
         metadata = extract_metadata(local_file)
 
         if metadata == {}:
             logging.error(f"Metadata extraction failed for {las_file_url}.")
-            publish_response(ch, mk_error_msg(job_id, "Couldn't extract metadata from file from: {}, metadata job cancelled".format(las_file_url)))
+            publish_response(ch, mk_error_msg(job_id, file_name, "Failed to extract metadata from las file header."))
             os.remove(local_file)
             return
 
-        publish_response(ch, mk_success_msg(job_id, metadata))
+        publish_response(ch, mk_success_msg(job_id, file_name, metadata))
         os.remove(local_file)
     except Exception as e:
         logging.error(f"Failed to process message: {e}")
-        publish_response(ch, mk_error_msg(job_id, "An unexpected error occured, metadata job cancelled"))
+        publish_response(ch, mk_error_msg(job_id, file_name, "An unexpected error occurred, metadata job cancelled"))
     finally:
         processing_time = int((time.time() - start_time) * 1000)
         logging.info(f"Worker took {processing_time} ms to process the message.")

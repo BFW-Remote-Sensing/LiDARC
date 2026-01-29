@@ -1,0 +1,243 @@
+@if (loading()) {
+<div class="flex-center">
+    <mat-spinner></mat-spinner>
+</div>
+}
+@else if (!loading() && !folder() && !errorMessage()) {
+<app-text-card type="info" message="No file found."></app-text-card>
+}
+@else if (errorMessage()) {
+<app-text-card type="error" message="{{ errorMessage() }}"></app-text-card>
+}
+@else if(folder() && folder() !== null) {
+<div class="file-details-container">
+
+    <header class="metadata-header mat-elevation-z2">
+        <mat-icon class="header-icon">description</mat-icon>
+        <h1>Folder Details: {{ folder()!.folderName }} {{folder()!.active ? '' : '(Archived)'}}</h1>
+    </header>
+
+    <div class="content-wrapper">
+        <section class="general-info-section">
+            <h2><mat-icon>info</mat-icon> General Information</h2>
+            <mat-list role="list">
+
+                <mat-list-item role="listitem">
+                    <mat-icon matListItemIcon>adjust</mat-icon>
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span>
+                            Status
+                        </span>
+                        <div class="status-column">
+                            <span [ngClass]="{
+        'status-ready': folder()!.status === 'PROCESSED',
+        'status-error': folder()!.status === 'FAILED',
+        'status-default': ['UPLOADED', 'PROCESSING', 'UPLOADING'].includes(folder()!.status)
+    }">{{ folder()!.status | titlecase }}</span>
+                            @if (['UPLOADED', 'PROCESSING', 'UPLOADING'].includes(folder()!.status)) {
+                            <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+                            }
+                            @else if (folder()!.status === 'FAILED') {
+                            <mat-icon [matTooltip]="'One of the files in this folder has failed.'"
+                                matTooltipPosition="above">
+                                error
+                            </mat-icon>
+                            }
+                        </div>
+                    </div>
+                </mat-list-item>
+                <mat-divider></mat-divider>
+
+                <mat-list-item role="listitem">
+                    <mat-icon matListItemIcon>aspect_ratio</mat-icon>
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span>
+                            Size
+                        </span>
+                        <span>
+                            @if (getFolderSizeBytes() > 0) {
+                            {{ getFolderSizeBytes() | formatBytes }}
+                            } @else {
+                            -
+                            }
+                        </span>
+                    </div>
+                </mat-list-item>
+                <mat-divider></mat-divider>
+
+                <mat-list-item role=" listitem">
+                    <mat-icon matListItemIcon>cloud_upload</mat-icon>
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span>
+                            Created At
+                        </span>
+                        <span>
+                            {{ folder()?.createdDate ? (folder()!.createdDate | date: 'MMM d, y, HH:mm') : 'N/A' }}
+                        </span>
+                    </div>
+                </mat-list-item>
+                <mat-divider></mat-divider>
+
+                <mat-list-item role="listitem">
+                    <mat-icon matListItemIcon>calendar_today</mat-icon>
+                    <div matListItemTitle class="mat-list-item-row">
+                        <span>
+                            Capture Year
+                        </span>
+                        <span>
+                            {{ getCaptureYear() }}
+                        </span>
+                    </div>
+                </mat-list-item>
+            </mat-list>
+        </section>
+
+        <mat-divider vertical="true"></mat-divider>
+
+        <section class="technical-info-section">
+            <h2><mat-icon>settings</mat-icon>Contained Files Data</h2>
+            <mat-list>
+                <div class="bounding-box-flex">
+                    <div style="width: 45%">
+                        <h3>Minimums</h3>
+                        <mat-divider></mat-divider>
+                        <h4>
+                            Lowest X<sub style="font-size: 0.6em;">min</sub>:
+                            <span class="coordinate">
+                                {{ getMinMinX() | number:'1.2-6' }}
+                            </span>
+                        </h4>
+                        <mat-divider></mat-divider>
+                        <h4>
+                            Lowest Y<sub style="font-size: 0.6em;">min</sub>:
+                            <span class="coordinate">
+                                {{ getMinMinY() | number:'1.2-6' }}
+                            </span>
+                        </h4>
+                        <mat-divider></mat-divider>
+                        <h4>
+                            Lowest Z<sub style="font-size: 0.6em;">min</sub>:
+                            <span class="coordinate">
+                                {{ getMinMinZ() | number:'1.2-6' }}
+                            </span>
+                        </h4>
+                    </div>
+                    <mat-icon>east</mat-icon>
+                    <div style="width: 45%">
+                        <h3>Maximums</h3>
+                        <mat-divider></mat-divider>
+                        <h4>
+                            Highest X<sub style="font-size: 0.6em;">max</sub>:
+                            <span class="coordinate">
+                                {{ getMaxMaxX() | number:'1.2-6' }}
+                            </span>
+                        </h4>
+                        <mat-divider></mat-divider>
+                        <h4>
+                            Highest Y<sub style="font-size: 0.6em;">max</sub>:
+                            <span class="coordinate">
+                                {{ getMaxMaxY() | number:'1.2-6' }}
+                            </span>
+                        </h4>
+                        <mat-divider></mat-divider>
+                        <h4>
+                            Highest Z<sub style="font-size: 0.6em;">max</sub>:
+                            <span class="coordinate">
+                                {{ getMaxMaxZ() | number:'1.2-6' }}
+                            </span>
+                        </h4>
+                    </div>
+                </div>
+
+            </mat-list>
+        </section>
+    </div>
+    <h2><mat-icon>insert_drive_file</mat-icon>Contained Files</h2>
+    @if (!loading() && dataSource.data.length === 0 && !errorMessage()) {
+    <app-text-card type="info" message="No files found for this folder."></app-text-card>
+    } @else {
+    <section>
+        <table mat-table [dataSource]="dataSource" class="mat-elevation-z8" style="width: 100%;">
+
+            <!-- Folder Name Column -->
+            <ng-container matColumnDef="folderName">
+                <th mat-header-cell *matHeaderCellDef>Folder Name</th>
+                <td mat-cell *matCellDef="let element">{{ element.folderName }}</td>
+            </ng-container>
+
+            <!-- File Name Column -->
+            <ng-container matColumnDef="filename">
+                <th mat-header-cell *matHeaderCellDef>File Name</th>
+                <td mat-cell *matCellDef="let element">{{ element.originalFilename }}</td>
+            </ng-container>
+
+            <!-- Status Column -->
+            <ng-container matColumnDef="status">
+                <th mat-header-cell *matHeaderCellDef>Status</th>
+                <td mat-cell *matCellDef="let element">
+                    <div class="status-column">
+                        <span [ngClass]="{
+        'status-ready': element.status === 'PROCESSED',
+        'status-error': element.status === 'FAILED',
+        'status-default': ['UPLOADED', 'PROCESSING', 'UPLOADING'].includes(element.status)
+    }">{{ element.status | titlecase }}</span>
+                        @if (['UPLOADED', 'PROCESSING', 'UPLOADING'].includes(element.status)) {
+                        <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+                        }
+                        @else if (element.status === 'FAILED') {
+                        <mat-icon [matTooltip]="element.errorMessage" matTooltipPosition="above">
+                            error
+                        </mat-icon>
+                        }
+                    </div>
+                </td>
+            </ng-container>
+
+            <!-- Capture Year Column -->
+            <ng-container matColumnDef="captureYear">
+                <th mat-header-cell *matHeaderCellDef>Capture Year</th>
+                <td mat-cell *matCellDef="let element">{{ element.captureYear ?? '-' }}</td>
+            </ng-container>
+
+            <!-- Size Bytes Column -->
+            <ng-container matColumnDef="sizeBytes">
+                <th mat-header-cell *matHeaderCellDef>Size</th>
+                <td mat-cell *matCellDef="let element">{{ element.sizeBytes != null ? (element.sizeBytes |
+                    formatBytes) :
+                    '-' }}</td>
+            </ng-container>
+
+            <!-- Uploaded At Column -->
+            <ng-container matColumnDef="uploadedAt">
+                <th mat-header-cell *matHeaderCellDef>Uploaded At</th>
+                <td mat-cell *matCellDef="let element">{{ element.uploadedAt | date: 'MMM d, y, HH:mm' }}</td>
+            </ng-container>
+
+            <!-- Actions Column -->
+            <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef></th>
+                <td mat-cell *matCellDef="let element" style="text-align: right">
+                    <a [routerLink]="['/stored-files', element.id]">
+                        <button mat-icon-button matTooltip="View Details" matTooltipPosition="right">
+                            <mat-icon>visibility</mat-icon>
+                        </button>
+                    </a>
+                </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+    </section>
+    }
+    @if ((folder()!.status === 'PROCESSED' || folder()!.status === 'FAILED') && folder()!.active)
+    {
+    <div class="delete-button-container" style="margin-top: 20px">
+        <button matButton="filled" color="warn" (click)="onDeleteFolder()">
+            <mat-icon>delete</mat-icon>
+            Delete Folder
+        </button>
+    </div>
+    }
+</div>
+}

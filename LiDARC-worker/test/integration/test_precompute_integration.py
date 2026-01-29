@@ -43,7 +43,10 @@ def test_precompute_integration(minio_client, rabbitmq_ch, load_json, very_small
     upload_file(very_small_las_file, object_name="small.las")
 
     def run_worker():
-        preprocess_worker.main()
+        try:
+            preprocess_worker.main()
+        except SystemExit:
+            pass
     worker_thread = threading.Thread(target=run_worker, daemon=True)
     worker_thread.start()
 
@@ -80,16 +83,6 @@ def test_precompute_integration(minio_client, rabbitmq_ch, load_json, very_small
         actual_count = filtered_df["count"].iloc[0]
         check.equal(actual_count, expected_count, f"Count mismatch for cell ({expected_x0}, {expected_y0}): expected {expected_count}, got {actual_count}")
 
-        veg_p90 = filtered_df["veg_p90"].iloc[0]
-        veg_p95 = filtered_df["veg_p95"].iloc[0]
-        print(veg_p90, veg_p95)
-        assert isinstance(veg_p90, float) and not pd.isna(veg_p90), f"veg_p90 is invalid for cell ({expected_x0}, {expected_y0})"
-        assert isinstance(veg_p95, float) and not pd.isna(veg_p95), f"veg_p95 is invalid for cell ({expected_x0}, {expected_y0})"
-
-        if expected_count > 1:
-            assert veg_p90 >= 0.0, f"veg_p90 suspiciously low for cell ({expected_x0}, {expected_y0})"
-            assert veg_p95 >= veg_p90, f"veg_p95 should be >= veg_p90 for cell ({expected_x0}, {expected_y0})"
-
 
 @pytest.mark.e2e
 def test_precompute_integration_with_small_las_file(minio_client, rabbitmq_ch, load_json, small_las_file):
@@ -98,7 +91,10 @@ def test_precompute_integration_with_small_las_file(minio_client, rabbitmq_ch, l
     upload_file(small_las_file, object_name="small.las")
 
     def run_worker():
-        preprocess_worker.main()
+        try:
+            preprocess_worker.main()
+        except SystemExit:
+            pass
     worker_thread = threading.Thread(target=run_worker, daemon=True)
     worker_thread.start()
 
@@ -146,11 +142,7 @@ def test_precompute_integration_with_small_las_file(minio_client, rabbitmq_ch, l
         (9.0, 9.0): {"min": 4.5, "max": 4.7},
     }
 
-    expected_percentiles = {
-        (0.0, 0.0): {"p90_min": 1.8, "p90_max": 2.1, "p95_min": 1.9, "p95_max": 2.3},
-        (2.0, 2.0): {"p90_min": 3.55, "p90_max": 3.75, "p95_min": 3.6, "p95_max": 3.75},
-        (9.0, 9.0): {"p90_min": 4.55, "p90_max": 4.75, "p95_min": 4.6, "p95_max": 4.75},
-    }
+
     for (expected_x0, expected_y0), expected_count in expected_points.items():
         filtered_df = df[(df["x0"] == expected_x0)& (df["y0"] == expected_y0)]
 
@@ -161,17 +153,69 @@ def test_precompute_integration_with_small_las_file(minio_client, rabbitmq_ch, l
         check.equal(row["count"], expected_count,
                     f"Count mismatch for cell ({expected_x0}, {expected_y0}): expected {expected_count}, got {row['count']}")
 
-        veg_p90 = row["veg_p90"]
-        veg_p95 = row["veg_p95"]
 
-        print(veg_p90, veg_p95)
+@pytest.mark.e2e
+def test_precompute_integration_with_disjoint_bboxes(minio_client, rabbitmq_ch, load_json, very_small_las_file):
+    client, upload_file = minio_client
+    assert client.bucket_exists("basebucket")
+    upload_file(very_small_las_file, object_name="small_split.las")
 
-        assert isinstance(veg_p90, float) and not pd.isna(veg_p90), f"veg_p90 invalid for cell ({expected_x0}, {expected_y0})"
-        assert isinstance(veg_p95, float) and not pd.isna(veg_p95), f"veg_p95 invalid for cell ({expected_x0}, {expected_y0})"
+    def run_worker():
+        try:
+            preprocess_worker.main()
+        except SystemExit:
+            pass
 
-        if (expected_x0, expected_y0) in expected_percentiles:
-            exp = expected_percentiles[(expected_x0, expected_y0)]
-            assert exp["p90_min"] <= veg_p90 <= exp["p90_max"], \
-                f"veg_p90 {veg_p90} out of expected range for cell ({expected_x0}, {expected_y0})"
-            assert exp["p95_min"] <= veg_p95 <= exp["p95_max"], \
-                f"veg_p95 {veg_p95} out of expected range for cell ({expected_x0}, {expected_y0})"
+    worker_thread = threading.Thread(target=run_worker, daemon=True)
+    worker_thread.start()
+    test_msg = load_json("valid_precompute_job_small_las_file.json")
+    test_msg["file"] = {
+        "bucket": "basebucket",
+        "objectKey": "small_split.las"
+    }
+    test_msg["jobId"] = "bbox-integration-test-1"
+    test_msg["bboxes"] = [
+        {
+            "xMin": 0.0,
+            "xMax": 1.5,
+            "yMin": 0.0,
+            "yMax": 1.5
+        },
+        {
+            "xMin": 9.0,
+            "xMax": 10.0,
+            "yMin": 9.0,
+            "yMax": 10.0
+        }
+    ]
+    publish_message(rabbitmq_ch, WORKER_EXCHANGE, PREPROCESSING_JOB_RK, test_msg)
+    body = consume_single_message(rabbitmq_ch, PREPROCESSING_RESULT_QUEUE)
+    assert body is not None, "Worker did not return a result"
+    response = json.loads(body)
+    check.equal(response["status"], "success", f"Job failed: {response.get('payload')}")
+    check.equal(response["job_id"], "bbox-integration-test-1")
+    payload = response["payload"]
+    summary = payload["summary"]
+
+    result = payload["result"]
+    csv_obj = client.get_object(bucket_name="basebucket", object_name=result['objectKey'])
+    df = pd.read_csv(csv_obj)
+    cell_0_0 = df[(df["x0"] == 0.0) & (df["y0"] == 0.0)]
+    check.equal(len(cell_0_0), 1, "Cell (0,0) missing")
+    if not cell_0_0.empty:
+        check.equal(cell_0_0["count"].iloc[0], 2, "Cell (0,0) should have 2 points (Box 1)")
+
+    cell_9_9 = df[(df["x0"] == 9.0) & (df["y0"] == 9.0)]
+    check.equal(len(cell_9_9), 1, "Cell (9,9) missing")
+    if not cell_9_9.empty:
+        check.equal(cell_9_9["count"].iloc[0], 1, "Cell (9,9) should have 1 point (Box 2)")
+
+    cell_2_2 = df[(df["x0"] == 2.0) & (df["y0"] == 2.0)]
+    if not cell_2_2.empty:
+        count_val = cell_2_2["count"].iloc[0]
+        check.is_true(count_val == 0 or pd.isna(count_val),
+                      f"Cell (2,2) should be empty/zero because it was excluded by bbox! Found count: {count_val}")
+    else:
+        pass
+    total_count_in_df = df["count"].sum()
+    check.equal(total_count_in_df, 3, "Total processed points should be 3 (1 point filtered out)")

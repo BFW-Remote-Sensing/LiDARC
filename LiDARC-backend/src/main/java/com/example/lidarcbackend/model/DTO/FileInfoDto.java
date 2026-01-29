@@ -1,14 +1,13 @@
 package com.example.lidarcbackend.model.DTO;
 
-import com.example.lidarcbackend.model.DTO.Validator.FileNameValid;
-import com.example.lidarcbackend.model.entity.File;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
-
 import java.time.Instant;
+import com.example.lidarcbackend.model.DTO.Validator.FileNameValid;
+import com.example.lidarcbackend.model.entity.File;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Getter
 @Setter
@@ -32,7 +31,8 @@ public class FileInfoDto {
 	@JsonProperty("urlExpiresAt")
 	private Instant urlExpiresAt;
 
-	public FileInfoDto() {
+	@JsonProperty("folderId")
+  private Long folderId;public FileInfoDto() {
 	}
 
 	public FileInfoDto(File file) {
@@ -41,7 +41,8 @@ public class FileInfoDto {
 		this.uploaded = file.getUploaded();
 		this.urlExpiresAt = null;
 		this.originalFileName = file.getOriginalFilename();
-	}
+	this.folderId = file.getFolder() != null ? file.getFolder().getId() : null;
+  }
 
 	public FileInfoDto(String fileName) {
 		this.fileName = fileName;
@@ -73,6 +74,15 @@ public class FileInfoDto {
 		this.urlExpiresAt = urlExpiresAt;
 		this.originalFileName = originalFileName;
 	}
+
+  FileInfoDto(String fileName, String originalFileName, String presignedURL, Boolean uploaded, Instant urlExpiresAt, Long folderId) {
+    this.fileName = fileName;
+    this.presignedURL = presignedURL;
+    this.uploaded = uploaded;
+    this.urlExpiresAt = urlExpiresAt;
+    this.originalFileName = originalFileName;
+    this.folderId = folderId;
+  }
 
 }
 

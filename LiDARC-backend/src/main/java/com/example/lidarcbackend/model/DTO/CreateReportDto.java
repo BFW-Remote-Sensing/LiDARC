@@ -1,12 +1,9 @@
 package com.example.lidarcbackend.model.DTO;
 
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.List;
 
@@ -15,9 +12,12 @@ import java.util.List;
 @Getter
 @Setter
 @Builder
+@ToString
 public class CreateReportDto {
     @NotBlank
     private String title;
     @NotNull
     private List<ReportComponentDto> components;
+    @Nullable
+    private VegetationStatsDto stats;
 }

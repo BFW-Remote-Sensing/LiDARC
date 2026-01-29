@@ -1,13 +1,15 @@
 @use '@angular/material' as mat;
 @use '@angular/material/prebuilt-themes/indigo-pink.css';
+/* In src/styles.scss */
+@import 'leaflet/dist/leaflet.css';
 
 html {
   color-scheme: light;
   @include mat.theme(
-    (
-      color: mat.$azure-palette,
-      typography: Roboto,
-    )
+      (
+        color: mat.$azure-palette,
+        typography: Roboto,
+      )
   );
 
   height: 100%;
@@ -21,4 +23,40 @@ body {
   color: var(--mat-sys-on-surface);
   margin: 0;
   height: 100%;
+}
+
+.info-snackbar .mdc-snackbar__surface {
+  background-color: #2196F3 !important;
+}
+
+.info-snackbar .mdc-snackbar__label {
+  color: #ffffff !important;
+}
+
+.info-snackbar .mat-mdc-snack-bar-action {
+  color: #ffffff !important;
+}
+
+.error-snackbar .mdc-snackbar__surface {
+  background-color: #D32F2F !important;
+}
+
+.error-snackbar .mdc-snackbar__label {
+  color: #ffffff !important;
+}
+
+.error-snackbar .mat-mdc-snack-bar-action {
+  color: #FFEB3B !important;
+}
+
+.success-snackbar .mdc-snackbar__surface {
+  background-color: #388E3C !important;
+}
+
+.success-snackbar .mdc-snackbar__label {
+  color: #ffffff !important;
+}
+
+.success-snackbar .mat-mdc-snack-bar-action {
+  color: #ffffff !important;
 }

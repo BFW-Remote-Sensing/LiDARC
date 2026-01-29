@@ -1,7 +1,10 @@
 package com.example.lidarcbackend.service.files;
 
+import com.example.lidarcbackend.api.metadata.dtos.ComparableItemDTO;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
-import com.example.lidarcbackend.model.entity.File;
+import com.example.lidarcbackend.api.metadata.dtos.FolderFilesDTO;
+import com.example.lidarcbackend.exception.BadRequestException;
+import com.example.lidarcbackend.exception.NotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,18 +14,20 @@ import java.util.Map;
 
 
 public interface IMetadataService {
-    Page<FileMetadataDTO> getPagedMetadata(Pageable pageable);
+    Page<FileMetadataDTO> getPagedMetadataWithoutFolder(Pageable pageable, String search);
 
-    List<FileMetadataDTO> getAllMetadata();
+    List<FileMetadataDTO> getAllMetadataWithoutFolder();
 
-    File saveMetadata(File file);
+    List<FolderFilesDTO> getMetadataGroupedByFolder();
+
+    Page<ComparableItemDTO> getAllMetadataGroupedByFolderPaged(Pageable pageable, String search);
 
     FileMetadataDTO GetMetadata(String metadataId);
 
     List<FileMetadataDTO> getMetadataList(List<String> metadataIds);
 
     @Transactional
-    void deleteMetadataById(Long id);
+    void deleteMetadataById(Long id, boolean independentDelete) throws NotFoundException, BadRequestException;
 
     /**
      * Processes a metadata worker result message

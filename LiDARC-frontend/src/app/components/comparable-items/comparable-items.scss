@@ -1,0 +1,64 @@
+::ng-deep .mat-mdc-tooltip .mdc-tooltip__surface {
+    max-width: 400px !important;
+    white-space: pre-line !important;
+    word-break: break-word;
+    padding: 8px 12px;
+}
+
+.upper-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+
+    .upper-action-section {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+
+        .filter-field {
+            width: 350px;
+            font-size: 14px;
+
+            ::ng-deep .mat-mdc-text-field-wrapper {
+                background-color: white;
+            }
+        }
+
+        .selected-items-display {
+            margin-left: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+
+            .chip-content {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+
+            .type-icon {
+                margin-right: 5px;
+            }
+
+            .remove-icon {
+                color: red;
+                font-size: 19px;
+            }
+
+            .chip {
+                background-color: white;
+                border: 2px solid black;
+            }
+        }
+    }
+}
+
+.flex-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    /* Adjust height as needed */
+}
+
+/* Default status (not 'Ready' and not 'Error') will be the standard black/default text color. */

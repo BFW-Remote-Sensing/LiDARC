@@ -1,6 +1,7 @@
 .file-name {
   display: flex;
-  align-items: center; /* vertical center */
+  align-items: center;
+  /* vertical center */
 }
 
 .align-center {
@@ -15,6 +16,57 @@
   padding: 10px;
 }
 
+.report-row {
+  position: relative;
+  cursor: pointer;
+  padding: 5px 16px;
+
+  .action-buttons {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    width: 100%;
+
+    .delete-button {
+      width: 30px !important;
+      height: 30px !important;
+      min-width: 30px !important; // Override Material's default min-width
+      padding: 0 !important; // Remove default padding
+      line-height: 30px !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      mat-icon {
+        font-size: 20px; // Slightly smaller than the button
+        width: 20px;
+        height: 20px;
+        margin: 0;
+      }
+    }
+  }
+}
+
+.report-row:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.row-overlay-link {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+}
+
+.action-button {
+  padding-top: 10px;
+  position: relative;
+  z-index: 2;
+  /* Layer 2: Topmost */
+}
+
 .section-card {
   padding: 10px;
   margin: 20px;
@@ -27,13 +79,193 @@
   margin-bottom: 20px;
 }
 
+.chart {
+  max-width: 430px;
+  height: 350px;
+}
+
+.reports-scroll-container {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.date-line {
+  color: #777;
+  font-size: 12px;
+}
+
+// Custom tooltip styling for outlier info
+::ng-deep .outlier-info-tooltip {
+  font-size: 13px;
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+.comparison-delete-button {
+  margin-right: 70px;
+  height: 60px;
+}
+
+.percentile-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  background-color: #e3f2fd;
+  color: #1976d2;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.chart-toggle {
+  display: flex;
+  align-items: center;
+}
+
+//info box
+.zoom-info-box {
+  margin-top: 15px;
+  justify-self: left;
+  border-left: 10px;
+  background: #f5f7fa;
+  padding: 16px 20px;
+  border-radius: 10px;
+  border-left: 4px solid #4c9aff;
+  font-family: Arial, sans-serif;
+  max-width: 450px;
+  margin-bottom: 16px;
+  color: #333;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+}
+
+.zoom-info-box h4 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: #2e5aac;
+  font-size: 1.1rem;
+}
+
+.zoom-info-box p {
+  margin: 6px 0;
+  line-height: 1.5;
+}
+
+.zoom-info-box ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.zoom-info-box li {
+  margin-bottom: 4px;
+}
+
+//metrics card styling
+.metrics-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 20px;
+  margin-top: 30px;
+  justify-content: flex-start;
+}
+
+.file-metrics-card {
+  display: inline-flex;
+  flex-direction: column;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  background-color: #f5f7fa;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  width: auto;
+  min-width: 250px;
+
+}
+
+.metrics-card-content {
+  padding-bottom: 0;
+}
+
+.file {
+  border-left: 4px solid #4c9aff;
+}
+
+.metrics-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+}
+
+.metrics-item:last-child {
+  border-bottom: none;
+}
+
+.metric-label {
+  font-weight: 600;
+  color: #555;
+}
+
+.metric-value {
+  font-weight: 700;
+  color: #000;
+}
+
+.statistics-heading {
+  margin-bottom: 8px;
+  color: #2e5aac;
+}
+
+.truncate-small {
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.truncate-medium {
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.truncate-long {
+  max-width: 750px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .charts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 20px;
 }
 
-.chart {
-  max-width: 430px;
+.chart-wrapper {
+  width: 100%;
+}
+
+.chart-container {
+  position: relative;
+  display: inline-block;
+}
+
+.chart-container .chart {
+  display: block;
+  width: 430px;
   height: 350px;
+}
+
+.chart-info-button {
+  position: absolute;
+  top: 8px;
+  right: -16px;
+  z-index: 2;
 }

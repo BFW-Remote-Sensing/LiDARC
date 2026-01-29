@@ -10,4 +10,5 @@ import lombok.Setter;
 public class StartMetadataJobDto {
     private String jobId;
     private String url;
+    private String fileName;
 }

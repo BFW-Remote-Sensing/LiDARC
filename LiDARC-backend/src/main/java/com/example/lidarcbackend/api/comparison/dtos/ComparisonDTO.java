@@ -1,5 +1,6 @@
 package com.example.lidarcbackend.api.comparison.dtos;
 
+import com.example.lidarcbackend.api.folder.dtos.FolderDTO;
 import com.example.lidarcbackend.api.metadata.dtos.FileMetadataDTO;
 import lombok.Getter;
 import lombok.Setter;
@@ -14,13 +15,9 @@ public class ComparisonDTO {
 
     private String name;
 
-    private Boolean needHighestVegetation;
-
     private Boolean needOutlierDetection;
 
-    private Boolean needStatisticsOverScenery;
-
-    private Boolean needMostDifferences;
+    private Double individualStatisticsPercentile;
 
     private LocalDateTime createdAt;
 
@@ -33,6 +30,22 @@ public class ComparisonDTO {
     private GridParameters grid;
 
     private List<FileMetadataDTO> files;
+
+    private String resultBucket;
+
+    private String resultObjectKey;
+
+    private FolderDTO folderA;
+
+    private FolderDTO folderB;
+
+    private Double pointFilterLowerBound;
+
+    private Double pointFilterUpperBound;
+
+    private Boolean needPointFilter;
+
+    private Double outlierDeviationFactor;
 
     public ComparisonDTO() {
 

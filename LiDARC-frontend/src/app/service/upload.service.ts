@@ -1,14 +1,10 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpEvent, HttpHeaders, HttpRequest } from '@angular/common/http';
+import { HttpClient, HttpEvent } from '@angular/common/http';
 import { FileInfo } from '../dto/fileInfo';
-import { defaultBucketPath, Globals } from '../globals/globals';
-import { Observable, switchMap, throwError, from, map, catchError, tap } from 'rxjs';
-import { HttpEventType, HttpResponse } from '@angular/common/http';
-
-const headers = new HttpHeaders({
-  'Content-Type': 'application/json',
-  Accept: 'application/json',
-});
+import { defaultBucketPath, defaultFolderPath, Globals, headers } from '../globals/globals';
+import { catchError, from, map, Observable, switchMap, throwError } from 'rxjs';
+import { CreateEmptyFolder } from '../dto/createEmptyFolder';
+import { UploadFile } from '../entity/UploadFile';
 
 @Injectable({
   providedIn: 'root',
@@ -17,17 +13,32 @@ export class UploadService {
   constructor(
     private httpClient: HttpClient,
     private globals: Globals,
-  ) {}
+  ) {
+  }
 
   // Ask your backend for a presigned URL (adapt endpoint/payload)
-  getPresignedUploadUrl(file: File, hash: string): Observable<FileInfo> {
+  getPresignedUploadUrl(file: File, hash: string, folderId?: number): Observable<FileInfo> {
     console.log('sending presign request for file ' + file.name);
     const payload: FileInfo = {
       fileName: hash + '_' + file.name,
       originalFileName: file.name,
+      folderId: folderId ?? null
     };
     return this.httpClient.post<FileInfo>(
       this.globals.backendUri + defaultBucketPath + '/upload',
+      payload,
+      { headers }
+    );
+  }
+
+  getEmptyFolder(EmptyFolderName: string): Observable<CreateEmptyFolder> {
+    console.log('sending presign request for empty folder ' + EmptyFolderName);
+    const payload: CreateEmptyFolder = {
+      name: EmptyFolderName,
+      status: 'UPLOADING'
+    };
+    return this.httpClient.post<CreateEmptyFolder>(
+      this.globals.backendUri + defaultFolderPath + '/empty',
       payload,
       { headers }
     );
@@ -40,7 +51,10 @@ export class UploadService {
 
       reader.onload = () => {
         const parsed = new URL(url);
-        const proxiedUrl = `http://localhost:8081/minio-upload${parsed.pathname}${parsed.search}`;
+        let proxiedUrl = url;
+        if (parsed.hostname === 'minio') {
+          proxiedUrl = this.globals.toMinioProxyUrl(url);
+        }
 
         console.log('Uploading to presigned URL:', proxiedUrl);
 
@@ -64,11 +78,6 @@ export class UploadService {
     });
   }
 
-  addFileToFormData = (formData: FormData, file: File) => {
-    formData.append('file', file);
-
-  }
-
   onComplete?(file: File, hash: string) {
     // callback to signal to backend that upload is complete
     const payload: FileInfo = {
@@ -88,15 +97,34 @@ export class UploadService {
       switchMap((hash) => {
         uploadFile.hash = hash;
         console.log('computed hash for file ' + file.name + ': ' + hash);
-        return this.getPresignedUploadUrl(file, hash);
+        return this.getPresignedUploadUrl(file, hash, uploadFile.folderId).pipe(
+          catchError((err) => {
+            console.error('getPresignedUploadUrl failed for file ' + file.name, err);
+            return throwError(() => err);
+          })
+        );
       }),
       switchMap((info) => {
         if (!info || !info.presignedURL) {
-          return throwError(() => new Error('Presign request failed: missing presignedUrl'));
+          const error = new Error('Presign request failed: missing presignedUrl');
+          console.error('Presign validation failed for file ' + file.name, error);
+          return throwError(() => error);
         }
-        return this.uploadToPresignedUrl(file, info.presignedURL, 'PUT');
+        return this.uploadToPresignedUrl(file, info.presignedURL, 'PUT').pipe(
+          catchError((err) => {
+            console.error('uploadToPresignedUrl failed for file ' + file.name, err);
+            return throwError(() => err);
+          })
+        );
       })
     );
+  }
+
+  markFolderComplete(folderId: number) {
+    return this.httpClient.put<void>(this.globals.backendUri + defaultFolderPath, {
+      id: folderId,
+      status: 'UPLOADED'
+    });
   }
 
   // compute SHA-256 of a File and return Observable<string> (hex)
@@ -114,4 +142,6 @@ export class UploadService {
       })
     );
   }
+
+
 }

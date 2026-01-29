@@ -1,55 +1,91 @@
-<h2 mat-dialog-title>AOI of Reference File: {{ file.originalFilename }}</h2>
+<h2 mat-dialog-title>AOI of Reference: {{ selectedItem.name }}</h2>
 
-<mat-dialog-content>
+<mat-dialog-content class="content-container">
+
+  <div class="form-section">
     <h3>Define Grid Boundaries</h3>
+
+
     <form (ngSubmit)="onDefine()">
-        <div class="metadata-display">
-            <mat-form-field appearance="fill" class="input-field">
-                <mat-label>X Min</mat-label>
-                <input matInput type="number" [(ngModel)]="xMin" name="minX" required [min]="file.minX"
-                    [max]="file.maxX">
-            </mat-form-field>
+      <div class="metadata-display">
+        <mat-form-field appearance="fill" class="input-field">
+          <mat-label>X Min</mat-label>
+          <input matInput type="number" [(ngModel)]="xMin" (ngModelChange)="updatePreview()"
+                 name="minX" required [min]="limitXMin" [max]="xMax!" #xMinModel="ngModel">
+          <mat-error *ngIf="xMin! < limitXMin">Cannot be less than {{ limitXMin }}</mat-error>
+          <mat-error *ngIf="xMin! > xMax!">Cannot exceed X Max</mat-error>
+        </mat-form-field>
 
-            <mat-form-field appearance="fill" class="input-field">
-                <mat-label>X Max</mat-label>
-                <input matInput type="number" [(ngModel)]="xMax" name="maxX" required [min]="file.minX"
-                    [max]="file.maxX">
-            </mat-form-field>
+        <mat-form-field appearance="fill" class="input-field">
+          <mat-label>X Max</mat-label>
+          <input matInput type="number" [(ngModel)]="xMax" (ngModelChange)="updatePreview()"
+                 name="maxX" required [min]="xMin!" [max]="limitXMax" #xMaxModel="ngModel">
+          <mat-error *ngIf="xMax! > limitXMax">Cannot exceed {{ limitXMax }}</mat-error>
+          <mat-error *ngIf="xMax! < xMin!">Cannot be less than X Min</mat-error>
+        </mat-form-field>
 
-            <mat-form-field appearance="fill" class="input-field">
-                <mat-label>Y Min</mat-label>
-                <input matInput type="number" [(ngModel)]="yMin" name="minY" required [min]="file.minY"
-                    [max]="file.maxY">
-            </mat-form-field>
+        <mat-form-field appearance="fill" class="input-field">
+          <mat-label>Y Min</mat-label>
+          <input matInput type="number" [(ngModel)]="yMin" (ngModelChange)="updatePreview()"
+                 name="minY" required [min]="limitYMin" [max]="yMax!" #yMinModel="ngModel">
+          <mat-error *ngIf="yMin! < limitYMin">Cannot be less than {{ limitYMin }}</mat-error>
+          <mat-error *ngIf="yMin! > yMax!">Cannot exceed Y Max</mat-error>
+        </mat-form-field>
 
-            <mat-form-field appearance="fill" class="input-field">
-                <mat-label>Y Max</mat-label>
-                <input matInput type="number" [(ngModel)]="yMax" name="maxY" required [min]="file.minY"
-                    [max]="file.maxY">
-            </mat-form-field>
-        </div>
+        <mat-form-field appearance="fill" class="input-field">
+          <mat-label>Y Max</mat-label>
+          <input matInput type="number" [(ngModel)]="yMax" (ngModelChange)="updatePreview()"
+                 name="maxY" required [min]="yMin!" [max]="limitYMax" #yMaxModel="ngModel">
+          <mat-error *ngIf="yMax! > limitYMax">Cannot exceed {{ limitYMax }}</mat-error>
+          <mat-error *ngIf="yMax! < yMin!">Cannot be less than Y Min</mat-error>
+        </mat-form-field>
+      </div>
 
-        <h3>Define New Cell Dimensions</h3>
-        <div class="metadata-display">
-            <mat-form-field appearance="fill" class="input-field-full">
-                <mat-label>Cell Width</mat-label>
-                <input matInput type="number" [(ngModel)]="cellWidth" name="cellWidth" required min="1">
-                <mat-hint>Define the cell width in meters</mat-hint>
-            </mat-form-field>
+      <h3>Define New Cell Dimensions</h3>
+      <div class="metadata-display">
+        <mat-form-field appearance="fill" class="input-field-full">
+          <mat-label>Cell Width Dimension</mat-label>
+          <input matInput type="number" [(ngModel)]="cellX" name="cellX" required min="1">
+          <mat-hint>Define the width of a cell in meters</mat-hint>
+        </mat-form-field>
 
-            <mat-form-field appearance="fill" class="input-field-full">
-                <mat-label>Cell Height</mat-label>
-                <input matInput type="number" [(ngModel)]="cellHeight" name="cellHeight" required min="1">
-                <mat-hint>Define the cell height in meters</mat-hint>
-            </mat-form-field>
-        </div>
+        <mat-form-field appearance="fill" class="input-field-full">
+          <mat-label>Cell Height Dimension</mat-label>
+          <input matInput type="number" [(ngModel)]="cellY" name="cellY" required min="1">
+          <mat-hint>Define the height of a cell in meters</mat-hint>
+        </mat-form-field>
+      </div>
     </form>
+  </div>
+  <div class="map-section">
+    <h3>AOI Preview</h3>
+    <div id="map" [style.visibility]="currentZone ? 'visible' : 'hidden'"></div>
+
+    <div *ngIf="!currentZone" class="map-placeholder">
+      <p>Please select a Coordinate Zone to view the map.</p>
+    </div>
+  </div>
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-    <button mat-button (click)="onCancel()">Cancel</button>
-    <button mat-raised-button color="primary" [disabled]="cellWidth === null || cellHeight === null || xMin === null || xMax === null || yMin === null || yMax === null || xMin >= xMax || yMin >= yMax || 
-        xMin < file.minX || xMax > file.maxX || yMin < file.minY || yMax > file.maxY" (click)="onDefine()">
-        Define Grid
-    </button>
+  <button mat-icon-button
+          matTooltip="Auto-match overlapping area"
+          class="match-icon-btn"
+          (click)="automatedAOIMatch()">
+    <mat-icon>auto_fix_high</mat-icon>
+  </button>
+
+  <button mat-icon-button
+          matTooltip="Reset to original size"
+          class="reset-icon-btn"
+          (click)="resetAoi()">
+    <mat-icon>restart_alt</mat-icon>
+  </button>
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary"
+          [disabled]="!currentZone || cellX === null || cellY === null || xMin === null || xMax === null || yMin === null || yMax === null
+          || xMin >= xMax || yMin >= yMax || xMin < limitXMin || xMax > limitXMax || yMin < limitYMin || yMax > limitYMax"
+          (click)="onDefine()">
+    Define Grid
+  </button>
 </mat-dialog-actions>

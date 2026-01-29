@@ -1,0 +1,168 @@
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+
+  h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 500;
+    color: #333;
+  }
+
+  .filter-field {
+    width: 100%;
+    max-width: 350px;
+    font-size: 14px;
+
+    // Fix for bottom padding in some Material versions
+    ::ng-deep .mat-mdc-text-field-wrapper {
+      background-color: white;
+    }
+  }
+}
+
+.reports-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.report-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  // Subtle border to define edges if shadow is light
+  border: 1px solid rgba(0, 0, 0, 0.08);
+
+  &:hover {
+    transform: translateY(-5px); // Lift effect
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important; // Stronger shadow
+  }
+}
+
+// --- Preview / Thumbnail Area ---
+.preview-area {
+  position: relative;
+  height: 220px; // Fixed height for visual consistency
+  background-color: #f5f7fa; // Neutral background for the PDF
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  overflow: hidden;
+
+  // Make the component fill the area
+  app-pdf-thumbnail {
+    height: 100%;
+    width: 100%;
+    display: block;
+  }
+}
+
+.hover-overlay {
+  position: absolute;
+  inset: 0; // Shorthand for top:0, right:0, bottom:0, left:0
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  backdrop-filter: blur(2px); // Optional: nice frosted glass effect
+
+  mat-icon {
+    color: white;
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    transform: scale(0.8);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+}
+
+.preview-area:hover .hover-overlay {
+  opacity: 1;
+
+  mat-icon {
+    transform: scale(1); // Pop effect
+  }
+}
+
+// --- Card Content ---
+mat-card-header {
+  padding: 16px 16px 0;
+
+  mat-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 6px;
+
+    // Truncate title after 2 lines
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  mat-card-subtitle {
+    font-size: 12px;
+    color: #777;
+    margin-bottom: 8px;
+  }
+}
+
+mat-card-actions {
+  margin-top: auto;
+  padding: 8px 16px 16px;
+  border-top: 1px solid transparent;
+  width: 100%;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+
+  .delete-button {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important; // Override Material's default min-width
+    padding: 0 !important; // Remove default padding
+    line-height: 30px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    mat-icon {
+      font-size: 20px; // Slightly smaller than the button
+      width: 20px;
+      height: 20px;
+      margin: 0;
+    }
+  }
+
+  .right-buttons {
+    margin-left: auto;
+    display: flex;
+  }
+}
+
+.hide-paginator {
+  display: none !important;
+}
+
+.flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}

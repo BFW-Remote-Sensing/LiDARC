@@ -1,25 +1,134 @@
-<div class="zoom-info-box">
-  <h4>Heatmap Navigation Guide</h4>
-  <p>
-    Use the <strong>zoom controls</strong> to explore specific regions of the heatmap in more detail.
-  </p>
-  <ul>
-    <li><strong>Horizontal Zoom</strong>: Adjust the bottom slider to zoom in and out along the X-axis.</li>
-    <li><strong>Vertical Zoom</strong>: Use the right slider to control the zoom level on the Y-axis.</li>
-  </ul>
-  <p>
-    Both heatmaps are <strong>linked</strong> — any zoom or pan action automatically updates the other chart.
-  </p>
+<div class="guide-controls-layout">
+  <!-- LEFT: Navigation Guide -->
+  <div class="zoom-info-box">
+    <h4>Heatmap Navigation Guide</h4>
+
+    <p>
+      Use the controls above to switch views and explore areas in detail.
+    </p>
+
+    <p>
+      <strong>1) Visible Heatmaps</strong><br />
+      The <strong>toggle group</strong> selects which heatmaps are displayed:
+    </p>
+    <ul>
+      <li><strong>A + B + Δ</strong>: show both datasets and the difference heatmap.</li>
+      <li><strong>A + B</strong>: show the two linked datasets side-by-side.</li>
+      <li><strong>Δ</strong>: show only the difference heatmap (<em>B − A</em>).</li>
+    </ul>
+
+    <p>
+      <strong>2) Legend (VisualMap)</strong><br />
+      The <strong>VisualMap</strong> button shows/hides the color legend.
+    </p>
+
+    <p>
+      <strong>3) Zoom Controls</strong><br />
+      The <strong>Zoom</strong> button shows/hides the zoom sliders.
+    </p>
+
+    <p>
+      <strong>4) Color Scheme</strong><br />
+      Select different color schemes for A and B.
+    </p>
+    <p>
+      <strong>5) Resize Heatmaps</strong><br />
+      Click to resize the heatmaps to fit the current window size.
+    </p>
+    <p>
+      <strong>6) Layout Toggle</strong><br />
+      Switch between a stacked layout (vertical) and a grid layout (horizontal).
+    </p>
+    <p>
+      This heatmap grid has:
+      <strong>{{ rows }}</strong> rows × <strong>{{ cols }}</strong> cols
+    </p>
+  </div>
+
+  <!-- RIGHT: Controls -->
+  <div class="controls-card">
+    <h4 class="controls-title">Controls</h4>
+
+    <mat-button-toggle-group
+      class="mode-toggle"
+      [value]="mode"
+      (valueChange)="setMode($event)">
+      <mat-button-toggle value="ABD">A + B + Δ</mat-button-toggle>
+      <mat-button-toggle value="AB">A + B</mat-button-toggle>
+      <mat-button-toggle value="D">Δ</mat-button-toggle>
+    </mat-button-toggle-group>
+
+    <div class="controls-actions">
+      <button mat-stroked-button (click)="toggleVisualMap()">
+        <mat-icon>{{ showVisualMap ? 'visibility' : 'visibility_off' }}</mat-icon>
+        VisualMap
+      </button>
+
+      <button mat-stroked-button (click)="toggleZoom()">
+        <mat-icon>{{ showZoom ? 'zoom_in' : 'zoom_out' }}</mat-icon>
+        Zoom
+      </button>
+
+      <button mat-stroked-button [matMenuTriggerFor]="schemeMenu">
+        <mat-icon>palette</mat-icon>
+        Scheme: {{ selectedSchemeLabel }}
+      </button>
+
+      <button mat-stroked-button (click)="resizeHeatmaps()">
+        <mat-icon>resize</mat-icon>
+        Resize heatmaps
+      </button>
+    </div>
+
+    <button mat-stroked-button (click)="toggleLayout()">
+      <mat-icon>{{ heatmapsStackedLayout ? 'view_column' : 'view_stream' }}</mat-icon>
+      Layout: {{ heatmapsStackedLayout ? 'Stacked' : 'Grid' }}
+    </button>
+    @if (needOutlierDetection) {
+      <div style="display: flex; align-items: center; gap: 20px; font-size: 0.8em; font-weight: normal;">
+        <span>Std Dev Factor: <strong>{{ outlierDeviationFactor }}</strong></span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <mat-checkbox [checked]="showOutliers" (change)="showOutliersChange.emit($event.checked)" color="primary">
+            Show Outliers
+          </mat-checkbox>
+          <mat-icon
+            style="font-size: 18px; width: 18px; height: 18px; color: #666; cursor: help;"
+            matTooltip="Toggle visibility of red dots on the heatmaps. Red dots indicate grid cells containing outlier points that exceed the specified standard deviation threshold. This is a visual-only toggle and does not affect the statistical calculations."
+            matTooltipPosition="below"
+            matTooltipClass="outlier-info-tooltip">
+            info_outline
+          </mat-icon>
+        </div>
+      </div>
+    }
+
+    <mat-menu #schemeMenu="matMenu">
+      <button mat-menu-item (click)="setScheme('greens')">Greens</button>
+      <button mat-menu-item (click)="setScheme('browns')">Browns</button>
+      <button mat-menu-item (click)="setScheme('deltas')">Deltas</button>
+    </mat-menu>
+
+  </div>
 </div>
 
-<div class="heatmap-comparison">
-  <div>
-    <div class="heatmap-chart" id="chart1" ></div>
-    <div></div>
-  </div>
-  <div>
-    <div class="heatmap-chart" id="chart2"></div>
+
+<div class="grid" [ngClass]="displayedHeatmap" [class.is-stacked]="heatmapsStackedLayout">
+  <div class="heatmap a" [class.hidden]="!showAB" >
+    <div class="title">Heatmap A</div>
+    <div #chart1 class="chart"></div>
   </div>
 
+  <div class="heatmap b" [class.hidden]="!showAB">
+    <div class="title">Heatmap B</div>
+    <div #chart2 class="chart"></div>
+  </div>
+
+  <div class="heatmap d" [class.hidden]="!showD">
+    <div class="title">Δ (B − A)</div>
+    <div #diffChart class="chart"></div>
+  </div>
 </div>
+
+
+
 

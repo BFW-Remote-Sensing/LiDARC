@@ -16,8 +16,8 @@ public class ComparisonFilePK implements Serializable {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof ComparisonFilePK userPK)) return false;
-        return comparisonId.equals(userPK.comparisonId) && fileId.equals(userPK.fileId);
+        if (!(o instanceof ComparisonFilePK cfPK)) return false;
+        return comparisonId.equals(cfPK.comparisonId) && fileId.equals(cfPK.fileId);
     }
 
     @Override

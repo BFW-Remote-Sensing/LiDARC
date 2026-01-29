@@ -1,17 +1,28 @@
-import { ChangeDetectorRef, Component, EventEmitter, Output, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIcon } from '@angular/material/icon';
-import { MatTable, MatTableModule } from '@angular/material/table';
-import { MatProgressBar } from '@angular/material/progress-bar';
-import { MatCardModule } from '@angular/material/card';
-import { DataSource } from '@angular/cdk/collections';
-import { UploadService } from '../../service/upload.service';
-import { HttpEventType, HttpResponse } from '@angular/common/http';
-import { ToastrService } from 'ngx-toastr';
-import { debounceTime, map, Observable } from 'rxjs';
-import { MatProgressSpinner } from '@angular/material/progress-spinner';
+// file: LiDARC-frontend/src/app/components/upload/upload.component.ts
+import {ChangeDetectorRef, Component, OnDestroy, OnInit} from '@angular/core';
+import {CommonModule} from '@angular/common';
+import {FormBuilder, FormGroup, ReactiveFormsModule} from '@angular/forms';
+import {MatButtonModule} from '@angular/material/button';
+import {MatIcon} from '@angular/material/icon';
+import {MatTable, MatTableDataSource, MatTableModule} from '@angular/material/table';
+import {MatCardModule} from '@angular/material/card';
+import {MatProgressSpinner} from '@angular/material/progress-spinner';
+import {MatDialog, MatDialogModule} from '@angular/material/dialog';
+import {ToastrService} from 'ngx-toastr';
+import {Subject, Subscription} from 'rxjs';
+import {takeUntil} from 'rxjs/operators';
+import {HttpEventType, HttpResponse} from '@angular/common/http';
+
+import {UploadService} from '../../service/upload.service';
+import {UploadQueueService} from '../../service/uploadQueue.service';
+import {UploadFile} from '../../entity/UploadFile';
+import {
+  ConfirmationDialogResult,
+  UploadAsFolderDialogComponent
+} from '../upload-as-folder-dialogue/upload-as-folder-dialogue';
+
+// ... other imports
+
 
 @Component({
   selector: 'app-upload',
@@ -25,27 +36,50 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
     MatTable,
     MatIcon,
     MatProgressSpinner,
+    MatDialogModule,
   ],
   templateUrl: './upload.component.html',
   styleUrls: ['./upload.component.scss'],
 })
-export class UploadComponent {
-  public files: UploadFile[] = [];
+export class UploadComponent implements OnInit, OnDestroy {
+
+  dataSource = new MatTableDataSource<UploadFile>([]);
   columnsToDisplay = ['file name', 'status', 'actions'];
-  public fileToSubscriptionMap: Map<UploadFile, any> = new Map();
   form: FormGroup;
+  private subscription?: Subscription;
+  private destroy$ = new Subject<void>();
+  private notifiedFolders = new Set<number>();
 
   constructor(
     private fb: FormBuilder,
     private uploadService: UploadService,
-    private cdr: ChangeDetectorRef,
-    private toastr: ToastrService
+    private uploadQueue: UploadQueueService,
+    private toastr: ToastrService,
+    private dialog: MatDialog,
+    private cdr: ChangeDetectorRef
   ) {
-    this.form = this.fb.group({
-      // store selected files array in the control; adapt type as needed
-      files: [[]],
-    });
+    this.form = this.fb.group({files: [[]]});
   }
+
+  ngOnInit() {
+    // Subscribe to queue and trigger change detection for each update
+    this.subscription = this.uploadQueue.files$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(files => {
+        this.dataSource.data = files;
+        this.form.patchValue({files}, {emitEvent: false});
+        this.checkFolderCompletion(files);
+        this.cdr.detectChanges(); // ✓ Immediate change detection
+      });
+
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.subscription?.unsubscribe();
+  }
+
 
   onFileInput(event: Event) {
     const input = event.target as HTMLInputElement;
@@ -55,158 +89,201 @@ export class UploadComponent {
   }
 
   addFiles(newFiles: File[]) {
-    let changed = false;
-    const changedFiles: UploadFile[] = [];
+    const filesToAdd = newFiles.filter(f =>
+      !this.dataSource.data.some(e => e.file.name === f.name && e.file.type === f.type)
+    );
 
-    for (const f of newFiles) {
-      const exists = this.files.some((e) => e.file.name === f.name && e.file.type === f.type);
-      if (!exists) {
-        const actualFile: UploadFile = { file: f, hash: '', progress: 0, status: 'idle' };
-        this.files.push(actualFile);
-        changedFiles.push(actualFile);
-        changed = true;
-      }
-    }
+    if (filesToAdd.length === 0) return;
 
-    if (changed) {
-      this.files = [...this.files]; // one immutable update
-      changedFiles.forEach((file) => this.fileToSubscriptionMap.set(file, this.upload(file)));
+    if (filesToAdd.length > 1) {
+      this.showFolderDialog(filesToAdd);
+    } else {
+      const added = this.uploadQueue.addFiles(filesToAdd);
+      added.forEach(f => this.startUpload(f));
     }
   }
 
   upload(fileUpload: UploadFile) {
-    if (fileUpload.status === 'uploading') return;
-    fileUpload.status = 'uploading';
-    this.cdr.detectChanges(); //need to detect Changes for some reason
-    return this.uploadService
-      .uploadFileUsingPresign(fileUpload.file, fileUpload)
-      .pipe(debounceTime(50))
-      .subscribe({
-        next: (event) => {
-          if (event.type === HttpEventType.UploadProgress && event.total != null) {
-            const newProgress = Math.round((100 * event.loaded) / event.total);
-            this.files = this.files.map((file) => {
-              if (file === fileUpload) {
-                file.status = 'uploading';
-                this.cdr.detectChanges(); //need to detect Changes for some reason
-                file.progress = newProgress;
-                this.cdr.detectChanges(); //need to detect Changes for some reason
-                return file;
-              } else {
-                return file;
-              }
-            });
-            this.form.get('files')!.setValue(this.files);
-          } else if (event instanceof HttpResponse) {
-            if (event.status == 200) {
-              this.files = this.files.map((file) => {
-                if (file === fileUpload) {
-                  file.status = 'done';
-                  this.cdr.detectChanges(); //need to detect Changes for some reason
-                  file.progress = 100;
-                  this.cdr.detectChanges(); //need to detect Changes for some reason
-                  this.fileToSubscriptionMap.delete(fileUpload);
-
-                  this.uploadService.onComplete?.(fileUpload.file, fileUpload.hash).subscribe({
-                    next: (res) => {
-                      console.log(
-                        'notified backend of completed upload for file ' + fileUpload.file.name
-                      );
-                    },
-                    error: (e) => {
-                      console.error(
-                        'could not notify backend of completed upload for file ' +
-                          fileUpload.file.name +
-                          ' ' +
-                          e.status
-                      );
-                      file.status = 'error';
-                      this.cdr.detectChanges(); //need to detect Changes for some reason
-                    },
-                  });
-
-                  return file;
-                } else {
-                  return file;
-                }
-              });
-              this.form.get('files')!.setValue(this.files);
-            } else {
-              //TODO test this
-              this.toastr.error(
-                'Upload failed file with name: ' +
-                  fileUpload.file.name +
-                  ' \n Consider reuploading ' +
-                  'StatusCode: ' +
-                  event.status
-              );
-              this.files = this.files.map((file) => {
-                if (file === fileUpload) {
-                  file.status = 'error';
-                  this.cdr.detectChanges(); //need to detect Changes for some reason
-                  return file;
-                } else {
-                  return file;
-                }
-              });
-            }
-          }
-        },
-        error: (e) => {
-          this.toastr.error(
-            'Could not upload file with name: ' +
-              fileUpload.file.name +
-              ' \n Consider reuploading ' +
-              e.status
-          );
-          fileUpload.status = 'error';
-          this.cdr.detectChanges(); //need to detect Changes for some reason
-          this.form.get('files')!.setValue(this.files);
-        },
-      });
+    this.startUpload(fileUpload);
   }
+
   reUpload(fileUpload: UploadFile) {
-    this.fileToSubscriptionMap.set(fileUpload, this.upload(fileUpload));
+    this.startUpload(fileUpload);
   }
 
   cancel(uploadFile: UploadFile) {
-    const subscription = this.fileToSubscriptionMap.get(uploadFile);
-    if (subscription) {
-      subscription.unsubscribe();
-      this.fileToSubscriptionMap.delete(uploadFile);
-      uploadFile.status = 'error'; //needs to be different than 'idle' to allow reupload
-      uploadFile.progress = 0;
-      this.files = [...this.files]; // one immutable update
-      this.form.get('files')!.setValue(this.files);
-    }
-  }
-
-  removeFile(fileUpload: UploadFile) {
-    // Filter by file identity using name, size and type to avoid relying on object reference
-    this.files = this.files.filter(
-      (f) => !(f.file.name === fileUpload.file.name && f.file.type === fileUpload.file.type)
-    );
-    this.form.get('files')!.setValue(this.files);
+    this.uploadQueue.cancelUpload(uploadFile.id);
   }
 
   clear() {
-    this.files = [];
-    this.form.get('files')!.setValue(this.files);
+    this.notifiedFolders.clear();
+    this.uploadQueue.clear();
   }
 
   openFilePicker(input: HTMLInputElement) {
     input.click();
   }
-}
 
-// small DataSource implementation that connects to the files observable
-class FilesDataSource extends DataSource<UploadFile> {
-  constructor(private files$: Observable<UploadFile[]>) {
-    super();
+  trackById = (_: number, row: UploadFile) => row.id;
+
+  private showFolderDialog(files: File[]) {
+    const ref = this.dialog.open(UploadAsFolderDialogComponent, {
+      width: '420px',
+      data: {
+        title: 'Uploading multiple files',
+        subtitle: 'Do you want to upload them as a folder?',
+        primaryButtonText: 'Yes',
+        secondaryButtonText: 'No',
+        defaultUploadAsFolder: true,
+        defaultFolderName: 'New folder',
+        showAsFolderOption: true,
+      },
+      disableClose: true,
+    });
+
+    ref.afterClosed().subscribe((result?: ConfirmationDialogResult) => {
+      if (!result?.confirmed) {
+        const added = this.uploadQueue.addFiles(files);
+        added.forEach(f => this.startUpload(f));
+        this.cdr.detectChanges(); // ✓ Detect files added
+        return;
+      }
+
+      if (result.uploadAsFolder) {
+        this.uploadService.getEmptyFolder(result.folderName!).subscribe({
+          next: (folder) => {
+            const added = this.uploadQueue.addFiles(files, folder.id, folder.name);
+            added.forEach(f => this.startUpload(f));
+            this.cdr.detectChanges(); // ✓ Detect files added to folder
+          },
+          error: () => {
+            this.toastr.error('Could not create folder. Uploading without folder.');
+            const added = this.uploadQueue.addFiles(files);
+            added.forEach(f => this.startUpload(f));
+            this.cdr.detectChanges(); // ✓ Detect files added after error
+          }
+        });
+      }
+    });
   }
 
-  connect(): Observable<UploadFile[]> {
-    return this.files$;
+  private startUpload(fileUpload: UploadFile) {
+    if (fileUpload.status === 'uploading') return;
+
+    this.uploadQueue.updateFile(fileUpload.id, { status: 'hashing', progress: 0 });
+    this.cdr.detectChanges(); // ✓ Detect upload start
+
+    const sub = this.uploadService
+      .uploadFileUsingPresign(fileUpload.file, fileUpload)
+      .subscribe({
+        next: event => {
+          this.handleUploadEvent(event, fileUpload);
+          this.cdr.detectChanges(); // ✓ Detect progress
+        },
+        error: (e) => {
+          console.error('Upload pipeline error for file ' + fileUpload.file.name, e);
+          this.handleUploadError(e, fileUpload);
+          this.cdr.detectChanges(); // ✓ Detect error
+        }
+      });
+
+    this.uploadQueue.setSubscription(fileUpload.id, sub);
   }
-  disconnect(): void {}
+
+  private handleUploadEvent(event: any, fileUpload: UploadFile) {
+    if (event.type === HttpEventType.UploadProgress && event.total) {
+      const progress = Math.round((100 * event.loaded) / event.total);
+      this.uploadQueue.updateFile(fileUpload.id, { status: 'uploading', progress });
+    } else if (event instanceof HttpResponse) {
+      if (event.status === 200) {
+        this.uploadQueue.updateFile(fileUpload.id, { status: 'done', progress: 100 });
+        this.cdr.detectChanges(); // ✓ Detect completion
+
+        this.uploadService.onComplete?.(fileUpload.file, fileUpload.hash).subscribe({
+          next: () => {
+            console.log('Upload completed:', fileUpload.file.name);
+            this.cdr.detectChanges(); // ✓ Detect completion callback
+          },
+          error: (err) => {
+            const statusCode = err?.status || 'Unknown';
+            const errorMsg = err?.error?.message || err?.message || 'Failed to notify backend';
+            console.error('Failed to notify backend:', err);
+            this.toastr.error(`${errorMsg} (Status: ${statusCode})`, `Backend Notification Failed: ${fileUpload.file.name}`);
+            this.uploadQueue.updateFile(fileUpload.id, { status: 'error' });
+            this.cdr.detectChanges(); // ✓ Detect backend error
+          }
+        });
+      } else {
+        const statusText = event.statusText || 'Unknown Error';
+        this.toastr.error(
+          `${fileUpload.file.name} - ${statusText} (Status: ${event.status})`,
+          'Upload Failed'
+        );
+        this.uploadQueue.updateFile(fileUpload.id, { status: 'error' });
+        this.cdr.detectChanges(); // ✓ Detect error status
+      }
+    }
+  }
+
+  private handleUploadError(_error: any, fileUpload: UploadFile) {
+    console.error('handleUploadError called for file:', fileUpload.file.name, 'error:', _error);
+
+    // Extract status code and error details
+    const statusCode = _error?.status || _error?.statusCode || 'Unknown';
+    const statusText = _error?.statusText || '';
+    const errorMessage = _error?.error?.message || _error?.message || 'Upload failed';
+
+    // Build descriptive error message
+    let errorDetail = errorMessage;
+    if (statusText && statusText !== errorMessage) {
+      errorDetail += ` - ${statusText}`;
+    }
+
+    this.toastr.error(
+      `${fileUpload.file.name}: ${errorDetail} (Status: ${statusCode})`,
+      'Upload Error'
+    );
+    this.uploadQueue.updateFile(fileUpload.id, { status: 'error', progress: 0 });
+    this.cdr.detectChanges(); // ✓ Detect error immediately
+  }
+
+
+  private checkFolderCompletion(files: UploadFile[]) {
+    // group by folderId (ignore uploads not in a folder)
+    const byFolder = new Map<number, UploadFile[]>();
+
+    for (const f of files) {
+      if (f.folderId == null) continue;
+      const list = byFolder.get(f.folderId) ?? [];
+      list.push(f);
+      byFolder.set(f.folderId, list);
+    }
+
+    for (const [folderId, folderFiles] of byFolder.entries()) {
+      if (folderFiles.length === 0) continue;
+      if (this.notifiedFolders.has(folderId)) continue;
+
+      // if count allfiles + any error = folderFiles.length, then all are done (either folder is uploaded)
+      const allFinished = folderFiles.every(x => x.status === 'done' || x.status === 'error');
+
+      if (allFinished && !this.notifiedFolders.has(folderId)) {
+        this.notifiedFolders.add(folderId);
+
+        // call backend endpoint to set folder status
+        this.uploadService.markFolderComplete(folderId).subscribe({
+          next: () => {
+            // optional toast/log
+          },
+          error: () => {
+            // allow retry if backend call fails
+            this.notifiedFolders.delete(folderId);
+            this.toastr.error(`Could not update folder status (${folderId}).`);
+          }
+        });
+      }
+
+      // Optional alternative:
+      // if (allDone && anyError) { mark folder as ERROR instead }
+    }
+  }
 }

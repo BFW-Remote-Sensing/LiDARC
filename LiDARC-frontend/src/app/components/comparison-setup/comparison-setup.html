@@ -1,98 +1,367 @@
 <h2 style="text-align: center; margin-bottom: 0">Comparison Setup</h2>
 <div style="display:flex">
-    <div style="width: 70%">
-        <h3 style="text-align: center; margin-bottom: 20px;">Selected Files for Comparison:</h3>
-        <div class="file-details-cards-container">
-            <app-file-details-card [metadataId]="comparison.fileMetadataIds[0]" index="1"></app-file-details-card>
-            <app-file-details-card [metadataId]="comparison.fileMetadataIds[1]" index="2"></app-file-details-card>
-        </div>
+  <div style="width: 75%">
+    <h3 class="selected-items-title">Selected Items for Comparison:</h3>
+    <div class="selected-items-container">
+      <table mat-table [dataSource]="dataSource" class="mat-elevation-z8" style="width: 100%;" multiTemplateDataRows>
+
+        <!-- Select Column (Checkbox) -->
+        @if (needExpandCol) {
+        <ng-container matColumnDef="open">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let element" class="expand-column">
+            @if (element.type !== 'File') {
+            <button mat-icon-button tabindex="-1" (click)="toggle(element); $event.stopPropagation()"
+              aria-label="Toggle row details">
+              <mat-icon>
+                {{ isExpanded(element) ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}
+              </mat-icon>
+            </button>
+            }
+          </td>
+        </ng-container>
+        }
+
+        <!-- Select Column (Checkbox) -->
+        <ng-container matColumnDef="select">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let element" [ngClass]="{'no-left-padding-col': needExpandCol}">
+            <mat-checkbox [disabled]="element.status !== 'PROCESSED'" (click)="$event.stopPropagation()"
+              [checked]="refService.isSelectedComparableItem(element)"
+              (change)="refService.setSelectedComparableItem(element)">
+            </mat-checkbox>
+          </td>
+        </ng-container>
+
+        <!-- Name Column -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Name</th>
+          <td mat-cell *matCellDef="let element">{{ element.originalFilename || element.name }}</td>
+        </ng-container>
+
+        <!-- Type Column -->
+        <ng-container matColumnDef="type">
+          <th mat-header-cell *matHeaderCellDef>Type</th>
+          <td mat-cell *matCellDef="let element">{{ element.type }}</td>
+        </ng-container>
+
+        <!-- Capture Year Column -->
+        <ng-container matColumnDef="captureYear">
+          <th mat-header-cell *matHeaderCellDef>Capture Year</th>
+          <td mat-cell *matCellDef="let element">{{ element.captureYear ?? '-' }}</td>
+        </ng-container>
+
+        <!-- Size Bytes Column -->
+        <ng-container matColumnDef="sizeBytes">
+          <th mat-header-cell *matHeaderCellDef>Size</th>
+          <td mat-cell *matCellDef="let element">{{
+            element.sizeBytes != null ? (element.sizeBytes |
+            formatBytes)
+            :
+            '-'
+            }}
+          </td>
+        </ng-container>
+
+        <!-- Status Column -->
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let element">
+            <div class="status-column">
+              <span [ngClass]="{
+        'status-ready': element.status === 'PROCESSED',
+        'status-error': element.status === 'FAILED',
+        'status-default': ['UPLOADED', 'PROCESSING', 'UPLOADING'].includes(element.status)
+    }">
+                {{ element.status | titlecase }}</span>
+              @if (element.status === 'PREPROCESSING' || element.status === 'COMPARING') {
+              <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+              } @else if (element.status === 'FAILED') {
+              <mat-icon [matTooltip]="element.errorMessage" matTooltipPosition="above" diameter="20">
+                error
+              </mat-icon>
+              }
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- Uploaded At Column -->
+        <ng-container matColumnDef="uploadedAt">
+          <th mat-header-cell *matHeaderCellDef>Uploaded/Created At</th>
+          <td mat-cell *matCellDef="let element">{{ element.uploadedAt | date: 'MMM d, y, HH:mm' }}</td>
+        </ng-container>
+
+        <!-- Actions Column -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let element" style="text-align: right">
+            <a [routerLink]="[element.type === 'File' ? '/stored-files' : '/folders', element.id]"
+              (click)="$event.stopPropagation()">
+              <button mat-icon-button matTooltip="View Details" matTooltipPosition="right">
+                <mat-icon>visibility</mat-icon>
+              </button>
+            </a>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="expandedDetail">
+          <td mat-cell *matCellDef="let folder" [attr.colspan]="displayedColumns.length" style="padding: 0;">
+            <div class="detail-container" [@detailExpand]="isExpanded(folder) ? 'expanded' : 'collapsed'">
+              <strong>Contained Files:</strong> {{ folder.fileCount }}
+              <table mat-table [dataSource]="folder.files" class="mat-elevation-z8 inner-table" cdkDropList
+                (cdkDropListDropped)="dropFile($event, folder)">
+
+                <!-- Index Column -->
+                <ng-container matColumnDef="index">
+                  <th mat-header-cell *matHeaderCellDef>
+                    <div class="reorder-info-header">
+                      <mat-icon matTooltip="Drag to reorder files" matTooltipPosition="right">info
+                      </mat-icon>
+                    </div>
+                  </th>
+                  <td mat-cell *matCellDef="let file">{{ folder.files.indexOf(file) + 1 }}</td>
+                </ng-container>
+
+                <!-- File Name Column -->
+                <ng-container matColumnDef="filename">
+                  <th mat-header-cell *matHeaderCellDef>File Name</th>
+                  <td mat-cell *matCellDef="let file">{{ file.originalFilename || file.name }}</td>
+                </ng-container>
+
+                <!-- Size Column -->
+                <ng-container matColumnDef="sizeBytes">
+                  <th mat-header-cell *matHeaderCellDef>Size</th>
+                  <td mat-cell *matCellDef="let file">{{ file.sizeBytes | formatBytes }}</td>
+                </ng-container>
+
+                <!-- Status Column -->
+                <ng-container matColumnDef="status">
+                  <th mat-header-cell *matHeaderCellDef>Status</th>
+                  <td mat-cell *matCellDef="let file">
+                    <div class="status-column">
+                      <span [ngClass]="{
+        'status-ready': file.status === 'PROCESSED',
+        'status-error': file.status === 'FAILED',
+        'status-default': ['UPLOADED', 'PROCESSING', 'UPLOADING'].includes(file.status)
+    }">
+                        {{ file.status | titlecase }}</span>
+                      @if (file.status === 'PREPROCESSING' || file.status === 'COMPARING') {
+                      <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+                      } @else if (file.status === 'FAILED') {
+                      <mat-icon [matTooltip]="file.errorMessage" matTooltipPosition="above" diameter="20">
+                        error
+                      </mat-icon>
+                      }
+                    </div>
+                  </td>
+                </ng-container>
+
+                <!-- Capture Year Column -->
+                <ng-container matColumnDef="captureYear">
+                  <th mat-header-cell *matHeaderCellDef>Capture Year</th>
+                  <td mat-cell *matCellDef="let file">{{ file.captureYear ?? '-' }}</td>
+                </ng-container>
+
+                <!-- Uploaded At Column -->
+                <ng-container matColumnDef="uploadedAt">
+                  <th mat-header-cell *matHeaderCellDef>Uploaded At</th>
+                  <td mat-cell *matCellDef="let file">{{ file.uploadedAt | date: 'MMM d, y, HH:mm' }}
+                  </td>
+                </ng-container>
+
+                <!-- Actions Column -->
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef></th>
+                  <td mat-cell *matCellDef="let file" style="text-align: right">
+                    <a [routerLink]="[file.type === 'File' ? '/stored-files' : '/folders', file.id]">
+                      <button mat-icon-button matTooltip="View Details" matTooltipPosition="right">
+                        <mat-icon>visibility</mat-icon>
+                      </button>
+                    </a>
+                  </td>
+                </ng-container>
+
+                <!-- Header and Row Definitions -->
+                <tr mat-header-row *matHeaderRowDef="innerTableColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: innerTableColumns" cdkDrag class="element-row"></tr>
+
+              </table>
+
+            </div>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns" class="element-row"
+          [class.expanded]="isExpanded(row)" [class.no-expand]="row.type === 'File'" (click)="toggle(row)">
+        </tr>
+        <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="detail-row" [hidden]="!isExpanded(row)">
+        </tr>
+      </table>
     </div>
-    <mat-divider role="separator" [vertical]="true"></mat-divider>
-    <div style="width: 30%;">
-        <div style="padding: 0px 50px;">
-            <h3 style="text-align: center; margin-bottom: 20px;">Comparison Details</h3>
-            <mat-form-field appearance="fill" style="width: 100%;">
-                <mat-label>Comparison Name</mat-label>
-                <input matInput [(ngModel)]="comparison.name" [disabled]="loadingStart()" maxlength="60" />
+    @if (gridDefined) {
+    <div class="map-preview">
+      <h4>Selected Grid Area</h4>
+      <div id="result-map" class="read-only--map"></div>
+    </div>
+    }
+  </div>
+  <mat-divider role="separator" [vertical]="true"></mat-divider>
+  <div style="width: 25%;">
+    <div style="padding: 0px 20px;">
+      <h3 style="text-align: center; margin-bottom: 20px;">Comparison Details</h3>
+      <mat-form-field appearance="fill" style="width: 100%;">
+        <mat-label>Comparison Name</mat-label>
+        <input matInput [(ngModel)]="comparison.name" [disabled]="loadingStart()" maxlength="60" />
+      </mat-form-field>
+
+      <div class="outlier-detection-container">
+        <mat-checkbox [checked]="comparison.needOutlierDetection" [disabled]="loadingStart()"
+          (change)="comparison.needOutlierDetection = $event.checked">
+          Outlier Detection
+        </mat-checkbox>
+
+        @if (comparison.needOutlierDetection) {
+        <div class="sigma-settings-card">
+          <div class="card-header">
+            <mat-icon>query_stats</mat-icon>
+            <span class="header-title">Outlier Sensitivity</span>
+          </div>
+
+          <div class="card-content">
+            <p class="description-text">
+              Adjust the standard deviation threshold to filter statistical outliers.
+            </p>
+
+            <mat-form-field appearance="outline" class="sigma-factor-field">
+              <mat-label>Sigma Factor</mat-label>
+
+              <mat-icon matPrefix class="input-icon">functions</mat-icon>
+
+              <input matInput type="number" step="0.5" min="0.1" [(ngModel)]="comparison.outlierDeviationFactor"
+                [disabled]="loadingStart()" class="sigma-input">
+              <mat-hint>
+                <mat-icon class="hint-icon">info</mat-icon>
+                Points {{comparison.outlierDeviationFactor}}σ away from mean are considered outliers
+              </mat-hint>
             </mat-form-field>
-            <div>
-                <mat-checkbox [checked]="comparison.needHighestVegetation" [disabled]="loadingStart()"
-                    (change)="comparison.needHighestVegetation = $event.checked">
-                    Highest Vegetation
-                </mat-checkbox>
-            </div>
-
-            <div>
-                <mat-checkbox [checked]="comparison.needOutlierDetection" [disabled]="loadingStart()"
-                    (change)="comparison.needOutlierDetection = $event.checked">
-                    Outlier Detection
-                </mat-checkbox>
-            </div>
-            <div>
-                <mat-checkbox [checked]="comparison.needStatisticsOverScenery" [disabled]="loadingStart()"
-                    (change)="comparison.needStatisticsOverScenery = $event.checked">
-                    Statistics over Scenery
-                </mat-checkbox>
-            </div>
-            <div>
-                <mat-checkbox [checked]="comparison.needMostDifferences" [disabled]="loadingStart()"
-                    (change)="comparison.needMostDifferences = $event.checked">
-                    Most Differences
-                </mat-checkbox>
-            </div>
-            <div class="grid-definition-card">
-                <h4 class="grid-title">Grid Definition</h4>
-
-                @if(comparison.grid) {
-                <div class="grid-info">
-                    <span>
-                        Cell Width: {{ comparison.grid.cellWidth }} m
-                    </span>
-                    <span>
-                        Cell Height: {{ comparison.grid.cellHeight }} m
-                    </span>
-                </div>
-
-                <div class="grid-coords">
-                    <div class="coord-column">
-                        <p>X<sub style="font-size: 0.6em;">min</sub>: {{ comparison.grid.xMin }}</p>
-                        <p>Y<sub style="font-size: 0.6em;">min</sub>: {{ comparison.grid.yMin }}</p>
-                    </div>
-                    <div class="coord-column">
-                        <p>
-                            <mat-icon>east</mat-icon>
-                        </p>
-                        <p>
-                            <mat-icon>east</mat-icon>
-                        </p>
-                    </div>
-                    <div class="coord-column">
-                        <p>X<sub style="font-size: 0.6em;">max</sub>: {{ comparison.grid.xMax }}</p>
-                        <p>Y<sub style="font-size: 0.6em;">max</sub>: {{ comparison.grid.yMax }}</p>
-                    </div>
-                </div>
-                }
-                @else {
-                <p style="font-style: italic; color: gray;">
-                    No grid defined yet.<br/><br/>
-                    1) Click on a File Details Card to choose a reference file.<br/>
-                    2) Click "Define Grid" to set up the grid for comparison.
-                </p>
-                }
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0px;">
-                <button mat-raised-button color="secondary" (click)="defineGrid()" [disabled]="loadingStart() || !refService.selectedFile()">
-                    Define Grid
-                </button>
-                <button mat-raised-button color="primary" (click)="openConfirmationDialog()" style="width: 180px;"
-                    [disabled]="startComparisonDisabled() || loadingStart()">
-                    @if (loadingStart()) {
-                    <mat-spinner diameter="20" color="accent"></mat-spinner>
-                    } @else {
-                    Start Comparison
-                    }
-                </button>
-            </div>
+          </div>
         </div>
+        }
+      </div>
+      <div>
+        <mat-checkbox [checked]="comparison.individualStatisticsPercentile !== null" [disabled]="loadingStart()"
+          (change)="onIndividualPercentileToggle($event.checked)">
+          Individual Statistics Percentile
+        </mat-checkbox>
+        @if (comparison.individualStatisticsPercentile !== null) {
+        <div class="individualStatisticsPercentileInput">
+          <mat-form-field appearance="outline" class="percentile-field">
+
+            <mat-label>Percentile</mat-label>
+            <input matInput type="number" step="0.01" min="0.01" max="99.99"
+              [(ngModel)]="comparison.individualStatisticsPercentile" (blur)="normalizePercentile()">
+          </mat-form-field>
+        </div>
+        }
+      </div>
+
+      <div>
+        <mat-checkbox [checked]="comparison.needPointFilter" [disabled]="loadingStart()"
+          (change)="comparison.needPointFilter = $event.checked">
+          Point Filtering
+        </mat-checkbox>
+      </div>
+
+      <mat-card class="point-filter-card" *ngIf="comparison.needPointFilter">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>filter_alt</mat-icon>
+            Point Filter
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          @if (comparison.pointFilterLowerBound !== null && comparison.pointFilterUpperBound !== null) {
+          <div class="point-filter-info">
+            <div class="filter-bound-item">
+              <mat-icon class="bound-icon">vertical_align_bottom</mat-icon>
+              <span class="bound-label">Lower Bound:</span>
+              <span class="bound-value">{{ comparison.pointFilterLowerBound?.toFixed(2) }}%</span>
+            </div>
+            <mat-divider></mat-divider>
+            <div class="filter-bound-item">
+              <mat-icon class="bound-icon">vertical_align_top</mat-icon>
+              <span class="bound-label">Upper Bound:</span>
+              <span class="bound-value">{{ comparison.pointFilterUpperBound?.toFixed(2) }}%</span>
+            </div>
+          </div>
+          } @else {
+          <div class="empty-state">
+            <mat-icon class="empty-state-icon">info_outline</mat-icon>
+            <p class="empty-state-text">
+              No point filter defined.<br />
+              Click "Configure Filter" to set bounds.
+            </p>
+          </div>
+          }
+        </mat-card-content>
+        <mat-card-actions>
+          <button mat-raised-button color="accent" (click)="openPointFilterDialog()" [disabled]="loadingStart()">
+            <mat-icon>tune</mat-icon>
+            Configure Filter
+          </button>
+        </mat-card-actions>
+      </mat-card>
+
+      <div class="grid-definition-card">
+        <h4 class="grid-title">Grid Definition</h4>
+
+        @if (comparison.grid) {
+        <div class="grid-info">
+          <span>
+            Cell Width: {{ comparison.grid.cellWidth }} m
+          </span>
+          <span>
+            Cell Height: {{ comparison.grid.cellHeight }} m
+          </span>
+        </div>
+
+        <div class="grid-coords">
+          <div class="coord-column">
+            <p>X<sub style="font-size: 0.6em;">min</sub>: {{ comparison.grid.xMin }}</p>
+            <p>Y<sub style="font-size: 0.6em;">min</sub>: {{ comparison.grid.yMin }}</p>
+          </div>
+          <div class="coord-column">
+            <p>
+              <mat-icon>east</mat-icon>
+            </p>
+            <p>
+              <mat-icon>east</mat-icon>
+            </p>
+          </div>
+          <div class="coord-column">
+            <p>X<sub style="font-size: 0.6em;">max</sub>: {{ comparison.grid.xMax }}</p>
+            <p>Y<sub style="font-size: 0.6em;">max</sub>: {{ comparison.grid.yMax }}</p>
+          </div>
+        </div>
+        } @else {
+        <p style="font-style: italic; color: gray;">
+          No grid defined yet.<br /><br />
+          1) Select a File or Folder as reference.<br />
+          2) Click "Define Grid" to set up the grid for comparison.
+        </p>
+        }
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0px;">
+        <button mat-raised-button color="secondary" (click)="defineGrid()"
+          [disabled]="loadingStart() || !refService.selectedComparableItem()">
+          Define Grid
+        </button>
+        <button mat-raised-button color="primary" (click)="openConfirmationDialog()" style="width: 180px;"
+          [disabled]="startComparisonDisabled() || loadingStart()">
+          Start Comparison
+        </button>
+      </div>
     </div>
+  </div>
 </div>

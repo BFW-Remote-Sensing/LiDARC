@@ -1,18 +1,19 @@
 package com.example.lidarcbackend.service.files;
 
+import com.example.lidarcbackend.service.IJobTrackingService;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioAsyncClient;
 import io.minio.errors.MinioException;
 import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import com.example.lidarcbackend.configuration.MinioProperties;
 import com.example.lidarcbackend.model.DTO.Mapper.UrlMapper;
 import com.example.lidarcbackend.repository.FileRepository;
+import com.example.lidarcbackend.repository.FolderRepository;
 import com.example.lidarcbackend.repository.UrlRepository;
 
 
@@ -21,8 +22,8 @@ import com.example.lidarcbackend.repository.UrlRepository;
 @Primary
 @Service
 public class TestPresignedUrlService extends PresignedUrlService {
-  public TestPresignedUrlService(MinioAsyncClient minioClient, MinioProperties minioProperties, UrlRepository urlRepository, FileRepository fileRepository, WorkerStartService workerStartService, UrlMapper urlMapper) {
-    super(minioClient, minioProperties, urlRepository, fileRepository, workerStartService, urlMapper);
+ public TestPresignedUrlService(MinioAsyncClient minioClient, MinioProperties minioProperties, UrlRepository urlRepository, FileRepository fileRepository, FolderRepository folderRepository, WorkerStartService workerStartService, UrlMapper urlMapper, IJobTrackingService jobTrackingService) {
+    super(minioClient, minioProperties, urlRepository, fileRepository, folderRepository, workerStartService, urlMapper, jobTrackingService);
   }
 
   @Override

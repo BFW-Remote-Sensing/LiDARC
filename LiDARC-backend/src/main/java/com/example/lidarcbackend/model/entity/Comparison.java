@@ -22,27 +22,23 @@ public class Comparison {
     @Column(name = "name")
     private String name;
 
-    @Column(name = "need_highest_vegetation")
-    private Boolean needHighestVegetation;
 
     @Column(name = "need_outlier_detection")
     private Boolean needOutlierDetection;
 
-    @Column(name = "need_statistics_over_scenery")
-    private Boolean needStatisticsOverScenery;
 
-    @Column(name = "need_most_differences")
-    private Boolean needMostDifferences;
+    @Column(name = "individual_statistics_percentile")
+    private Double individualStatisticsPercentile;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
-    private Status status = Status.PENDING;
+    private Status status = Status.PREPROCESSING;
 
-    //@Column(name = "result_report_url")
-    //private String resultReportUrl;
+    // @Column(name = "result_report_url")
+    // private String resultReportUrl;
 
     @Column(name = "result_bucket")
     private String resultBucket;
@@ -74,8 +70,21 @@ public class Comparison {
     @Column(name = "grid_max_y")
     private Double gridMaxY;
 
+    @Column(name = "point_filter_lower_bound")
+    private Double pointFilterLowerBound;
+
+    @Column(name = "point_filter_upper_bound")
+    private Double pointFilterUpperBound;
+
+    @Column(name = "need_point_filter")
+    private Boolean needPointFilter;
+
+    @Column(name = "outlier_deviation_factor")
+    private Double outlierDeviationFactor;
+
     public enum Status {
-        PENDING,
+        PREPROCESSING,
+        COMPARING,
         COMPLETED,
         FAILED
     }

@@ -1,6 +1,6 @@
 package com.example.lidarcbackend.api.metadata.dtos;
 
-import com.example.lidarcbackend.model.entity.CoordinateSystem;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,8 +9,10 @@ import java.time.LocalDate;
 
 @Getter
 @Setter
-public class FileMetadataDTO {
-    public FileMetadataDTO() {}
+public final class FileMetadataDTO implements ComparableItemDTO {
+    public FileMetadataDTO() {
+    }
+
     private Long id;
 
     private String filename;
@@ -38,4 +40,8 @@ public class FileMetadataDTO {
     private Long pointCount;
     private Instant uploadedAt;
     private String status;
+    private Long folderId;
+    private String coordinateSystem;
+    private String errorMessage;
+    private Boolean active;
 }

@@ -15,10 +15,8 @@ public class ComparisonMapper {
         ComparisonDTO dto = new ComparisonDTO();
         dto.setId(entity.getId());
         dto.setName(entity.getName());
-        dto.setNeedHighestVegetation(entity.getNeedHighestVegetation());
         dto.setNeedOutlierDetection(entity.getNeedOutlierDetection());
-        dto.setNeedStatisticsOverScenery(entity.getNeedStatisticsOverScenery());
-        dto.setNeedMostDifferences(entity.getNeedMostDifferences());
+        dto.setIndividualStatisticsPercentile(entity.getIndividualStatisticsPercentile());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setStatus(entity.getStatus().toString());
         dto.setErrorMessage(entity.getErrorMessage());
@@ -31,6 +29,13 @@ public class ComparisonMapper {
                 entity.getGridMaxY()
         );
         dto.setGrid(grid);
+        dto.setResultBucket(entity.getResultBucket());
+        dto.setResultObjectKey(entity.getResultObjectKey());
+        dto.setPointFilterLowerBound(entity.getPointFilterLowerBound());
+
+        dto.setPointFilterUpperBound(entity.getPointFilterUpperBound());
+        dto.setNeedPointFilter(entity.getNeedPointFilter());
+        dto.setOutlierDeviationFactor(entity.getOutlierDeviationFactor());
         return dto;
     }
     public Comparison toEntityFromRequest(CreateComparisonRequest request) {
@@ -39,18 +44,20 @@ public class ComparisonMapper {
         }
         Comparison newComparison = new Comparison();
         newComparison.setName(request.getName());
-        newComparison.setNeedHighestVegetation(request.getNeedHighestVegetation());
         newComparison.setNeedOutlierDetection(request.getNeedOutlierDetection());
-        newComparison.setNeedStatisticsOverScenery(request.getNeedStatisticsOverScenery());
-        newComparison.setNeedMostDifferences(request.getNeedMostDifferences());
-        newComparison.setStatus(Comparison.Status.PENDING);
+        newComparison.setIndividualStatisticsPercentile(request.getIndividualStatisticsPercentile());
+        newComparison.setStatus(Comparison.Status.PREPROCESSING);
         newComparison.setCreatedAt(java.time.LocalDateTime.now());
         newComparison.setGridCellHeight(request.getGrid().getCellHeight());
         newComparison.setGridCellWidth(request.getGrid().getCellWidth());
-        newComparison.setGridMinX(request.getGrid().getxMax());
+        newComparison.setGridMinX(request.getGrid().getxMin());
         newComparison.setGridMinY(request.getGrid().getyMin());
         newComparison.setGridMaxX(request.getGrid().getxMax());
         newComparison.setGridMaxY(request.getGrid().getyMax());
+        newComparison.setPointFilterLowerBound(request.getPointFilterLowerBound());
+        newComparison.setPointFilterUpperBound(request.getPointFilterUpperBound());
+        newComparison.setNeedPointFilter(request.getNeedPointFilter());
+        newComparison.setOutlierDeviationFactor(request.getOutlierDeviationFactor());
         return newComparison;
     }
 }

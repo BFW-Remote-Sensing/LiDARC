@@ -1,13 +1,19 @@
-import { FileMetadataDTO } from "./fileMetadata";
+import {FileMetadataDTO} from "./fileMetadata";
+import {FolderDTO} from "./folder";
 
 export type CreateComparison = {
     name: string;
-    needHighestVegetation: boolean;
     needOutlierDetection: boolean;
-    needStatisticsOverScenery: boolean;
-    needMostDifferences: boolean;
-    fileMetadataIds: number[];
+    individualStatisticsPercentile: number | null;
+    folderAId?: number;
+    folderBId?: number;
+    folderAFiles: number[];
+    folderBFiles: number[];
     grid: GridParameters | null;
+    pointFilterLowerBound?: number | null;
+    pointFilterUpperBound?: number | null;
+    needPointFilter?: boolean;
+    outlierDeviationFactor?: number;
 }
 
 export type GridParameters = {
@@ -26,4 +32,6 @@ export type ComparisonDTO = CreateComparison & {
     latestReport: string | null;
     errorMessage: string | null;
     files: FileMetadataDTO[];
+    folderA?: FolderDTO;
+    folderB?: FolderDTO;
 }

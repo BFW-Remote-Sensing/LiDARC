@@ -26,6 +26,27 @@ public class ComparisonFile {
     @Column(name = "object_key")
     private String objectKey;
 
+    @Column(name = "included")
+    private Boolean included;
+
+    @Column(name = "group_name")
+    private String groupName;
+
+    @Column(name = "error_msg")
+    private String errorMsg;
+
+    @Column(name = "status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private Status status;
+
+    public enum Status {
+        PREPROCESSING,
+        COMPLETED,
+        FAILED
+    }
+
+    //TODO: Add if processing?
+
     public ComparisonFile() {
 
     }

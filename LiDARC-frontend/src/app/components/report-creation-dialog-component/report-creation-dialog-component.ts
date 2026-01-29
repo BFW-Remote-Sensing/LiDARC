@@ -8,7 +8,7 @@ import {
 } from '@angular/material/dialog';
 import {ComparisonDTO} from '../../dto/comparison';
 import {ComparisonService} from '../../service/comparison.service';
-import {ChartData, CreateReportDto} from '../../dto/report';
+import {ChartData, CreateReportDto, ReportType} from '../../dto/report';
 import {MatInputModule} from '@angular/material/input';
 import {FormsModule} from '@angular/forms';
 import {MatListModule, MatListOption, MatSelectionList} from '@angular/material/list';
@@ -16,6 +16,8 @@ import {MatButton} from '@angular/material/button';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatIconModule} from '@angular/material/icon';
 import {CommonModule} from '@angular/common';
+import {VegetationStatsWithoutCells} from '../../dto/chunking';
+
 
 @Component({
   selector: 'app-report-creation-dialog-component',
@@ -39,33 +41,69 @@ import {CommonModule} from '@angular/common';
 })
 export class ReportCreationDialogComponent {
 
-  report: CreateReportDto = {title: '', components: []};
+  report: CreateReportDto = {title: '', components: [], stats: undefined} as CreateReportDto;
   selectedCharts: ChartData[] = [];
   isProcessing = false;
 
   constructor(
     public dialogRef: MatDialogRef<ReportCreationDialogComponent>,
     public comparisonService: ComparisonService,
-    @Inject(MAT_DIALOG_DATA) public data: {comparison: ComparisonDTO, availableCharts: ChartData[]}
+    @Inject(MAT_DIALOG_DATA) public data: {
+      comparison: ComparisonDTO,
+      availableCharts: ChartData[],
+      stats: VegetationStatsWithoutCells
+    }
   ) {
     console.log(this.data.availableCharts)
     this.selectedCharts = [...this.data.availableCharts];
   }
+
   onSelectionChange(event: any): void {
     this.selectedCharts = event.source.selectedOptions.selected.map((opt: any) => opt.value)
   }
+
   onCancel(): void {
     this.dialogRef.close();
   }
 
   onCreate(): void {
     this.isProcessing = true;
-    this.report.components = this.selectedCharts.map(chart => ({
-      type: 'simple', //TODO: Change to correct one / take from parent / as inject data
-      fileName: chart.fileName
-    }));
-    const filesToSend: File[] = this.selectedCharts.map(chart => {
-      return new File([chart.blob], chart.fileName, {type: 'image/png'});
+    this.report.components = this.selectedCharts.map(chart => {
+      let description = "";
+      if (chart.type === ReportType.HEATMAP) {
+        if (chart.name.includes("Diff")) {
+          description = "Visualizes the structural change (Target B - Reference A). Positive values indicate growth; Negative values indicate loss.";
+        } else {
+          description = "Spatial visualization of vegetation height. Color intensity indicates the height metric.";
+        }
+      } else if (chart.type === ReportType.SIDE_BY_SIDE) {
+        description = "A comparative view showing the spatial distribution of vegetation height for the Reference (Left) and Target (Right) datasets side-by-side.";
+      }
+      const gridW = this.data.comparison.grid?.cellWidth ?? '?';
+      const gridH = this.data.comparison.grid?.cellHeight ?? '?';
+      const gridText = `Grid Resolution: ${gridW}m x ${gridH}m`;
+
+      const outlierText = this.data.comparison.needOutlierDetection
+        ? ` | Outlier Filter: Active (SD Factor: ${this.data.comparison.outlierDeviationFactor})`
+        : "";
+      const fullDescription = `${description}\n\n[Configuration: ${gridText}${outlierText}]`;
+
+      return {
+        type: chart.type ? chart.type : ReportType.SIMPLE,
+        fileName: chart.fileName,
+        title: chart.name,
+        description: fullDescription,
+      };
+    });
+    console.log(this.data.stats);
+    this.report.stats = this.data.stats;
+    const filesToSend: File[] = [];
+    this.selectedCharts.forEach(chart => {
+      if (chart.files && chart.files.length > 0) {
+        chart.files.forEach(f => {
+          filesToSend.push(new File([f.blob], f.fileName, {type: 'image/png'}));
+        });
+      }
     });
 
     this.comparisonService.createReport(this.data.comparison.id, this.report, filesToSend)
@@ -82,13 +120,13 @@ export class ReportCreationDialogComponent {
       });
   }
 
-    private downloadFile(data: Blob): void {
-      const blob = new Blob([data], {type: 'application/pdf'});
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `report_${this.report.title}.pdf`;
-      link.click();
-      window.URL.revokeObjectURL(url);
-    }
+  private downloadFile(data: Blob): void {
+    const blob = new Blob([data], {type: 'application/pdf'});
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `report_${this.report.title}.pdf`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+  }
 }

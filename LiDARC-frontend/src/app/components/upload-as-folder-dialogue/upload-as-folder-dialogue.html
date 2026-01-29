@@ -1,0 +1,24 @@
+<h2 mat-dialog-title>{{ data.title }}</h2>
+
+<div mat-dialog-content>
+  <p *ngIf="data.subtitle">{{ data.subtitle }}</p>
+
+  <ng-container *ngIf="data.showAsFolderOption">
+    <mat-form-field style="width: 100%; margin-top: 12px;">
+      <mat-label>Folder name</mat-label>
+      <input [disabled]="!form.controls.uploadAsFolder.value" [formControl]="form.controls.folderName" matInput/>
+      <mat-error *ngIf="form.controls.folderName.hasError('required')">
+        Folder name is required
+      </mat-error>
+    </mat-form-field>
+  </ng-container>
+</div>
+
+<div align="end" mat-dialog-actions>
+  <button (click)="onCancel()" mat-button>
+    {{ data.secondaryButtonText ?? 'Cancel' }}
+  </button>
+  <button (click)="onConfirm()" [disabled]="form.invalid" mat-flat-button>
+    {{ data.primaryButtonText ?? 'OK' }}
+  </button>
+</div>

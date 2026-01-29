@@ -1,36 +1,48 @@
-/* In your component's CSS/SCSS file */
+.status-column {
+  display: flex;
+  column-gap: 10px;
+  align-items: center;
 
-.status-default {
-  color: black; /* Default text color */
-  font-weight: bold;
-}
+  .status-default {
+    color: blue;
+    font-weight: bold;
+  }
 
-/* Status: Ready */
-.status-ready {
-  color: green;
-  font-weight: bold; /* Optional: adds emphasis */
-}
+  .status-ready {
+    color: green;
+    font-weight: bold;
+  }
 
-/* Status: Error */
-.status-error {
-  color: red;
-  font-weight: bold; /* Optional: adds emphasis */
+  .status-error {
+    color: red;
+    font-weight: bold;
+  }
 }
 
 .upper-section {
-    display: flex; justify-content: space-between; align-items: center; padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
 
-    .upper-action-section {
-        display: flex; gap: 10px;
-        align-items: center;
+  .upper-action-section {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+
+    .filter-field {
+      width: 350px;
+      font-size: 14px;
+
+      ::ng-deep .mat-mdc-text-field-wrapper {
+        background-color: white;
+      }
     }
+  }
 }
 
 .flex-center {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 200px; /* Adjust height as needed */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
 }
-
-/* Default status (not 'Ready' and not 'Error') will be the standard black/default text color. */

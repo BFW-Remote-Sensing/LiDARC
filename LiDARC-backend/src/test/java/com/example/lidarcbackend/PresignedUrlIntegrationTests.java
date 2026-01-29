@@ -5,6 +5,7 @@ import com.example.lidarcbackend.model.DTO.FileInfoDto;
 import com.example.lidarcbackend.model.DTO.Mapper.impl.UrlMapperImpl;
 import com.example.lidarcbackend.model.entity.File;
 import com.example.lidarcbackend.model.entity.Url;
+import com.example.lidarcbackend.service.IJobTrackingService;
 import com.example.lidarcbackend.service.files.PresignedUrlService;
 import com.example.lidarcbackend.service.files.WorkerStartService;
 import io.minio.GetPresignedObjectUrlArgs;
@@ -22,6 +23,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import com.example.lidarcbackend.configuration.MinioProperties;
+import com.example.lidarcbackend.model.DTO.FileInfoDto;
+import com.example.lidarcbackend.model.DTO.Mapper.impl.UrlMapperImpl;
+import com.example.lidarcbackend.model.entity.File;
+import com.example.lidarcbackend.model.entity.Url;
+import com.example.lidarcbackend.service.files.PresignedUrlService;
+import com.example.lidarcbackend.service.files.WorkerStartService;
 
 //this is more or less an integration test since it uses real repositories from AbstractUnitTest
 
@@ -32,6 +44,7 @@ public class PresignedUrlIntegrationTests extends AbstractIntegrationTests {
   private UrlMapperImpl urlMapper;
   private PresignedUrlService presignedUrlService;
   private WorkerStartService workerStartService;
+  private IJobTrackingService  jobTrackingService;
 
   @BeforeEach
   void setUpService() {
@@ -48,8 +61,11 @@ public class PresignedUrlIntegrationTests extends AbstractIntegrationTests {
         minioProperties,
         urlRepository,
         fileRepository,
+        folderRepository,
         workerStartService,
-        urlMapper
+        urlMapper,
+        jobTrackingService
+
     );
   }
 
@@ -64,7 +80,7 @@ public class PresignedUrlIntegrationTests extends AbstractIntegrationTests {
     assertThat(fileRepository.findFileByFilenameAndUploaded(fileName, true)).isEmpty();
 
     // act
-    Optional<FileInfoDto> result = presignedUrlService.fetchUploadUrl(fileName, "");
+    Optional<FileInfoDto> result = presignedUrlService.fetchUploadUrl(fileName, "", null);
     assertThat(result).isPresent();
     assertThat(result.get().getPresignedURL()).isEqualTo("http://upload-url");
   }
@@ -74,13 +90,13 @@ public class PresignedUrlIntegrationTests extends AbstractIntegrationTests {
     // arrange
     String fileName = "already.txt";
     File f = new File();
-    f.setStatus("UPLOADED");
+    f.setStatus(File.FileStatus.UPLOADED);
     f.setFilename(fileName);
     f.setUploaded(true);
     fileRepository.save(f);
 
     // act
-    Optional<FileInfoDto> result = presignedUrlService.fetchUploadUrl(fileName, "");
+    Optional<FileInfoDto> result = presignedUrlService.fetchUploadUrl(fileName, "", null);
 
     // assert
     assertThat(result).isEmpty();
@@ -93,7 +109,7 @@ public class PresignedUrlIntegrationTests extends AbstractIntegrationTests {
     File f = new File();
     f.setFilename(fileName);
     f.setUploaded(true);
-    f.setStatus("UPLOADED");
+    f.setStatus(File.FileStatus.UPLOADED);
     fileRepository.save(f);
 
     when(minioClient.getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class))).thenReturn("http://get-url");
@@ -118,5 +134,6 @@ public class PresignedUrlIntegrationTests extends AbstractIntegrationTests {
 
     assertThatThrownBy(() -> presignedUrlService.init()).isInstanceOf(MinioException.class);
   }
+
 
 }

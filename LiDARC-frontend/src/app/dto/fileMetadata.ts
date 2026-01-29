@@ -1,4 +1,4 @@
-export interface FileMetadataDTO { 
+export interface FileMetadataDTO {
     id: number;
     filename: string;
     originalFilename: string;
@@ -18,4 +18,9 @@ export interface FileMetadataDTO {
     fileCreationDate?: string;
     pointCount?: number;
     uploadedAt?: string;
+    type?: string;
+    folderId?: number;
+    coordinateSystem?: string;
+    errorMessage?: string;
+    active?: boolean;
 }

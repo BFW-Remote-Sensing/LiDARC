@@ -5,10 +5,11 @@ import com.example.lidarcbackend.api.comparison.dtos.ComparisonRequest;
 import com.example.lidarcbackend.api.comparison.dtos.ComparisonResponse;
 import com.example.lidarcbackend.api.comparison.dtos.CreateComparisonRequest;
 import com.example.lidarcbackend.exception.NotFoundException;
+import com.example.lidarcbackend.exception.ValidationException;
 import com.example.lidarcbackend.model.DTO.CreateReportDto;
 import com.example.lidarcbackend.model.DTO.ReportInfoDto;
-import com.example.lidarcbackend.service.IImageService;
-import com.example.lidarcbackend.service.files.ComparisonService;
+import com.example.lidarcbackend.service.comparisons.ChunkingSseService;
+import com.example.lidarcbackend.service.comparisons.IComparisonService;
 import com.example.lidarcbackend.service.reports.IReportService;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -19,36 +20,40 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/comparisons")
 @Slf4j
 public class ComparisonController {
-    private final ComparisonService comparisonService;
+    private final IComparisonService comparisonService;
     private final IReportService reportService;
+    private final ChunkingSseService chunkingSseService;
     @Value("${app.upload.dir:uploads}")
     private String UPLOAD_DIRECTORY; //TODO: MAYBE CHANGE TO MINIO BUCKET IF WANTED
 
 
     @Autowired
-    public ComparisonController(ComparisonService comparisonService, IReportService reportService) {
+    public ComparisonController(IComparisonService comparisonService, IReportService reportService, ChunkingSseService chunkingSseService) {
         this.comparisonService = comparisonService;
         this.reportService = reportService;
+        this.chunkingSseService = chunkingSseService;
     }
 
     @GetMapping("/all")
@@ -58,56 +63,86 @@ public class ComparisonController {
     }
 
     @GetMapping("/paged")
-    public ResponseEntity<ComparisonResponse> getPagedMetadata(@Valid @ModelAttribute ComparisonRequest request) {
+    public ResponseEntity<ComparisonResponse> getPagedComparisons(
+        @RequestParam(required = false) String search,
+        @Valid @ModelAttribute ComparisonRequest request) {
         Sort sort = request.isAscending() ?
-                Sort.by(request.getSortBy()).ascending() :
-                Sort.by(request.getSortBy()).descending();
+            Sort.by(request.getSortBy()).ascending() :
+            Sort.by(request.getSortBy()).descending();
 
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
-        Page<ComparisonDTO> result = comparisonService.getPagedComparisons(pageable);
+        Page<ComparisonDTO> result = comparisonService.getPagedComparisons(pageable, search);
         ComparisonResponse response = new ComparisonResponse(
-                result.getContent(),
-                result.getTotalElements(),
-                result.getNumber(),
-                request.getSize()
+            result.getContent(),
+            result.getTotalElements(),
+            result.getNumber(),
+            request.getSize()
         );
 
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ComparisonDTO> getComparison(@PathVariable Long id) {
-        ComparisonDTO dto = comparisonService.GetComparison(id);
+    public ResponseEntity<ComparisonDTO> getComparison(@PathVariable Long id) throws NotFoundException {
+        ComparisonDTO dto = comparisonService.getComparison(id);
         if (dto == null) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(dto);
     }
 
+    @PostMapping("{id}/chunking")
+    public ResponseEntity<String> postChunkingComparisonStart(@PathVariable Long id, @RequestParam(defaultValue = "16") int chunkSize) {
+        try {
+            comparisonService.startChunkingComparisonJob(id, chunkSize);
+        } catch (NotFoundException e) {
+            logClientError(HttpStatus.NOT_FOUND, "Comparison not found", e);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+        }
+        return ResponseEntity.accepted().build();
+    }
+
+    @GetMapping("{id}/chunking")
+    public ResponseEntity<Object> getChunkingComparison(@PathVariable Long id, @RequestParam(defaultValue = "16") int chunkSize) {
+        log.info("GET /api/v1/comparisons/{}/chunking?chunkSize={}", id, chunkSize);
+        Optional<Object> result = comparisonService.pollVisualizationResults(id, chunkSize);
+        return result.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.accepted().build());
+    }
+
+    @GetMapping(value = "{id}/chunking/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamChunkingComparison(@PathVariable Long id, @RequestParam(defaultValue = "16") int chunkSize) {
+        log.info("GET /api/v1/comparisons/{}/chunking/stream?chunkSize={} - SSE subscription", id, chunkSize);
+        return chunkingSseService.createEmitter(id, chunkSize);
+    }
+
     @PostMapping
     public ResponseEntity<ComparisonDTO> saveComparison(
-            @RequestBody CreateComparisonRequest request
-    ) {
+        @RequestBody @Valid CreateComparisonRequest request
+    ) throws ValidationException {
         try {
             ComparisonDTO saved = comparisonService.saveComparison(request, request.getFileMetadataIds());
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (NotFoundException e) {
-            logClientError(HttpStatus.NOT_FOUND, "Comparison not found for Report", e);
+            logClientError(HttpStatus.NOT_FOUND, "Files for comparison not found", e);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
         }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteComparison(@PathVariable Long id) {
-        comparisonService.deleteComparisonById(id);
-        return ResponseEntity.noContent().build();
+        try {
+            comparisonService.deleteComparisonById(id);
+            return ResponseEntity.noContent().build();
+        } catch (NotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+        }
     }
 
     @GetMapping("/{id}/reports")
-    public ResponseEntity<List<ReportInfoDto>> getReportsOfComparison(@PathVariable Long id) {
+    public ResponseEntity<List<ReportInfoDto>> getReportsOfComparison(@PathVariable Long id, @RequestParam(defaultValue = "4") Integer limit) {
         log.info("GET /api/v1/comparisons/{}/reports", id);
         try {
-            return ResponseEntity.status(HttpStatus.OK).body(reportService.getReportsOfComparsion(id));
+            return ResponseEntity.status(HttpStatus.OK).body(reportService.getReportsOfComparsion(id, limit));
         } catch (NotFoundException e) {
             logClientError(HttpStatus.NOT_FOUND, "Comparison not found for Report", e);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
@@ -115,31 +150,32 @@ public class ComparisonController {
     }
 
 
-
-    @PostMapping(path="/{id}/reports", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(path = "/{id}/reports", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Resource> createReport(
-            @PathVariable Long id,
-            @Parameter(description = "Report JSON", required = true, content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                    schema = @Schema(implementation = CreateReportDto.class)))
-            @Valid @RequestPart("report") CreateReportDto report,
-            @Parameter(description = "Report images", content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE))
-            @RequestPart(value = "files", required = false) MultipartFile[] files) {
+        @PathVariable Long id,
+        @Parameter(description = "Report JSON", required = true, content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = CreateReportDto.class)))
+        @Valid @RequestPart("report") CreateReportDto report,
+        @Parameter(description = "Report images", content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE))
+        @RequestPart(value = "files", required = false) MultipartFile[] files) {
         log.info("POST /api/v1/reports");
+        log.info("Report Stats: {}", report.getStats());
         try {
             ReportInfoDto createdReport = reportService.createReport(id, report, files);
             Resource resource = new UrlResource(Paths.get(UPLOAD_DIRECTORY).resolve(createdReport.getFileName()).toUri());
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + createdReport.getFileName() + "\"")
-                    .body(resource);
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + createdReport.getFileName() + "\"")
+                .body(resource);
         } catch (IOException e) {
             log.error(e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        } catch(NotFoundException e) {
+        } catch (NotFoundException e) {
             logClientError(HttpStatus.NOT_FOUND, "Comparison not found for Report", e);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
         }
     }
+
 
     /**
      * Logs client-side errors with status, message, and exception details.

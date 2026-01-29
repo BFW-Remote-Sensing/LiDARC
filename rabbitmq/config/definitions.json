@@ -82,6 +82,20 @@
       "durable": true,
       "auto_delete": false,
       "arguments": {}
+    },
+    {
+      "name": "worker.chunking.comparison.job",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "worker.chunking.comparison.result",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
     }
   ],
   "bindings": [
@@ -110,6 +124,14 @@
       "arguments": {}
     },
     {
+      "source": "worker-job",
+      "vhost": "/",
+      "destination": "worker.chunking.comparison.job",
+      "destination_type": "queue",
+      "routing_key": "worker.chunking.comparison.job.start",
+      "arguments": {}
+    },
+    {
       "source": "worker-results",
       "vhost": "/",
       "destination": "worker.metadata.result",
@@ -131,6 +153,14 @@
       "destination": "worker.comparison.result",
       "destination_type": "queue",
       "routing_key": "worker.comparison.result",
+      "arguments": {}
+    },
+    {
+      "source": "worker-results",
+      "vhost": "/",
+      "destination": "worker.chunking.comparison.result",
+      "destination_type": "queue",
+      "routing_key": "worker.chunking.comparison.result",
       "arguments": {}
     }
   ],

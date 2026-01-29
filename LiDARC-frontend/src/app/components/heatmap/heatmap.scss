@@ -1,15 +1,58 @@
-.heatmap-chart {
-  height: 500px; /* oder 800px, je nach Geschmack */
-  max-width: 100%;
+.grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
 }
 
-.heatmap-comparison {
-  display: grid;
+
+/* ---------- MODES ---------- */
+
+/* AB: zwei nebeneinander */
+.grid.ab {
   grid-template-columns: 1fr 1fr;
+  grid-template-areas: "a b";
+}
+
+/* D: nur Delta */
+.grid.d {
+  grid-template-columns: 1fr;
+  grid-template-areas: "d";
+}
+
+/* ABD: A + B oben, Delta unten über volle Breite */
+.grid.abd {
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas:
+    "a b"
+    "d d";
+}
+
+/* ---------- AREA ASSIGNMENT ---------- */
+
+.heatmap.a { grid-area: a; }
+.heatmap.b { grid-area: b; }
+.heatmap.d { grid-area: d; }
+
+/* ---------- COMMON ---------- */
+
+.heatmap {
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 8px;
+  min-width: 0;
+}
+
+.chart {
+  min-width: 0;
   width: 100%;
-  //gap: 1rem;
+  //change the following to make the chart taller or shorter
   height: 600px;
 }
+
+.hidden {
+  display: none;
+}
+
 
 .zoom-info-box {
   margin-top: 15px;
@@ -20,7 +63,8 @@
   border-radius: 10px;
   border-left: 4px solid #4c9aff;
   font-family: Arial, sans-serif;
-  max-width: 450px;
+  width: 100%;
+  max-width: 700px;
   margin-bottom: 16px;
   color: #333;
   box-shadow: 0 2px 4px rgba(0,0,0,0.06);
@@ -46,3 +90,79 @@
 .zoom-info-box li {
   margin-bottom: 4px;
 }
+/* ====== GUIDE + CONTROLS LAYOUT ====== */
+.guide-controls-layout {
+  display: grid;
+  grid-template-columns:1fr minmax(300px, auto);
+  gap: 16px;
+  align-items: start;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+/* ====== CONTROLS CARD ====== */
+.controls-card {
+  background: #f5f7fa;
+  padding: 16px 18px;
+  border-radius: 10px;
+  border-left: 4px solid #4c9aff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+  font-family: Arial, sans-serif;
+  color: #333;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.controls-title {
+  margin: 0;
+  color: #2e5aac;
+  font-size: 1.1rem;
+}
+
+.mode-toggle {
+  align-self: center;
+}
+
+/* Buttons als kompaktes Grid */
+.controls-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.controls-actions button mat-icon {
+  margin-right: 6px;
+}
+
+.grid.is-stacked {
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "a"
+    "b"
+    "d";
+}
+
+/* ====== RESPONSIVE ====== */
+@media (max-width: 900px) {
+  .guide-controls-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .controls-actions {
+    grid-template-columns: 1fr;
+  }
+  .grid.ab,
+  .grid.abd {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "a"
+      "b"
+      "d";
+  }
+
+  .chart{
+    height: 400px;
+  }
+}
+
