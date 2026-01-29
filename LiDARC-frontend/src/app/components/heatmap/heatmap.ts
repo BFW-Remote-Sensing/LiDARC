@@ -3,11 +3,10 @@ import {
   Component,
   ElementRef,
   Input,
-  OnInit,
   OnChanges,
   SimpleChanges,
   ViewChild,
-  booleanAttribute, Signal, signal, Output, EventEmitter, WritableSignal
+  booleanAttribute , Output, EventEmitter,
 } from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {provideEchartsCore} from 'ngx-echarts';
@@ -27,16 +26,14 @@ import {
 } from 'echarts/components';
 import {CanvasRenderer} from 'echarts/renderers';
 import {LegacyGridContainLabel} from 'echarts/features';
-import {max, Subject} from 'rxjs';
+import { Subject} from 'rxjs';
 import {ChunkedCell, ChunkingResult} from '../../dto/chunking';
 import {FormsModule} from '@angular/forms';
 import {MatMenu, MatMenuItem, MatMenuTrigger,} from '@angular/material/menu';
-import {MatDivider} from '@angular/material/divider';
 import {MatIcon} from '@angular/material/icon';
 import {MatButton} from '@angular/material/button';
 import {MatButtonToggle, MatButtonToggleGroup} from '@angular/material/button-toggle';
-import {ComparisonDTO} from '../../dto/comparison';
-import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
+import {MatCheckbox} from '@angular/material/checkbox';
 import {MatTooltip} from '@angular/material/tooltip';
 
 
@@ -170,9 +167,6 @@ export class Heatmap implements AfterViewInit, OnChanges {
     }
   }
 
-  ngOnDestroy(): void {
-    //this.resizeObserver?.disconnect();
-  }
 
 
   ngAfterViewInit(): void {
@@ -291,11 +285,6 @@ export class Heatmap implements AfterViewInit, OnChanges {
     // mode === 'D' -> keine Verbindung nötig
   }
 
-
-  // toggleVisualMap(): void {
-  //   this.showVisualMap = !this.showVisualMap;
-  //   this.applyVisualMapVisibility();
-  // }
 
   toggleZoom(): void {
     this.showZoom = !this.showZoom;
