@@ -50,7 +50,7 @@ spec:
                 - |
                   # Check the 'admin' db, and use the password
                   PGPASSWORD=$POSTGRES_PASSWORD pg_isready -U admin -d admin -h 127.0.0.1
-            initialDelaySeconds: 30
+            initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 5
@@ -61,8 +61,10 @@ spec:
                 - -c
                 - |
                   PGPASSWORD=$POSTGRES_PASSWORD pg_isready -U admin -d admin -h 127.0.0.1
-            initialDelaySeconds: 5
-            periodSeconds: 5
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
       volumes:
         - name: shared-data
           persistentVolumeClaim:
