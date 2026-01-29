@@ -115,7 +115,7 @@ export class Heatmap implements AfterViewInit, OnChanges {
   // }
 
   showVisualMap = true;
-  showZoom = true;
+  showZoom = false;
   heatmapsStackedLayout = false;
 
   optionsLeft!: EChartsCoreOption;
@@ -231,16 +231,24 @@ export class Heatmap implements AfterViewInit, OnChanges {
     const opt = {
       visualMap: [{
         ...this.BASE_VisualMap,
-        show: this.showVisualMap,
-        inRange: { color: colors }
+        inRange: {
+          color: colors
+        },
+        min: this.min_veg_height_a,
+        max: this.max_veg_height_a,
+        show: this.showVisualMap
       }]
     };
 
     const opt2 = {
       visualMap: [{
         ...this.BASE_VisualMap,
-        show: this.showVisualMap, //we never want to show the legend for chart2
-        inRange: { color: colors }
+        inRange: {
+          color: colors
+        },
+        min: this.min_veg_height_a,
+        max: this.max_veg_height_a,
+        show: this.showVisualMap
       }]
     };
 
@@ -692,8 +700,8 @@ export class Heatmap implements AfterViewInit, OnChanges {
         splitLine: {show: false}
       },
       dataZoom: [
-        {type: 'slider', xAxisIndex: 0, bottom: 0, filterMode: 'none'},
-        {type: 'slider', yAxisIndex: 0, orient: 'vertical', right: 0, filterMode: 'none'}
+        {type: 'slider', xAxisIndex: 0, bottom: 0, filterMode: 'none', show: this.showZoom},
+        {type: 'slider', yAxisIndex: 0, orient: 'vertical', right: 0, filterMode: 'none', show: this.showZoom}
       ],
       visualMap: [{
         min: 0,
@@ -769,52 +777,6 @@ export class Heatmap implements AfterViewInit, OnChanges {
 
 
 
-
-
-
-  // private setHighlightBorderOnMouseover(chart1: echarts.ECharts, chart2: echarts.ECharts) {
-  //   chart1.on('mouseover', (params: any) => {
-  //     if (params.seriesType !== 'heatmap') return;
-  //
-  //     chart1.dispatchAction({
-  //       type: 'highlight',
-  //       seriesIndex: params.seriesIndex ?? 0,
-  //       dataIndex: params.dataIndex,
-  //     });
-  //   });
-  //
-  //   chart1.on('mouseout', (params: any) => {
-  //     if (params.seriesType !== 'heatmap') return;
-  //
-  //     chart1.dispatchAction({
-  //       type: 'downplay',
-  //       seriesIndex: params.seriesIndex ?? 0,
-  //       dataIndex: params.dataIndex,
-  //     });
-  //   });
-  //
-  //
-  //   chart2.on('mouseover', (params: any) => {
-  //     if (params.seriesType !== 'heatmap') return;
-  //
-  //     chart1.dispatchAction({
-  //       type: 'highlight',
-  //       seriesIndex: params.seriesIndex ?? 0,
-  //       dataIndex: params.dataIndex,
-  //     });
-  //   });
-  //
-  //   chart2.on('mouseout', (params: any) => {
-  //     if (params.seriesType !== 'heatmap') return;
-  //
-  //     chart1.dispatchAction({
-  //       type: 'downplay',
-  //       seriesIndex: params.seriesIndex ?? 0,
-  //       dataIndex: params.dataIndex,
-  //     });
-  //   });
-  //
-  // }
 
 
   private BASE_VisualMap: any = {
