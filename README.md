@@ -16,7 +16,7 @@ The full project documentation is available in the `docs/` directory:
   → [`docs/handbook/Handbook.pdf`](docs/handbook/Handbook.pdf)
 
 -  **Deployment**  
-  Describes the deployment of the system 
+   Describes the deployment of the system.
   → [`docs/deployment/Deployment_Documentation.pdf`](docs/deployment/Deployment_Documentation.pdf)
 
 - 🏗️ **Architecture Model**  
