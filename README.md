@@ -21,7 +21,7 @@ The full project documentation is available in the `docs/` directory:
 
 - 🏗️ **Architecture Model**  
   Describes the system architecture, components, and their interactions.  
-  → [`docs/architecture/Architecture_And_Design_Document.pdf`](docs/architecture/Architecture_And_Design_Document.pdf)
+  → [`docs/architecture/Architecture_and_Design_Document.pdf`](docs/architecture/Architecture_and_Design_Document.pdf)
 
 - 🧩 **Domain Model**  
   Defines the core domain concepts, entities, and relationships used within LiDARC.  
