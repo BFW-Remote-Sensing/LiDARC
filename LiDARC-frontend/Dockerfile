@@ -29,7 +29,7 @@ RUN npm run build
 # Stage 2: Prepare Nginx to Serve Static Files
 # =========================================
 
-FROM registry.reset.inso-w.at/pub/docker/nginx:stable-alpine AS runner
+FROM nginx:stable-alpine AS runner
 
 # Use a built-in non-root user for security best practices
 USER nginx
